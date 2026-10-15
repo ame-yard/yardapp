@@ -5,9 +5,9 @@
 const CFG={
   clientId:'98326b62-ab8a-4d2c-afb8-8370dfbf8669',
   tenantId:'03cf4bd0-be44-487f-955a-bf20a7471f67',
-  site:'apeakcontracting.sharepoint.com:/sites/AMEYard:', // dedicated site (Sites.Selected)
+  site:'apeakcontracting.sharepoint.com',      // root site
   folder:'AME Yard App',                        // Documents/AME Yard App on that site
-  scopes:['Sites.Selected'],
+  scopes:['Files.ReadWrite.All','Sites.ReadWrite.All'],
   pollMs:15000
 };
 const G='https://graph.microsoft.com/v1.0';
@@ -45,7 +45,7 @@ async function token(){
 async function gfetch(url,opt={}){
   const t=await token();
   const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+t,...(opt.headers||{})}});
-  if(r.status===403||r.status===401){const e=new Error('No access to the AME Yard site. Ask Kyle to add you as a member.');e.code=r.status;throw e}
+  if(r.status===403||r.status===401){const e=new Error('No access to the AME Yard App folder. Ask Kyle to share it with you.');e.code=r.status;throw e}
   return r;
 }
 
