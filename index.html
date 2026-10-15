@@ -449,7 +449,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
         <div class="maphint" id="maphint">Tap a rack to see what's there.</div></div>
       <div class="menu">
         <input id="ysearch" class="search" type="search" placeholder="Search: ladder, drill, Sika, 4&quot;#14, B-10…">
-        <div class="selhead" id="selhead" hidden><h3 id="selTitle"></h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn maponly" id="backMap">↑ Map</button><button class="btn pri" id="rackAdd">+ Add item here</button><button class="btn admin-only" id="rackEdit" aria-pressed="false">Edit / Delete</button><button class="btn" id="selClear">Show all</button></div></div><div class="banner" id="editBanner" hidden>Edit mode — tap a card to change or delete it. Tap “Done” when finished.</div>
+        <div class="selhead" id="selhead" hidden><h3 id="selTitle"></h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn maponly" id="backMap">↑ Map</button><button class="btn pri" id="rackAdd">+ Add item here</button><button class="btn" id="rackSel">Select to remove</button><button class="btn admin-only" id="rackEdit" aria-pressed="false">Edit / Delete</button><button class="btn" id="selClear">Show all</button></div></div><div class="banner" id="editBanner" hidden>Edit mode — tap a card to change or delete it. Tap “Done” when finished.</div>
         <div class="cards" id="ylist"><div class="empty">Items appear here once the yard list loads.</div></div>
       </div>
     </div>
@@ -551,7 +551,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.72',APP_DATE='2026-10-15';
+const APP_VERSION='1.73',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -620,10 +620,11 @@ const BAYS={"A-08":[240,78],"A-07":[240,128],"A-06":[240,178],"A-05":[240,228],"
 const ZONES=[["A",210,30,160,440],["B",370,30,155,348],["C",525,30,155,348],["D",370,378,310,92],["E",580,474,100,30],["F",700,260,100,100],["Y",210,545,470,145]];
 const locOf=i=>(i.loc||'').split('~')[0];
 $$('.viewseg button[data-v]').forEach(b=>b.onclick=()=>{yView=b.dataset.v;LS.set('yview',yView);if(yView==='cat')yLoc='';renderYard()});
-let editMode=false;
+let editMode=false,selMode=false,picked=new Set();
 $('#backMap').onclick=()=>$('#mapwrap').scrollIntoView({behavior:'smooth',block:'start'});
-$('#selClear').onclick=()=>{yLoc='';editMode=false;renderYard()};
+$('#selClear').onclick=()=>{yLoc='';editMode=false;selMode=false;picked.clear();renderYard()};
 $('#rackAdd').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
+$('#rackSel').onclick=()=>{selMode=!selMode;picked.clear();renderYard()};
 $('#rackEdit').onclick=()=>{editMode=!editMode;renderYard()};
 function scrollToList(){if(!yLoc)return;const m=$('#kiosk .menu');if(m&&getComputedStyle($('#kiosk')).gridTemplateColumns.split(' ').length===1)m.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}
 function renderMap(){
@@ -772,12 +773,14 @@ function renderYard(){
   if(subBar){$('#ylist').insertAdjacentHTML('afterbegin',subBar);$$('#ylist .subbar .chip').forEach(b=>b.onclick=()=>{ySub=b.dataset.sub;renderYard()})}
   const rackSel=isMap&&yLoc&&!yLoc.startsWith('zone:');
   $('#rackAdd').hidden=!rackSel||!(isAdmin||can('ADD'));$('#rackEdit').hidden=!yLoc||!isAdmin;$('#rackEdit').textContent=editMode?'Done':'Edit / Delete';$('#rackEdit').setAttribute('aria-pressed',editMode);$('#editBanner').hidden=!editMode;
+  $('#rackSel').hidden=!yLoc||!(isAdmin||can('DELITEM'))||editMode;if($('#rackSel').hidden&&selMode){selMode=false;picked.clear()}$('#rackSel').textContent=selMode?'Cancel':'Select to remove';$('#ylist').classList.toggle('picking',selMode);rmBar();
   $('#ylist').classList.toggle('editing',editMode);
   if(!l.length&&yLoc)$('#ylist').innerHTML=`<div class="empty">Nothing recorded on this rack yet. Use “+ Add item here”.</div>`;
   if(act==='RECEIVE'&&!editMode)$('#ylist').insertAdjacentHTML('afterbegin',`<button class="card newcard" id="newCard"><span class="pic"><span class="ph" style="--h:45"><span class="ptop"><span>New purchase</span></span><span><span class="pbig">+ New item</span><span class="pbrand">Not in the list yet</span></span></span></span><span class="cbody"><span class="cname">Add an item that isn't listed</span><span class="csub">${yLoc&&!yLoc.startsWith('zone:')?'Goes to rack '+esc(yLoc):'Pick its rack in the form'}</span></span></button>`);
   if($('#newCard'))$('#newCard').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
   $$('#ylist .card:not(.newcard)').forEach(r=>{let t;r.oncontextmenu=e=>{e.preventDefault();openItem(r.dataset.id)};r.ontouchstart=()=>{t=setTimeout(()=>{r._lp=1;openItem(r.dataset.id)},650)};r.ontouchend=r.ontouchmove=()=>clearTimeout(t)});
-  $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(r._lp){r._lp=0;return}if(editMode){openItem(r.dataset.id);return}
+  $$('#ylist .card:not(.newcard)').forEach(r=>{if(selMode)r.classList.toggle('picked',picked.has(r.dataset.id))});
+  $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(r._lp){r._lp=0;return}if(selMode){const k=r.dataset.id;picked.has(k)?picked.delete(k):picked.add(k);r.classList.toggle('picked',picked.has(k));rmBar();return}if(editMode){openItem(r.dataset.id);return}
     if(act==='REPAIR'){const d=e.target.closest('[data-dec]');const it=byId(r.dataset.id);openDispose(r.dataset.id,d?d.dataset.dec:(it&&it.repair>0?'done':'repair'));return}
     if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){camFor=cm.dataset.cam;$('#camIn').value='';$('#camIn').click();return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}addCart(r.dataset.id)});
 }
@@ -1323,4 +1326,20 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
 })();
 </script>
 
+<div id="rmBar" hidden><span id="rmCount"></span><button class="btn" id="rmAll">Select all</button><button class="btn dng" id="rmGo">Remove</button></div>
+<style>#rmBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;background:#3a332e;border:1px solid #f47b20;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#f3ede6;font-weight:600}
+#rmBar[hidden]{display:none!important}#ylist.picking .card{cursor:pointer}#ylist .card.picked{outline:3px solid #e2513a;outline-offset:-3px;position:relative}
+#ylist .card.picked::after{content:"\2713";position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#e2513a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:3}</style>
+<script>
+function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
+document.getElementById('rmAll').onclick=()=>{$$('#ylist .card:not(.newcard)').forEach(r=>picked.add(r.dataset.id));renderYard()};
+document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.length)return;
+  const names=ids.map(id=>byId(id)).filter(Boolean);
+  if(!confirm('Remove '+ids.length+' item(s) from the yard list?\n\n'+names.slice(0,12).map(i=>'• '+i.name+(i.size?' ('+i.size+')':'')).join('\n')+(names.length>12?'\n…':'')+'\n\nHistory stays in Activity.'))return;
+  const b=document.getElementById('rmGo');b.disabled=true;b.textContent='Removing…';let ok=0;
+  for(const it of names){try{const now=new Date().toISOString();
+    await db.collection('logs').add({ts:now,action:'DISPOSE',itemId:it.id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:it.qty||0,before:it.qty||0,after:0,job:'',by:curUser,note:'Item removed from yard list',cond:''});
+    await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
+  b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
+</script>
 </body></html>
