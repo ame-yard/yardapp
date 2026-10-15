@@ -420,6 +420,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 .bell{position:relative;background:none;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:6px 10px;font-size:17px;cursor:pointer;margin-right:8px;line-height:1}#bellN{position:absolute;top:-6px;right:-6px;background:#e2513a;color:#fff;border-radius:999px;font:700 11px system-ui;padding:2px 6px}#bellN[hidden]{display:none}tr.lnew td{background:rgba(244,123,32,.14)}tr.lnew td:first-child{box-shadow:inset 3px 0 #f47b20}
 #lSelBar{display:flex;gap:10px;align-items:center;margin:8px 0;padding:8px 12px;border:1px solid #e2513a;border-radius:12px;font-weight:600}#lSelBar[hidden]{display:none!important}tr.lpick td{background:rgba(226,81,58,.18)!important}.lchk{font-size:16px}
 .ic{width:1.1em;height:1.1em;vertical-align:-.18em;flex:none}.jdel .ic{width:16px;height:16px}.bell .ic{width:18px;height:18px}.lchk .ic{width:16px;height:16px}
+.qph{font-weight:700;margin:4px 0 6px}.qpc{margin-bottom:8px;flex-wrap:wrap}.qpl{max-height:220px;overflow:auto;border:1px solid var(--line,#5a514a);border-radius:12px;margin-bottom:12px}.qpi{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line,#5a514a);padding:10px 12px;color:inherit;font:inherit;cursor:pointer}.qpi span{color:var(--muted,#b9aea4);font-size:13px;white-space:nowrap}.qpi:hover,.qpi.on{background:rgba(244,123,32,.18)}
 </style>
 
 <header class="top"><div class="wrap">
@@ -556,7 +557,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.80',APP_DATE='2026-10-15';
+const APP_VERSION='1.81',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1053,9 +1054,24 @@ function renderInv(){
     :`<tr><td colspan="11" class="empty">${items.length?'Nothing matches. Not in the yard — OK to order.':'The yard list is empty.'}</td></tr>`;
   $$('#itbody tr[data-id]').forEach(r=>r.onclick=()=>openItem(r.dataset.id));
 }
+function uniq(a){return [...new Set(a.filter(x=>x&&String(x).trim()&&x!=='-'))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}))}
+function fillLists(pool){const keys=['cat','mfgr','name','size','unit','level','loc'];let dl=document.getElementById('dlbox');if(!dl){dl=document.createElement('div');dl.id='dlbox';dl.hidden=true;document.body.appendChild(dl)}
+  dl.innerHTML=keys.map(k=>`<datalist id="dl_${k}">${uniq((k==='loc'||k==='level'?items:pool).map(x=>x[k])).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
+function setupQuickPick(i,isNew){fillLists(items);const box=document.getElementById('qp');if(!box)return;let g='',sb='';
+  const draw=()=>{const pool=items.filter(x=>(!g||grp(x)===g)&&(!sb||sub(x)===sb));fillLists(g?pool:items);
+    const seen=new Map();pool.forEach(x=>{const k=[x.name,x.size,x.mfgr].join('|').toLowerCase();if(!seen.has(k))seen.set(k,x)});const list=[...seen.values()].sort((a,b)=>a.name.localeCompare(b.name)||String(a.size).localeCompare(String(b.size),undefined,{numeric:true}));
+    box.innerHTML=`<div class="qph">Quick pick <small class="muted">— choose a category, then tap a similar item to copy its details</small></div>
+    <div class="chips qpc">${GROUPS.filter(x=>!['out','all'].includes(x[0])).map(x=>`<button type="button" class="chip" data-qg="${x[0]}" aria-pressed="${x[0]===g}">${x[1]}</button>`).join('')}</div>
+    ${g&&SUBS[g]?`<div class="chips qpc">${SUBS[g].map(x=>`<button type="button" class="chip" data-qs="${esc(x)}" aria-pressed="${x===sb}">${x}</button>`).join('')}</div>`:''}
+    ${g?`<div class="qpl">${list.length?list.slice(0,80).map((x,n)=>`<button type="button" class="qpi" data-qi="${n}"><b>${esc(x.name)}</b><span>${esc([x.size&&x.size!=='-'?x.size:'',x.mfgr,x.unit].filter(Boolean).join(' · '))}</span></button>`).join(''):'<div class="muted" style="padding:8px">No similar items yet — type the details below.</div>'}</div>`:''}`;
+    box.querySelectorAll('[data-qg]').forEach(b=>b.onclick=()=>{g=g===b.dataset.qg?'':b.dataset.qg;sb='';draw()});
+    box.querySelectorAll('[data-qs]').forEach(b=>b.onclick=()=>{sb=sb===b.dataset.qs?'':b.dataset.qs;draw()});
+    box.querySelectorAll('[data-qi]').forEach(b=>b.onclick=()=>{const x=list[+b.dataset.qi];['type','cat','mfgr','name','size','unit','sds'].forEach(k=>{const el=document.getElementById('e_'+k);if(el&&x[k]!=null)el.value=x[k]});
+      box.querySelectorAll('.qpi').forEach(e=>e.classList.toggle('on',e===b));const q=document.getElementById('e_qty');if(q){q.focus();q.select&&q.select()}toast('Copied — check location and enter the quantity')});};
+  draw()}
 function openItem(id,newLoc){
   const i=id?byId(id):{id:'',zone:(newLoc||'A')[0],loc:newLoc||'A-01',level:'L1',type:'Materials',cat:'',mfgr:'',name:'',size:'',qty:0,unit:'EA',cond:'Good',remarks:'',min:''};
-  const F=(k,l,t='text',o)=>`<label class="f">${l}${o?`<select id="e_${k}">${o.map(x=>`<option ${x===i[k]?'selected':''}>${x}</option>`).join('')}</select>`:`<input id="e_${k}" type="${t}" value="${esc(i[k]??'')}">`}</label>`;
+  const F=(k,l,t='text',o)=>`<label class="f">${l}${o?`<select id="e_${k}">${o.map(x=>`<option ${x===i[k]?'selected':''}>${x}</option>`).join('')}</select>`:`<input id="e_${k}" type="${t}" value="${esc(i[k]??'')}" ${['cat','mfgr','name','size','unit','level','loc'].includes(k)?`list="dl_${k}" autocomplete="off"`:''}>`}</label>`;
   const h=logs.filter(g=>g.itemId===id).slice(0,40);
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true">
    <h3>${id?esc(i.name):'New item'} <span class="muted mono" style="font-size:14px">${esc(id)}</span></h3>
@@ -1063,7 +1079,7 @@ function openItem(id,newLoc){
    <button type="button" class="btn" id="e_photoLbl">${i.photo?'Change photo':'Add photo'}</button>
    <button class="btn pri" id="e_hist" style="margin-left:auto">History</button></div>`:''}
    ${i.issue?`<div class="banner"><b>To verify:</b> ${esc(i.issue)}</div>`:''}
-   <div class="fields">${F('loc','Location (e.g. B-10)')}${F('level','Level (GR, L1–L5)')}${F('type','Type','',['Materials','Tools','Equipment','Safety'])}${F('cat','Category')}
+   ${!id?'<div id="qp"></div>':''}<div class="fields">${F('loc','Location (e.g. B-10)')}${F('level','Level (GR, L1–L5)')}${F('type','Type','',['Materials','Tools','Equipment','Safety'])}${F('cat','Category')}
    ${F('mfgr','Manufacturer')}${F('name','Item name')}${F('size','Size')}${F('unit','Unit (EA, PL, RL, PCS, BDL, BOX, Tube)')}
    ${F('qty','Qty in yard','number')}${F('min','Reorder at (min qty)','number')}${F('cond','Condition','',['Good','Mixed','Needs Check','Bad'])}${F('sds','SDS (O/X)')}
    <label class="f wide">Remarks<input id="e_remarks" value="${esc(i.remarks||'')}"></label>
@@ -1075,7 +1091,7 @@ function openItem(id,newLoc){
    <div class="hist">${h.length?h.map(g=>`<div><span class="a-${g.action}">${ACTNAME[g.action]}</span> ${g.n} · ${fmtD(g.ts)} · ${esc(g.by)} ${g.job?'· '+esc(g.job):''} ${g.note?'· '+esc(g.note):''}</div>`).join(''):'<div class="muted">No activity recorded yet.</div>'}</div>`:''}
    ${isAdmin||!id||can('DELITEM')?`<div class="bar">${id&&(isAdmin||can('DELITEM'))?`<button class="btn dng" id="e_del">Remove</button>`:''}<button class="btn" id="e_cancel">Cancel</button><button class="btn pri" id="e_save">${i.pending&&isAdmin?'Approve & Save':'Save'}</button></div>`:`<div class="bar"><span class="robanner">Only office editors can change item details.</span><button class="btn" id="e_cancel">Close</button></div>`}
    <div id="e_confirm"></div></div></div>`;
-  $('#e_cancel').onclick=closeDlg;if($('#e_hist'))$('#e_hist').onclick=()=>openHistory(id,i.name);
+  $('#e_cancel').onclick=closeDlg;setupQuickPick(i,!id);if($('#e_hist'))$('#e_hist').onclick=()=>openHistory(id,i.name);
   if(id){$('#e_confirm').insertAdjacentHTML('beforebegin',`<div class="reportbox"><input id="e_rep" class="search" placeholder="Something wrong? Describe it (e.g. cord cut, won't start)"><button class="btn" id="e_repBtn">Report problem</button></div>`);
     $('#e_repBtn').onclick=async()=>{const t=$('#e_rep').value.trim();if(!t){toast('Describe the problem first.');return}const who=curUser||'Yard';const now=new Date().toISOString();
       try{await writeItem(id,{cond:'Needs Check',report:t,updatedAt:now,updatedBy:who});await db.collection('logs').add({ts:now,action:'REPORT',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:0,before:i.qty,after:i.qty,job:'',by:who,note:t,cond:'Needs Check'});toast('Reported — it now shows in Repair requests');closeDlg()}catch(e){toast('Could not report: '+(e.message||e.code))}}}
