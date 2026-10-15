@@ -551,7 +551,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.73',APP_DATE='2026-10-15';
+const APP_VERSION='1.74',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -756,7 +756,7 @@ function renderYard(){
   else if(act==='RETURN'){$('#selhead').hidden=true;editMode=false;const rj=yGroup.slice(3);
     l=items.filter(i=>(rj==='all'?i.out>0:!!jobOut[rj]?.[i.id])&&(!q||match(i,q)));
     if(!l.length){$('#ylist').innerHTML=`<div class="empty">${q?'None of the items out on jobs match that search.':'Nothing is out on a job right now, so there is nothing to return.'}</div>`;return}}
-  else{$('#selhead').hidden=true;editMode=false;l=q?items.filter(i=>match(i,q)):items.filter(i=>yGroup==='all'||(yGroup==='out'?i.out>0:grp(i)===yGroup));
+  else{$('#selhead').hidden=false;editMode=false;$('#selTitle').textContent=q?'Search results':((GROUPS.find(g=>g[0]===yGroup)||[,'Items'])[1]+(ySub?' · '+ySub:''));l=q?items.filter(i=>match(i,q)):items.filter(i=>yGroup==='all'||(yGroup==='out'?i.out>0:grp(i)===yGroup));
     if(!q&&SUBS[yGroup]){const base=l;if(ySub&&!SUBS[yGroup].includes(ySub))ySub='';l=ySub?base.filter(i=>sub(i)===ySub):base;
       subBar=`<div class="chips subbar">${['',...SUBS[yGroup]].filter(x=>!x||base.some(i=>sub(i)===x)).map(x=>`<button class="chip" data-sub="${esc(x)}" aria-pressed="${x===ySub}">${x||'All '+GROUPS.find(g=>g[0]===yGroup)[1]}<small>${x?base.filter(i=>sub(i)===x).length:base.length}</small></button>`).join('')}</div>`}}
   if(!items.length){$('#ylist').innerHTML='<div class="empty">The yard list is empty. Ask the office to load it.</div>';return}
@@ -771,9 +771,9 @@ function renderYard(){
       :`<span class="decide three"><span class="dbtn keep" data-dec="keep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>OK</span><span class="dbtn rep" data-dec="repair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Repair</span><span class="dbtn trash" data-dec="dispose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>Dispose</span></span>`):''}</span></button>`}).join('')
     ||`<div class="empty">${yGroup==='out'&&!q?'Nothing is out on a job right now.':'No match. Try a shorter word.'}</div>`;
   if(subBar){$('#ylist').insertAdjacentHTML('afterbegin',subBar);$$('#ylist .subbar .chip').forEach(b=>b.onclick=()=>{ySub=b.dataset.sub;renderYard()})}
-  const rackSel=isMap&&yLoc&&!yLoc.startsWith('zone:');
-  $('#rackAdd').hidden=!rackSel||!(isAdmin||can('ADD'));$('#rackEdit').hidden=!yLoc||!isAdmin;$('#rackEdit').textContent=editMode?'Done':'Edit / Delete';$('#rackEdit').setAttribute('aria-pressed',editMode);$('#editBanner').hidden=!editMode;
-  $('#rackSel').hidden=!yLoc||!(isAdmin||can('DELITEM'))||editMode;if($('#rackSel').hidden&&selMode){selMode=false;picked.clear()}$('#rackSel').textContent=selMode?'Cancel':'Select to remove';$('#ylist').classList.toggle('picking',selMode);rmBar();
+  const rackSel=isMap&&yLoc&&!yLoc.startsWith('zone:');const catView=!isMap&&!special;if($('#selClear'))$('#selClear').hidden=catView;
+  $('#rackAdd').hidden=!(rackSel||catView)||!(isAdmin||can('ADD'));$('#rackAdd').textContent=catView?'+ Add item':'+ Add item here';$('#rackEdit').hidden=!yLoc||!isAdmin;$('#rackEdit').textContent=editMode?'Done':'Edit / Delete';$('#rackEdit').setAttribute('aria-pressed',editMode);$('#editBanner').hidden=!editMode;
+  $('#rackSel').hidden=!(yLoc||catView)||!(isAdmin||can('DELITEM'))||editMode;if($('#rackSel').hidden&&selMode){selMode=false;picked.clear()}$('#rackSel').textContent=selMode?'Cancel':'Select to remove';$('#ylist').classList.toggle('picking',selMode);rmBar();
   $('#ylist').classList.toggle('editing',editMode);
   if(!l.length&&yLoc)$('#ylist').innerHTML=`<div class="empty">Nothing recorded on this rack yet. Use “+ Add item here”.</div>`;
   if(act==='RECEIVE'&&!editMode)$('#ylist').insertAdjacentHTML('afterbegin',`<button class="card newcard" id="newCard"><span class="pic"><span class="ph" style="--h:45"><span class="ptop"><span>New purchase</span></span><span><span class="pbig">+ New item</span><span class="pbrand">Not in the list yet</span></span></span></span><span class="cbody"><span class="cname">Add an item that isn't listed</span><span class="csub">${yLoc&&!yLoc.startsWith('zone:')?'Goes to rack '+esc(yLoc):'Pick its rack in the form'}</span></span></button>`);
@@ -1328,7 +1328,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
 
 <div id="rmBar" hidden><span id="rmCount"></span><button class="btn" id="rmAll">Select all</button><button class="btn dng" id="rmGo">Remove</button></div>
 <style>#rmBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;background:#3a332e;border:1px solid #f47b20;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#f3ede6;font-weight:600}
-#rmBar[hidden]{display:none!important}#ylist.picking .card{cursor:pointer}#ylist .card.picked{outline:3px solid #e2513a;outline-offset:-3px;position:relative}
+#rmBar[hidden]{display:none!important}#ylist.picking .card{cursor:pointer}#ylist.picking .card.oos{opacity:.85;cursor:pointer}#ylist .card.picked{outline:3px solid #e2513a;outline-offset:-3px;position:relative}
 #ylist .card.picked::after{content:"\2713";position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#e2513a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:3}</style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
