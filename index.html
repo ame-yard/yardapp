@@ -444,6 +444,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 #ylist.listview .card .minus{display:none}
 #ylist.listview .subbar{grid-column:1/-1}
 @media (max-width:600px){#ylist.listview .card .loc{display:none}#ylist.listview .card .pwrap,#ylist.listview .card .pic{width:52px}#ylist.listview .card .oosband{font-size:10px;padding:2px 6px;margin-right:6px;max-width:72px;white-space:normal;text-align:center}#ylist.listview .card .cbody{padding:6px 8px}}
+#repBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:#3a332e;border:1px solid #f47b20;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#f3ede6;max-width:calc(100% - 24px)}#repBar[hidden]{display:none!important}#repBar select{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:10px;padding:8px}
 </style>
 
 <header class="top"><div class="wrap">
@@ -581,7 +582,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.87',APP_DATE='2026-10-15';
+const APP_VERSION='1.89',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -762,7 +763,7 @@ function renderYard(){
     l.sort((a,b)=>(a.level||'').localeCompare(b.level||'')||a.name.localeCompare(b.name));
     if(!l.length&&!yLoc){$('#ylist').innerHTML=`<div class="empty">${q?'No match. Try a shorter word.':(innerWidth<600?'Tap a rack or search.':'Tap a rack on the map, or search above. Racks with matches light up.')}</div>`;return}}
   else if(act==='DISPOSE'){$('#selhead').hidden=true;editMode=false;$('#rail').hidden=true;renderDisposeLog(q);return}
-  else if(act==='REPAIR'){$('#selhead').hidden=true;editMode=false;
+  else if(act==='REPAIR'){$('#selhead').hidden=true;editMode=false;setTimeout(repHead,0);
     const flagged=i=>i.cond==='Needs Check'||i.cond==='Bad'||i.cond==='Mixed';
     const G=act==='REPAIR'?[['rq','Repair requests',i=>!!i.report&&!(i.repair>0)],['ip','In repair',i=>i.repair>0],['bad','Marked Bad',i=>i.cond==='Bad'&&!i.report&&!(i.repair>0)]]
       :[['fl','Flagged items',i=>i.cond==='Bad'||i.repair>0||!!i.report],['all','Search all',i=>true]];
@@ -805,7 +806,7 @@ function renderYard(){
   if(subBar){$('#ylist').insertAdjacentHTML('afterbegin',subBar);$$('#ylist .subbar .chip').forEach(b=>b.onclick=()=>{ySub=b.dataset.sub;renderYard()})}
   const rackSel=isMap&&yLoc&&!yLoc.startsWith('zone:');const catView=!isMap&&!special;if($('#selClear'))$('#selClear').hidden=catView;
   $('#rackAdd').hidden=!(rackSel||catView)||!(isAdmin||can('ADD'));$('#rackAdd').textContent=catView?'+ Add item':'+ Add item here';$('#rackEdit').hidden=!yLoc||!isAdmin;$('#rackEdit').textContent=editMode?'Done':'Edit / Delete';$('#rackEdit').setAttribute('aria-pressed',editMode);$('#editBanner').hidden=!editMode;
-  $('#rackSel').hidden=!(yLoc||catView)||!(isAdmin||can('DELITEM'))||editMode;if($('#rackSel').hidden&&selMode){selMode=false;picked.clear()}$('#rackSel').textContent=selMode?'Cancel':'Select to remove';$('#ylist').classList.toggle('picking',selMode);rmBar();
+  if($('#repSelBtn'))$('#repSelBtn').hidden=true;$('#rackSel').hidden=!(yLoc||catView)||!(isAdmin||can('DELITEM'))||editMode;if($('#rackSel').hidden&&selMode){selMode=false;picked.clear()}$('#rackSel').textContent=selMode?'Cancel':'Select to remove';$('#ylist').classList.toggle('picking',selMode);rmBar();
   $('#ylist').classList.toggle('editing',editMode);applyLv();
   if(!l.length&&yLoc)$('#ylist').innerHTML=`<div class="empty">Nothing recorded on this rack yet. Use “+ Add item here”.</div>`;
   if(act==='RECEIVE'&&!editMode)$('#ylist').insertAdjacentHTML('afterbegin',`<button class="card newcard" id="newCard"><span class="pic"><span class="ph" style="--h:45"><span class="ptop"><span>New purchase</span></span><span><span class="pbig">+ New item</span><span class="pbrand">Not in the list yet</span></span></span></span><span class="cbody"><span class="cname">Add an item that isn't listed</span><span class="csub">${yLoc&&!yLoc.startsWith('zone:')?'Goes to rack '+esc(yLoc):'Pick its rack in the form'}</span></span></button>`);
@@ -813,6 +814,7 @@ function renderYard(){
   $$('#ylist .card:not(.newcard)').forEach(r=>{let t;r.oncontextmenu=e=>{e.preventDefault();openItem(r.dataset.id)};r.ontouchstart=()=>{t=setTimeout(()=>{r._lp=1;openItem(r.dataset.id)},650)};r.ontouchend=r.ontouchmove=()=>clearTimeout(t)});
   $$('#ylist .card:not(.newcard)').forEach(r=>{if(selMode)r.classList.toggle('picked',picked.has(r.dataset.id))});
   $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(r._lp){r._lp=0;return}if(selMode){const k=r.dataset.id;picked.has(k)?picked.delete(k):picked.add(k);r.classList.toggle('picked',picked.has(k));rmBar();return}if(editMode){openItem(r.dataset.id);return}
+    if(act==='REPAIR'&&repMode){const k=r.dataset.id;repPick.has(k)?repPick.delete(k):repPick.add(k);r.classList.toggle('picked',repPick.has(k));repBar();return}
     if(act==='REPAIR'){const d=e.target.closest('[data-dec]');const it=byId(r.dataset.id);openDispose(r.dataset.id,d?d.dataset.dec:(it&&it.repair>0?'done':'repair'));return}
     if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){pickPhoto(cm.dataset.cam);return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}addCart(r.dataset.id)});
 }
@@ -872,6 +874,36 @@ function editCrew(k){if(!isAdmin)return;const c=crew[k];if(!c)return;
     await saveCrew(crew.map((x,i)=>i===k?{...x,name:n,role:$('#p_r').value,editor:ed}:x));
     if(n!==c.name)for(const j of jobs){const u={};['pm','fm','sfm'].forEach(f=>{if(j[f]===c.name)u[f]=n});if(Object.keys(u).length)db.doc('jobs/'+j._id).update(u).catch(()=>{})}
     toast('Saved');closeDlg()}}
+let repMode=false,repPick=new Set();
+function repHead(){if(act!=='REPAIR'){repMode=false;repPick.clear();repBar();return}const h=$('#selhead');h.hidden=false;
+  $('#selTitle').textContent={rq:'Repair requests',ip:'In repair',bad:'Marked Bad'}[yGroup]||'Repair';
+  ['rackAdd','rackEdit','selClear','backMap','rackSel'].forEach(k=>{if($('#'+k))$('#'+k).hidden=true});
+  let b=$('#repSelBtn');if(!b){b=document.createElement('button');b.className='btn';b.id='repSelBtn';$('#rackAdd').parentNode.appendChild(b);b.onclick=()=>{repMode=!repMode;repPick.clear();renderYard()}}
+  b.hidden=false;b.textContent=repMode?'Cancel':'Select several';$('#ylist').classList.toggle('picking',repMode);
+  $$('#ylist .card:not(.newcard)').forEach(r=>r.classList.toggle('picked',repPick.has(r.dataset.id)));repBar()}
+function repBar(){let bar=$('#repBar');if(!bar){bar=document.createElement('div');bar.id='repBar';document.body.appendChild(bar)}
+  bar.hidden=!(repMode&&act==='REPAIR');if(bar.hidden)return;const ip=yGroup==='ip';
+  bar.innerHTML=`<span><b>${repPick.size}</b> selected</span><button class="btn" data-ra="all">Select all</button>
+   <select id="repN"><option value="all">${ip?'All in repair':'All units'}</option><option value="1">1 each</option></select>
+   ${ip?`<button class="btn pri" data-ra="done">Repaired</button>`:`<button class="btn" data-ra="keep">OK as is</button><button class="btn pri" data-ra="repair">Send to repair</button>`}
+   <select id="repWhy"><option value="">Dispose reason…</option>${REASONS.map(r=>`<option>${r}</option>`).join('')}</select><button class="btn dng" data-ra="dispose">Dispose</button>`;
+  bar.querySelectorAll('[data-ra]').forEach(x=>x.onclick=()=>x.dataset.ra==='all'?($$('#ylist .card:not(.newcard)').forEach(r=>repPick.add(r.dataset.id)),renderYard()):bulkDecide(x.dataset.ra))}
+async function bulkDecide(mode){const ids=[...repPick];if(!ids.length){toast('Select items first.');return}
+  const why=$('#repWhy').value;if(mode==='dispose'&&!why){toast('Pick a dispose reason first.');return}
+  const each=$('#repN').value;const lab={keep:'Clear the flag on',repair:'Send to repair',done:'Mark repaired',dispose:'Dispose'}[mode];
+  if(!confirm(lab+' '+ids.length+' item(s)'+(mode==='keep'?'':' — '+(each==='1'?'1 unit each':'all units'))+'?'))return;
+  let ok=0;for(const id of ids){const i=byId(id);if(!i)continue;try{await applyDecision(i,mode,each,why);ok++}catch(e){toast('Could not update '+i.name+': '+(e.message||e.code))}}
+  toast(ok+' item(s) updated');repMode=false;repPick.clear();renderYard()}
+async function applyDecision(i,mode,each,reason){const id=i.id,now=new Date().toISOString(),before=Number(i.qty)||0;let rep=i.repair||0,qty=before,upd={},act2,lognote='Bulk decision';
+  const SN=sers(i);let n;
+  if(mode==='done'){n=each==='1'?Math.min(1,rep):rep;rep-=n;qty=before+n;upd={qty,repair:rep};if(!rep){upd.cond='Good';upd.report=''}act2='REPAIR_DONE'}
+  else if(mode==='keep'){n=0;upd={cond:'Good',report:''};act2='CLEARED';lognote='Kept — flag cleared (bulk)'}
+  else if(mode==='repair'){n=each==='1'?Math.min(1,before):before;if(n<1)return;qty=before-n;rep+=n;upd={qty,repair:rep,report:''};act2='REPAIR_OUT'}
+  else{n=each==='1'?1:before+rep;let left=n;const fr=Math.min(rep,left);rep-=fr;left-=fr;qty=Math.max(0,before-left);upd={qty,repair:rep};if(!rep&&!qty)upd.report='';act2='DISPOSE';lognote=reason+' (bulk)'}
+  let dsel=[];if(SN.length&&n>0){const want=mode==='done'?'repair':mode==='repair'?'yard':null;dsel=SN.filter(sn=>{const st=ust(i,sn).st;return want?st===want:(st==='yard'||st==='repair')}).slice(0,n);
+    if(dsel.length){const um={};SN.forEach(sn=>um[sn]=ust(i,sn));Object.assign(um,i.units||{});if(!(Array.isArray(i.serials)&&i.serials.length))upd.serials=SN;for(const sn of dsel)um[sn]={st:mode==='done'?'yard':mode==='repair'?'repair':'disposed'};upd.units=um}}
+  await writeItem(id,{...upd,updatedAt:now,updatedBy:curUser});
+  await db.collection('logs').add({units:dsel.length?dsel:null,ts:now,action:act2,itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n,before,after:qty,job:'',by:curUser,note:lognote,cond:''})}
 function openDispose(id,mode){const i=byId(id);if(!i)return;const max=Math.max(1,(Number(i.qty)||0)+(i.repair||0));let n=1;let reason='';
   $('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" role="dialog" aria-modal="true">
    <h3>${i.repair>0?'Repair result':'Repair decision'}</h3>
@@ -1401,6 +1433,7 @@ $('#lSelDel').onclick=async()=>{const ids=[...lPick];if(!ids.length||!confirm('D
   const b=$('#lSelDel');b.disabled=true;b.textContent='Deleting…';
   try{if(db.deleteMany)await db.deleteMany('logs',ids);else for(const id of ids)await db.doc('logs/'+id).delete();toast(ids.length+' record(s) deleted')}catch(e){toast('Could not delete: '+(e.message||e.code))}
   b.textContent='Delete';lSel=false;lPick.clear();renderLog()};
+$('#brand').onclick=()=>{closeDlg&&closeDlg();yView='map';yLoc='';act='OUT';selMode=false;repMode=false;repPick.clear();picked.clear();showTab('yard');renderYard();scrollTo({top:0,behavior:'smooth'})};
 $('#bellBtn').onclick=()=>showTab('log');
 $('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;try{location.reload()}catch(e){}setTimeout(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false},4000)};
 
@@ -1417,7 +1450,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
   const usr=await window.claude?.use?.('user');accountAdmin=!!usr?.canEdit?.();if(curUser)setUser(curUser);else{isAdmin=false;applyRole();showLogin()}
   $('#status').textContent+=accountAdmin?'':' · This device: yard access only';
   if(accountAdmin){$('#brand').style.cursor='pointer';$('#brand').title='Tap to set the company logo';
-    $('#brand').onclick=()=>{$('#logoIn').value='';$('#logoIn').click()};
+
     $('#logoIn').onchange=async e=>{const f=e.target.files[0];if(!f)return;const as=await window.claude?.use?.('assets');if(!as){toast('Logo upload is not available.');return}
       try{const r=await as.upload(f);await db.doc('config/brand').set({logo:r.url,logoId:r.id});toast('Logo updated')}catch(err){toast('Could not upload: '+(err.message||err.code))}}}
   db.doc('config/crew').onSnapshot(s=>{crew=(s.data()?.members)||[];renderCrew();if(!curUser)showLogin();else setUser(curUser)},()=>{});
