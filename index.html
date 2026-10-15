@@ -424,6 +424,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .15s}button.kpi:hover{border-color:var(--accent,#f47b20)}button.kpi.on{border-color:var(--accent,#f47b20);box-shadow:inset 0 0 0 1px var(--accent,#f47b20)}
 .unitbox{display:flex;flex-direction:column;gap:6px}.unitgen{display:flex;gap:8px;flex-wrap:wrap}.unitgen input{flex:1;min-width:140px}
 .thumb{width:34px;height:34px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:8px;float:left}.citem .thumb{width:40px;height:40px}
+.onrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line,#5a514a);flex-wrap:wrap}.onrow .onago{margin-left:auto;font-size:13px}.dot{width:10px;height:10px;border-radius:50%;background:#7a6f66;flex:none}.dot.on{background:#3fb950;box-shadow:0 0 0 3px rgba(63,185,80,.25)}
 </style>
 
 <header class="top"><div class="wrap">
@@ -506,6 +507,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
       <div id="crewList"></div>
       <div class="filters admin-only" style="margin-top:12px"><span class="muted" id="pinState"></span><input id="newPin" inputmode="numeric" maxlength="4" placeholder="New 4-digit editor PIN" style="width:200px"><button class="btn" id="savePin">Set editor PIN</button></div>
     </div>
+    <div class="panel admin-only" style="margin-bottom:18px"><h3 style="margin-top:0">Who's using the app <small class="muted" id="onlineN"></small></h3><div id="onlineList" class="muted">Loading…</div></div>
     <div class="panel admin-only permpanel" style="margin-bottom:18px">
       <h3 style="margin:0">Permissions</h3>
       <p class="muted" style="font-size:13px;margin:4px 0 10px">Editors always have everything. Changes apply right away on every device.</p>
@@ -560,7 +562,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.85',APP_DATE='2026-10-15';
+const APP_VERSION='1.86',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -580,7 +582,7 @@ function match(i,q){if(!q)return true;const h=[i.id,i.loc,i.level,i.type,i.cat,i
 
 /* tabs */
 $$('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-function showTab(t){if(t==='log')setTimeout(markSeen,4000);$$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['yard','inv','jobs','log','sheet'].forEach(x=>$('#tab-'+x).hidden=x!==t);LS.set('tab',t);render()}
+function showTab(t){setTimeout(()=>{try{beat()}catch(e){}},300);if(t==='log')setTimeout(markSeen,4000);$$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['yard','inv','jobs','log','sheet'].forEach(x=>$('#tab-'+x).hidden=x!==t);LS.set('tab',t);render()}
 
 /* yard kiosk */
 const IC={
@@ -1206,6 +1208,22 @@ function markSeen(){try{localStorage.setItem('ameSeen_'+curUser,new Date().toISO
 function updBell(){const b=$('#bellBtn');if(!b)return;b.hidden=!curUser;if(!curUser)return;const s=seenTs();const n=s?logs.filter(g=>g.ts>s&&g.by!==curUser).length:0;if(!s&&logs.length)markSeen();$('#bellN').hidden=!n;$('#bellN').textContent=n>99?'99+':n}
 let lSel=false,lPick=new Set();
 function lBar(){$('#lSelBar').hidden=!lSel;$('#lSelN').textContent=lPick.size+' selected';$('#lSelDel').disabled=!lPick.size;$('#lSelBtn').textContent=lSel?'Cancel':'Select to delete'}
+let presence=[],devId='';try{devId=localStorage.getItem('ameDev')||('d'+Math.random().toString(36).slice(2,10));localStorage.setItem('ameDev',devId)}catch(e){devId='d'+Math.random().toString(36).slice(2,10)}
+const TABN={yard:'Yard',inv:'Inventory',jobs:'Jobs',log:'Activity',sheet:'Sheet'};
+function devName(){const u=navigator.userAgent;return /iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'iPad':/iPhone/.test(u)?'iPhone':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows PC':/Mac/.test(u)?'Mac':'Browser'}
+let msAcct='';
+async function beat(){if(document.hidden||!db)return;const t=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab||'yard';
+  try{if(!msAcct){const u=await window.claude.use('user');msAcct=u?.name?.()||''}
+    await db.doc('presence/'+devId).set({name:curUser||'',acct:msAcct,device:devName(),tab:TABN[t]||t,mode:t==='yard'?(ACTNAME[act]||act):'',ts:new Date().toISOString()})}catch(e){}}
+function startPresence(){beat();setInterval(beat,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()})}
+function ago(ts){const s=Math.round((Date.now()-new Date(ts))/1000);return s<60?'just now':s<3600?Math.round(s/60)+' min ago':Math.round(s/3600)+' h ago'}
+function renderOnline(){const el=$('#onlineList');if(!el)return;const now=Date.now();
+  const on=presence.filter(p=>now-new Date(p.ts)<150000).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
+  const rec=presence.filter(p=>{const d=now-new Date(p.ts);return d>=150000&&d<86400000}).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
+  $('#onlineN').textContent=on.length?'· '+on.length+' online now':'· nobody online';
+  const row=(p,live)=>`<div class="onrow"><span class="dot ${live?'on':''}"></span><b>${esc(p.name||'(choosing name)')}</b><span class="muted">${esc(p.acct||'')} · ${esc(p.device)} · ${esc(p.tab)}${p.mode?' / '+esc(p.mode):''}</span><span class="muted onago">${live?'online':'last seen '+ago(p.ts)}</span></div>`;
+  el.innerHTML=(on.map(p=>row(p,1)).join('')||'<div class="muted">Nobody else is using the app right now.</div>')+(rec.length?`<div class="qlabel" style="margin-top:10px">Earlier today</div>`+rec.map(p=>row(p,0)).join(''):'')}
+setInterval(()=>{try{renderOnline()}catch(e){}},30000);
 function renderLog(){lBar();const q=$('#lsearch').value.trim().toLowerCase();const l=logs.filter(g=>!q||[g.name,g.by,g.job,g.loc,g.note,g.action].join(' ').toLowerCase().includes(q)).slice(0,400);
   if(!l.length){$('#lbody').innerHTML='<tr><td colspan="9" class="empty">No activity yet. Check-outs and returns from the yard iPad show up here.</td></tr>';return}
   const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${g.by!==curUser&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size)}</span></td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
@@ -1318,7 +1336,7 @@ let curUser='',accountAdmin=false,officePin='',lastAct=Date.now();
 try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3)curUser=u.n}catch(e){}
 
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
-function setUser(n){if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}))}catch(e){}lastAct=Date.now();
+function setUser(n){setTimeout(()=>{try{beat()}catch(e){}},300);if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}))}catch(e){}lastAct=Date.now();
   $('#loginRoot').innerHTML='';const r=curRole();$('#userChip').hidden=!n;$('#ucName').textContent=n;$('#ucRole').textContent=r;
   isAdmin=accountAdmin&&(isEditor(n)||can('EDIT'));applyRole();renderPerms()}
 function logout(){curUser='';selWho='';cart=[];try{sessionStorage.removeItem('ameUser')}catch(e){}$('#userChip').hidden=true;isAdmin=false;applyRole();closeDlg();showLogin()}
@@ -1384,6 +1402,8 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
   db.doc('config/perms').onSnapshot(s=>{perms=s.data()||{roles:{},grants:[]};if(curUser)setUser(curUser);renderPerms()},()=>{});
   setInterval(()=>{if(curUser)setUser(curUser)},60e3);
   db.doc('config/security').onSnapshot(s=>{officePin=s.data()?.officePin||'';renderCrew()},()=>{});
+  db.collection('presence').onSnapshot(s=>{presence=s.docs.map(d=>({...d.data(),_id:d.id}));renderOnline()},()=>{});
+  startPresence();
   db.collection('jobs').onSnapshot(s=>{jobs=s.docs.map(d=>({...d.data(),_id:d.id}));render()},()=>{});
   db.doc('config/people').onSnapshot(s=>{people=(s.data()?.names)||[];renderPeople();validate()},()=>{});
 })();
