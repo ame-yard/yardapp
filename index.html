@@ -415,6 +415,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 .empty{padding:28px;text-align:center;color:var(--muted)}
 .banner{background:var(--chip);border-left:4px solid var(--hi);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+#phSheet{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}#phSheet[hidden]{display:none!important}.phbox{background:var(--panel,#3a332e);border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));width:min(520px,100%);display:flex;flex-direction:column;gap:10px}.phbox b{text-align:center;margin-bottom:4px}.phbox .btn{padding:14px;font-size:16px}
 </style>
 
 <header class="top"><div class="wrap">
@@ -551,7 +552,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.74',APP_DATE='2026-10-15';
+const APP_VERSION='1.75',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -782,7 +783,7 @@ function renderYard(){
   $$('#ylist .card:not(.newcard)').forEach(r=>{if(selMode)r.classList.toggle('picked',picked.has(r.dataset.id))});
   $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(r._lp){r._lp=0;return}if(selMode){const k=r.dataset.id;picked.has(k)?picked.delete(k):picked.add(k);r.classList.toggle('picked',picked.has(k));rmBar();return}if(editMode){openItem(r.dataset.id);return}
     if(act==='REPAIR'){const d=e.target.closest('[data-dec]');const it=byId(r.dataset.id);openDispose(r.dataset.id,d?d.dataset.dec:(it&&it.repair>0?'done':'repair'));return}
-    if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){camFor=cm.dataset.cam;$('#camIn').value='';$('#camIn').click();return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}addCart(r.dataset.id)});
+    if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){pickPhoto(cm.dataset.cam);return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}addCart(r.dataset.id)});
 }
 function renderDisposeLog(q){setTimeout(()=>$$('#ylist tr[data-hn]').forEach(r=>{r.onclick=()=>isAdmin?editLog(r.dataset.lid):openHistory(r.dataset.hid,r.dataset.hn)}),0);const L=logs.filter(g=>(g.action==='DISPOSE'||g.action==='LOST')&&(!q||[g.name,g.by,g.note,g.job,g.loc].join(' ').toLowerCase().includes(q.toLowerCase())));
   const n30=L.filter(g=>Date.now()-new Date(g.ts)<30*864e5).reduce((a,g)=>a+(g.n||0),0);
@@ -927,7 +928,7 @@ function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=i
     r.querySelector('[data-an]').onchange=e=>{get().n=Math.max(0,parseInt(e.target.value)||0);renderYard()};
     r.querySelector('[data-an]').onfocus=e=>e.target.select();
     r.querySelector('[data-ac]').onchange=e=>{get().c=e.target.value;renderYard()};
-    r.querySelector('[data-aph]').onclick=()=>{camFor=id;$('#camIn').value='';$('#camIn').click()};
+    r.querySelector('[data-aph]').onclick=()=>{pickPhoto(id)};
     r.querySelector('[data-asave]').onclick=async e=>{e.target.disabled=true;const d=get(),now=new Date().toISOString(),before=Number(it.qty)||0;
       const u={qty:d.n,cond:d.c,verifiedAt:now,verifiedBy:curUser,issue:'',qtyNote:'',updatedAt:now,updatedBy:curUser};
       try{await writeItem(id,u);if(d.n!==before||d.c!==(it.cond||'Good'))await db.collection('logs').add({ts:now,action:'ADJUST',itemId:id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:d.n,before,after:d.n,job:'',by:curUser,note:'Yard audit'+(d.c!==(it.cond||'Good')?' — condition '+d.c:''),cond:d.c});
@@ -1054,7 +1055,7 @@ function openItem(id,newLoc){
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true">
    <h3>${id?esc(i.name):'New item'} <span class="muted mono" style="font-size:14px">${esc(id)}</span></h3>
    ${id?`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><span class="pic" style="width:120px;border-radius:10px;overflow:hidden">${pic(i)}</span>
-   <label class="btn" for="e_photo" id="e_photoLbl">${i.photo?'Change photo':'Add photo'}</label><input type="file" id="e_photo" accept="image/*" capture="environment" hidden>
+   <button type="button" class="btn" id="e_photoLbl">${i.photo?'Change photo':'Add photo'}</button>
    <button class="btn pri" id="e_hist" style="margin-left:auto">History</button></div>`:''}
    ${i.issue?`<div class="banner"><b>To verify:</b> ${esc(i.issue)}</div>`:''}
    <div class="fields">${F('loc','Location (e.g. B-10)')}${F('level','Level (GR, L1–L5)')}${F('type','Type','',['Materials','Tools','Equipment','Safety'])}${F('cat','Category')}
@@ -1073,7 +1074,8 @@ function openItem(id,newLoc){
   if(id){$('#e_confirm').insertAdjacentHTML('beforebegin',`<div class="reportbox"><input id="e_rep" class="search" placeholder="Something wrong? Describe it (e.g. cord cut, won't start)"><button class="btn" id="e_repBtn">Report problem</button></div>`);
     $('#e_repBtn').onclick=async()=>{const t=$('#e_rep').value.trim();if(!t){toast('Describe the problem first.');return}const who=curUser||'Yard';const now=new Date().toISOString();
       try{await writeItem(id,{cond:'Needs Check',report:t,updatedAt:now,updatedBy:who});await db.collection('logs').add({ts:now,action:'REPORT',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:0,before:i.qty,after:i.qty,job:'',by:who,note:t,cond:'Needs Check'});toast('Reported — it now shows in Repair requests');closeDlg()}catch(e){toast('Could not report: '+(e.message||e.code))}}}
-  if(id)$('#e_photo').onchange=async e=>{const f=e.target.files[0];if(!f)return;const as=await window.claude?.use?.('assets');
+  if(id&&$('#e_photoLbl'))$('#e_photoLbl').onclick=()=>pickPhoto(id,()=>openItem(id));
+  if(id&&$('#e_photo'))$('#e_photo').onchange=async e=>{const f=e.target.files[0];if(!f)return;const as=await window.claude?.use?.('assets');
     if(!as){toast('Photo upload is not available for your access level.');return}
     $('#e_photoLbl').textContent='Uploading…';
     try{const blob=await shrink(f);const r=await as.upload(blob);await writeItem(id,{photo:r.url,photoId:r.id,photoBy:curUser||''});toast('Photo saved');openItem(id)}
@@ -1094,12 +1096,23 @@ function openItem(id,newLoc){
       toast('Saved');closeDlg()}catch(e){toast('Could not save: '+(e.message||e.code))}};
 }
 let camFor='';
-document.body.insertAdjacentHTML('beforeend','<input type="file" id="camIn" accept="image/*" capture="environment" hidden>');
-$('#camIn').onchange=async e=>{const f=e.target.files[0],id=camFor;if(!f||!id)return;const as=await window.claude?.use?.('assets');
+document.body.insertAdjacentHTML('beforeend','<input type="file" id="camIn" accept="image/*" capture="environment" hidden><input type="file" id="libIn" accept="image/*" hidden><div id="phSheet" hidden><div class="phbox"><b>Item photo</b><button class="btn pri" id="phCam">📷 Take photo</button><button class="btn pri" id="phLib">🖼 Upload from photos / files</button><button class="btn" id="phX">Cancel</button></div></div>');
+let photoAfter=null;
+function pickPhoto(id,after){camFor=id;photoAfter=after||null;$('#phSheet').hidden=false}
+$('#phX').onclick=()=>{$('#phSheet').hidden=true};$('#phSheet').onclick=e=>{if(e.target.id==='phSheet')$('#phSheet').hidden=true};
+$('#phCam').onclick=()=>{$('#phSheet').hidden=true;$('#camIn').value='';$('#camIn').click()};
+$('#phLib').onclick=()=>{$('#phSheet').hidden=true;$('#libIn').value='';$('#libIn').click()};
+$('#camIn').onchange=$('#libIn').onchange=async e=>{const f=e.target.files[0],id=camFor;if(!f||!id)return;const as=await window.claude?.use?.('assets');
   if(!as){toast('Photo upload is not available on this account.');return}
   toast('Uploading photo…');
-  try{const r=await as.upload(await shrink(f));await writeItem(id,{photo:r.url,photoId:r.id,photoBy:curUser||''});toast('Photo saved')}catch(err){toast('Could not upload: '+(err.message||err.code))}};
-async function shrink(f){try{const bm=await createImageBitmap(f);const k=Math.min(1,900/Math.max(bm.width,bm.height));const c=document.createElement('canvas');c.width=bm.width*k;c.height=bm.height*k;c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return await new Promise(r=>c.toBlob(b=>r(b||f),'image/jpeg',.8))}catch(e){return f}}
+  try{const r=await as.upload(await shrink(f));await writeItem(id,{photo:r.url,photoId:r.id,photoBy:curUser||''});toast('Photo saved');if(photoAfter){const a=photoAfter;photoAfter=null;a()}}catch(err){toast('Could not upload: '+(err.message||err.code))}};
+async function shrink(f){const MAX=1200;let src=null;
+  try{src=await createImageBitmap(f)}catch(e){try{src=await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=URL.createObjectURL(f)})}catch(e2){src=null}}
+  if(!src){if(f.size>3e6)throw new Error('This photo format is not supported. Try a JPG or PNG.');return f}
+  const w=src.width||src.naturalWidth,h=src.height||src.naturalHeight;let k=Math.min(1,MAX/Math.max(w,h)),q=.8,b=null;
+  for(let t=0;t<4;t++){const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(src,0,0,c.width,c.height);
+    b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));if(b&&b.size<=400e3)break;k*=.8;q=Math.max(.6,q-.08)}
+  return b||f}
 $('#dlgRoot').addEventListener('click',e=>{if(e.target.classList&&e.target.classList.contains('scrim')){closeDlg();render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#dlgRoot').firstChild){closeDlg();render()}});
 function closeDlg(){$('#dlgRoot').innerHTML=''}
