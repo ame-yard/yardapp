@@ -421,6 +421,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 #lSelBar{display:flex;gap:10px;align-items:center;margin:8px 0;padding:8px 12px;border:1px solid #e2513a;border-radius:12px;font-weight:600}#lSelBar[hidden]{display:none!important}tr.lpick td{background:rgba(226,81,58,.18)!important}.lchk{font-size:16px}
 .ic{width:1.1em;height:1.1em;vertical-align:-.18em;flex:none}.jdel .ic{width:16px;height:16px}.bell .ic{width:18px;height:18px}.lchk .ic{width:16px;height:16px}
 .qph{font-weight:700;margin:4px 0 6px}.qpc{margin-bottom:8px;flex-wrap:wrap}.qpl{max-height:220px;overflow:auto;border:1px solid var(--line,#5a514a);border-radius:12px;margin-bottom:12px}.qpi{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line,#5a514a);padding:10px 12px;color:inherit;font:inherit;cursor:pointer}.qpi span{color:var(--muted,#b9aea4);font-size:13px;white-space:nowrap}.qpi:hover,.qpi.on{background:rgba(244,123,32,.18)}
+button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .15s}button.kpi:hover{border-color:var(--accent,#f47b20)}button.kpi.on{border-color:var(--accent,#f47b20);box-shadow:inset 0 0 0 1px var(--accent,#f47b20)}
 </style>
 
 <header class="top"><div class="wrap">
@@ -472,7 +473,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
       <select id="fzone"><option value="">All zones</option></select>
       <select id="ftype"><option value="">All types</option><option>Materials</option><option>Tools</option><option>Equipment</option><option>Safety</option></select>
       <select id="fcond"><option value="">Any condition</option><option>Good</option><option>Mixed</option><option>Needs Check</option><option>Bad</option></select>
-      <select id="fflag"><option value="">All items</option><option value="ver">To verify</option><option value="low">Low / out of stock</option><option value="out">Some out on jobs</option></select>
+      <select id="fflag"><option value="">All items</option><option value="ver">To verify</option><option value="low">Low / out of stock</option><option value="out">Some out on jobs</option><option value="bad">Bad / needs check</option><option value="repair">In repair</option></select>
       <button class="btn pri" id="addItem">+ New item</button>
       <button class="btn" id="exportCsv">Export CSV</button>
     </div>
@@ -557,7 +558,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.81',APP_DATE='2026-10-15';
+const APP_VERSION='1.82',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1020,13 +1021,14 @@ let invSide=LS.get('invSide','');const sideOf=i=>i.type==='Materials'?'mat':'too
 let invCat=LS.get('invCat',''),invMfgr=LS.get('invMfgr',''),invGroup=LS.get('invGroup','cat');
 const mkey=m=>(m||'').trim().toUpperCase()||'—';
 function filtered(){const q=$('#isearch').value.trim(),z=$('#fzone').value,t=$('#ftype').value,c=$('#fcond').value,f=$('#fflag').value;
-  return items.filter(i=>match(i,q)&&(!invSide||sideOf(i)===invSide)&&(!invCat||grp(i)===invCat)&&(!invSub||sub(i)===invSub)&&(!invMfgr||mkey(i.mfgr)===invMfgr)&&(!z||i.zone===z)&&(!t||i.type===t)&&(!c||i.cond===c)&&(!f||(f==='ver'&&i.issue)||(f==='low'&&isLow(i))||(f==='out'&&i.out>0)))
+  return items.filter(i=>match(i,q)&&(!invSide||sideOf(i)===invSide)&&(!invCat||grp(i)===invCat)&&(!invSub||sub(i)===invSub)&&(!invMfgr||mkey(i.mfgr)===invMfgr)&&(!z||i.zone===z)&&(!t||i.type===t)&&(!c||i.cond===c)&&(!f||(f==='ver'&&i.issue)||(f==='low'&&isLow(i))||(f==='out'&&i.out>0)||(f==='bad'&&(i.cond==='Bad'||i.cond==='Needs Check'))||(f==='repair'&&i.repair>0)))
    .sort((a,b)=>{const x=a[sortK]??'',y=b[sortK]??'';return (typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),undefined,{numeric:true}))*sortDir})}
 function renderInv(){
   const zs=[...new Set(items.map(i=>i.zone))].sort(),cur=$('#fzone').value;
   $('#fzone').innerHTML='<option value="">All zones</option>'+zs.map(z=>`<option ${z===cur?'selected':''}>${z}</option>`).join('');
-  const k=[[items.length,'Line items'],[items.filter(i=>i.out>0).length,'Items out on jobs'],[items.filter(isLow).length,'Low / out of stock',1],[items.filter(i=>i.cond==='Bad'||i.cond==='Needs Check').length,'Bad / needs check',1],[items.filter(i=>i.repair>0).length,'In repair',1],[items.filter(i=>i.issue).length,'To verify',1]];
-  $('#kpis').innerHTML=k.map(([n,l,a])=>`<div class="kpi ${a&&n?'alert':''}"><b class="mono">${n}</b><span>${l}</span></div>`).join('');
+  const k=[[items.length,'Line items',0,''],[items.filter(i=>i.out>0).length,'Items out on jobs',0,'out'],[items.filter(isLow).length,'Low / out of stock',1,'low'],[items.filter(i=>i.cond==='Bad'||i.cond==='Needs Check').length,'Bad / needs check',1,'bad'],[items.filter(i=>i.repair>0).length,'In repair',1,'repair'],[items.filter(i=>i.issue).length,'To verify',1,'ver']];const cf=$('#fflag').value;
+  $('#kpis').innerHTML=k.map(([n,l,a,f])=>`<button type="button" class="kpi ${a&&n?'alert':''} ${cf===f&&(f||!cf)?'on':''}" data-kf="${f}" title="Show these items"><b class="mono">${n}</b><span>${l}</span></button>`).join('');
+  $$('#kpis [data-kf]').forEach(b=>b.onclick=()=>{const f=b.dataset.kf;$('#fflag').value=f;if(!f){$('#isearch').value='';$('#fzone').value='';$('#ftype').value='';$('#fcond').value=''}invSide='';invCat='';invSub='';invMfgr='';renderInv();setTimeout(()=>{const t=document.querySelector('#tab-inv .browse')||document.querySelector('#tab-inv table');t&&t.scrollIntoView({behavior:'smooth',block:'start'})},50)});
   $$('#sideSeg button').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.sd===invSide);b.onclick=()=>{invSide=b.dataset.sd;LS.set('invSide',invSide);invCat='';invSub='';invMfgr='';LS.set('invCat','');renderInv()}});
   const sideItems=items.filter(i=>!invSide||sideOf(i)===invSide);
   if(invCat&&!sideItems.some(i=>grp(i)===invCat))invCat='';
