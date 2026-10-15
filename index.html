@@ -552,7 +552,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.75',APP_DATE='2026-10-15';
+const APP_VERSION='1.76',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -616,7 +616,7 @@ const SUBRULES={
 const SUBS=Object.fromEntries(Object.entries(SUBRULES).map(([k,v])=>[k,v.map(x=>x[0])]));
 function sub(i){const r=SUBRULES[grp(i)];if(!r)return'';const n=((i.name||'')+' '+(i.size||'')).toLowerCase();for(const [l,re] of r)if(re.test(n))return l;return''}
 let ySub='',invSub='';
-let yGroup='ladder', jobs=[], selJob='', yView=LS.get('yview',innerWidth<600?'cat':'map'), yLoc='';
+let yGroup='ladder', jobs=[], selJob='', yView='map', yLoc='';
 const BAYS={"A-08":[240,78],"A-07":[240,128],"A-06":[240,178],"A-05":[240,228],"A-04":[240,278],"A-03":[240,328],"A-02":[240,378],"A-01":[240,428],"A-09":[295,58],"A-10":[345,103],"A-11":[345,153],"A-12":[345,203],"A-13":[345,253],"A-14":[345,303],"B-05":[400,103],"B-04":[400,153],"B-03":[400,203],"B-02":[400,253],"B-01":[400,303],"B-06":[450,58],"B-07":[500,103],"B-08":[500,153],"B-09":[500,203],"B-10":[500,253],"B-11":[500,303],"B-12":[450,353],"C-05":[555,103],"C-04":[555,153],"C-03":[555,203],"C-02":[555,253],"C-01":[555,303],"C-06":[605,58],"C-07":[655,103],"C-08":[655,153],"C-09":[655,203],"C-10":[655,253],"C-11":[655,303],"D-02":[420,410],"D-03":[470,410],"D-01":[420,455],"D-04":[470,455],"D-07":[655,400],"D-06":[655,445],"D-05":[600,455],"F-01":[725,290],"F-02":[775,290],"F-03":[750,335],"Y-01":[290,580],"Y-02":[445,580],"Y-03":[600,580],"Y-04":[290,650],"Y-05":[445,650],"Y-06":[600,650]};
 const ZONES=[["A",210,30,160,440],["B",370,30,155,348],["C",525,30,155,348],["D",370,378,310,92],["E",580,474,100,30],["F",700,260,100,100],["Y",210,545,470,145]];
 const locOf=i=>(i.loc||'').split('~')[0];
@@ -1275,7 +1275,7 @@ let curUser='',accountAdmin=false,officePin='',lastAct=Date.now();
 try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3)curUser=u.n}catch(e){}
 
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
-function setUser(n){curUser=n;selWho=n;try{sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}))}catch(e){}lastAct=Date.now();
+function setUser(n){if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}))}catch(e){}lastAct=Date.now();
   $('#loginRoot').innerHTML='';const r=curRole();$('#userChip').hidden=!n;$('#ucName').textContent=n;$('#ucRole').textContent=r;
   isAdmin=accountAdmin&&(isEditor(n)||can('EDIT'));applyRole();renderPerms()}
 function logout(){curUser='';selWho='';cart=[];try{sessionStorage.removeItem('ameUser')}catch(e){}$('#userChip').hidden=true;isAdmin=false;applyRole();closeDlg();showLogin()}
@@ -1313,7 +1313,7 @@ let lastSync=null;function markSync(){lastSync=new Date();$('#syncTxt').textCont
       setTimeout(()=>{busy=false;P.classList.remove('go');P.style.transform='translate(-50%,0)'},5000)}
     else P.style.transform='translate(-50%,0)'})})();
 $('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;try{location.reload()}catch(e){}setTimeout(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false},4000)};
-const t0=LS.get('tab','yard');if(t0!=='yard'&&innerWidth>=600)showTab(t0);
+
 matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#tab-yard').hidden)showTab('yard')});
 (async()=>{
   db=await window.claude?.use?.('db');
