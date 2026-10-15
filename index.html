@@ -449,7 +449,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
         <div class="maphint" id="maphint">Tap a rack to see what's there.</div></div>
       <div class="menu">
         <input id="ysearch" class="search" type="search" placeholder="Search: ladder, drill, Sika, 4&quot;#14, B-10…">
-        <div class="selhead" id="selhead" hidden><h3 id="selTitle"></h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn maponly" id="backMap">↑ Map</button><button class="btn pri admin-only" id="rackAdd">+ Add item here</button><button class="btn admin-only" id="rackEdit" aria-pressed="false">Edit / Delete</button><button class="btn" id="selClear">Show all</button></div></div><div class="banner" id="editBanner" hidden>Edit mode — tap a card to change or delete it. Tap “Done” when finished.</div>
+        <div class="selhead" id="selhead" hidden><h3 id="selTitle"></h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn maponly" id="backMap">↑ Map</button><button class="btn pri" id="rackAdd">+ Add item here</button><button class="btn admin-only" id="rackEdit" aria-pressed="false">Edit / Delete</button><button class="btn" id="selClear">Show all</button></div></div><div class="banner" id="editBanner" hidden>Edit mode — tap a card to change or delete it. Tap “Done” when finished.</div>
         <div class="cards" id="ylist"><div class="empty">Items appear here once the yard list loads.</div></div>
       </div>
     </div>
@@ -467,7 +467,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
       <select id="ftype"><option value="">All types</option><option>Materials</option><option>Tools</option><option>Equipment</option><option>Safety</option></select>
       <select id="fcond"><option value="">Any condition</option><option>Good</option><option>Mixed</option><option>Needs Check</option><option>Bad</option></select>
       <select id="fflag"><option value="">All items</option><option value="ver">To verify</option><option value="low">Low / out of stock</option><option value="out">Some out on jobs</option></select>
-      <button class="btn pri admin-only" id="addItem">+ New item</button>
+      <button class="btn pri" id="addItem">+ New item</button>
       <button class="btn" id="exportCsv">Export CSV</button>
     </div>
     <div class="viewseg sideseg" id="sideSeg"><button data-sd="">All</button><button data-sd="mat">Materials</button><button data-sd="tool">Tools &amp; Equipment</button></div>
@@ -551,7 +551,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.70',APP_DATE='2026-10-15';
+const APP_VERSION='1.71',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -689,15 +689,15 @@ function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.
 async function writeItem(id,upd){const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
-const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
-const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO'];
+const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
+const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM'];
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
   if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
   const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')}
 function applyRole(){$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
-  document.body.classList.toggle('nophoto',!can('PHOTO'));
+  document.body.classList.toggle('nophoto',!can('PHOTO'));{const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
   if(!can(act)){act=['OUT','RETURN','RECEIVE','REPAIR','DISPOSE'].find(can)||'OUT';$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act))}
   _applyRole()}
 function _applyRole(){document.body.classList.toggle('ro',!isAdmin);
@@ -1064,7 +1064,7 @@ function openItem(id,newLoc){
 
    ${id?`<div class="muted" style="font-size:13px">Out on jobs: <b>${i.out||0}</b> · Last job: ${esc(i.lastJob||'—')} · Last update: ${fmtD(i.updatedAt||i.date)} ${esc(i.updatedBy||'')}</div>
    <div class="hist">${h.length?h.map(g=>`<div><span class="a-${g.action}">${ACTNAME[g.action]}</span> ${g.n} · ${fmtD(g.ts)} · ${esc(g.by)} ${g.job?'· '+esc(g.job):''} ${g.note?'· '+esc(g.note):''}</div>`).join(''):'<div class="muted">No activity recorded yet.</div>'}</div>`:''}
-   ${isAdmin||!id?`<div class="bar">${id&&isAdmin?`<button class="btn dng" id="e_del">Delete</button>`:''}<button class="btn" id="e_cancel">Cancel</button><button class="btn pri" id="e_save">${i.pending&&isAdmin?'Approve & Save':'Save'}</button></div>`:`<div class="bar"><span class="robanner">Only office editors can change item details.</span><button class="btn" id="e_cancel">Close</button></div>`}
+   ${isAdmin||!id||can('DELITEM')?`<div class="bar">${id&&(isAdmin||can('DELITEM'))?`<button class="btn dng" id="e_del">Remove</button>`:''}<button class="btn" id="e_cancel">Cancel</button><button class="btn pri" id="e_save">${i.pending&&isAdmin?'Approve & Save':'Save'}</button></div>`:`<div class="bar"><span class="robanner">Only office editors can change item details.</span><button class="btn" id="e_cancel">Close</button></div>`}
    <div id="e_confirm"></div></div></div>`;
   $('#e_cancel').onclick=closeDlg;if($('#e_hist'))$('#e_hist').onclick=()=>openHistory(id,i.name);
   if(id){$('#e_confirm').insertAdjacentHTML('beforebegin',`<div class="reportbox"><input id="e_rep" class="search" placeholder="Something wrong? Describe it (e.g. cord cut, won't start)"><button class="btn" id="e_repBtn">Report problem</button></div>`);
@@ -1075,7 +1075,10 @@ function openItem(id,newLoc){
     $('#e_photoLbl').textContent='Uploading…';
     try{const blob=await shrink(f);const r=await as.upload(blob);await writeItem(id,{photo:r.url,photoId:r.id,photoBy:curUser||''});toast('Photo saved');openItem(id)}
     catch(err){toast('Could not upload: '+(err.message||err.code));$('#e_photoLbl').textContent='Add photo'}};
-  if(!isAdmin&&id){$$('.dlg .fields input,.dlg .fields select').forEach(x=>x.disabled=true);return}
+  const bindDel=()=>{if(id&&$('#e_del'))$('#e_del').onclick=()=>{$('#e_confirm').innerHTML=`<div class="banner" style="margin-top:10px">Delete <b>${esc(i.name)}</b> from the yard list? History stays in Activity. <button class="btn dng" id="e_del2">Yes, delete</button></div>`;
+    $('#e_del2').onclick=async()=>{try{await db.collection('logs').add({ts:new Date().toISOString(),action:'DISPOSE',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:i.qty||0,before:i.qty||0,after:0,job:'',by:curUser,note:'Item removed from yard list',cond:''});await db.doc((i.pending?'newitems/':'items/')+id).delete();db.doc('stock/'+id).delete().catch(()=>{});toast('Deleted');closeDlg()}catch(e){toast('Could not delete: '+(e.message||e.code))}}};};
+  if(!isAdmin&&id){$$('.dlg .fields input,.dlg .fields select').forEach(x=>x.disabled=true);$('#e_save')?.remove();bindDel();return}
+  bindDel();
   $('#e_save').onclick=async()=>{const g=k=>$('#e_'+k).value.trim();const loc=g('loc').toUpperCase();
     const serials=$('#e_serials')?[...new Set($('#e_serials').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean))]:sers(i);
     const d={serials,loc,zone:loc[0]||'',level:g('level').toUpperCase(),type:g('type'),cat:g('cat'),mfgr:g('mfgr'),name:g('name'),size:g('size'),unit:g('unit').toUpperCase(),qty:Number(g('qty'))||0,min:g('min')===''?'':Number(g('min')),cond:g('cond'),sds:g('sds'),remarks:g('remarks'),updatedAt:new Date().toISOString(),updatedBy:curUser||'Office'};
@@ -1083,11 +1086,9 @@ function openItem(id,newLoc){
     if($('#e_clear')?.checked){d.issue='';d.qtyNote=''}
     try{if(id&&i.pending&&isAdmin){const full={...i,...d};delete full.pending;full.issue=$('#e_clear')?.checked?'':'';await db.doc('items/'+id).set(full);await db.doc('newitems/'+id).delete();toast('Approved and added to the yard list');closeDlg();return}
       if(id){const before=i.qty;await writeItem(id,d);if(before!==d.qty)await db.collection('logs').add({ts:d.updatedAt,action:'ADJUST',itemId:id,name:d.name,size:d.size,unit:d.unit,loc:d.loc,n:d.qty,before:typeof before==='number'?before:0,after:d.qty,job:'',by:d.updatedBy,note:'Edited in office',cond:''})}
-      else{const nid=loc.replace('-','')+'-N'+Date.now().toString(36).slice(-4).toUpperCase();await db.doc((isAdmin?'items/':'newitems/')+nid).set({...d,id:nid,out:0,issue:'',qtyNote:'',date:d.updatedAt.slice(0,10),addedBy:d.updatedBy});
+      else{const nid=loc.replace('-','')+'-N'+Date.now().toString(36).slice(-4).toUpperCase();await db.doc((isAdmin||can('ADD')?'items/':'newitems/')+nid).set({...d,id:nid,out:0,issue:'',qtyNote:'',date:d.updatedAt.slice(0,10),addedBy:d.updatedBy});
         if(d.qty>0)await db.collection('logs').add({ts:d.updatedAt,action:'RECEIVE',itemId:nid,name:d.name,size:d.size,unit:d.unit,loc:d.loc,n:d.qty,before:0,after:d.qty,job:'',by:d.updatedBy,note:'New item added',cond:''})}
       toast('Saved');closeDlg()}catch(e){toast('Could not save: '+(e.message||e.code))}};
-  if(id)$('#e_del').onclick=()=>{$('#e_confirm').innerHTML=`<div class="banner" style="margin-top:10px">Delete <b>${esc(i.name)}</b> from the yard list? History stays in Activity. <button class="btn dng" id="e_del2">Yes, delete</button></div>`;
-    $('#e_del2').onclick=async()=>{try{await db.doc((i.pending?'newitems/':'items/')+id).delete();db.doc('stock/'+id).delete().catch(()=>{});toast('Deleted');closeDlg()}catch(e){toast('Could not delete: '+(e.message||e.code))}}};
 }
 let camFor='';
 document.body.insertAdjacentHTML('beforeend','<input type="file" id="camIn" accept="image/*" capture="environment" hidden>');
