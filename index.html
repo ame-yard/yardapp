@@ -425,6 +425,25 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 .unitbox{display:flex;flex-direction:column;gap:6px}.unitgen{display:flex;gap:8px;flex-wrap:wrap}.unitgen input{flex:1;min-width:140px}
 .thumb{width:34px;height:34px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:8px;float:left}.citem .thumb{width:40px;height:40px}
 .onrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line,#5a514a);flex-wrap:wrap}.onrow .onago{margin-left:auto;font-size:13px}.dot{width:10px;height:10px;border-radius:50%;background:#7a6f66;flex:none}.dot.on{background:#3fb950;box-shadow:0 0 0 3px rgba(63,185,80,.25)}
+
+.ysrow{display:flex;gap:8px;align-items:stretch}.ysrow .search{flex:1;min-width:0}
+.lvseg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;flex:none}.lvseg button{background:var(--panel);border:0;color:var(--muted);padding:0 12px;cursor:pointer}.lvseg button[aria-pressed="true"]{background:var(--accent,#f47b20);color:#fff}.lvseg .ic{width:20px;height:20px}
+#ylist.listview{grid-template-columns:1fr!important;gap:6px}
+#ylist.listview .card{flex-direction:row;align-items:center;border-radius:10px;min-height:0}
+#ylist.listview .card .pwrap{width:64px;flex:none}
+#ylist.listview .card .pic{aspect-ratio:1/1;width:64px}
+#ylist.listview .card .pic .ptop,#ylist.listview .card .pic .pbrand{display:none}
+#ylist.listview .card .pic .pbig{font-size:13px;line-height:1.1}
+#ylist.listview .card .cam{display:none}
+#ylist.listview .card .cbody{flex:1;min-width:0;padding:6px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-items:center}
+#ylist.listview .card .cname{grid-column:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ylist.listview .card .csub{grid-column:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ylist.listview .card .cfoot{grid-column:2;grid-row:1/span 2;display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin:0}
+#ylist.listview .card .oosband{position:static;order:3;margin-right:10px;flex:none}
+#ylist.listview .card .badge{top:50%;transform:translateY(-50%);right:auto;left:44px}
+#ylist.listview .card .minus{display:none}
+#ylist.listview .subbar{grid-column:1/-1}
+@media (max-width:600px){#ylist.listview .card .loc{display:none}#ylist.listview .card .pwrap,#ylist.listview .card .pic{width:52px}#ylist.listview .card .oosband{font-size:10px;padding:2px 6px;margin-right:6px;max-width:72px;white-space:normal;text-align:center}#ylist.listview .card .cbody{padding:6px 8px}}
 </style>
 
 <header class="top"><div class="wrap">
@@ -458,7 +477,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
       <div class="mapwrap" id="mapwrap" hidden><svg id="ymap" viewBox="190 10 630 690" role="img" aria-label="Yard map — tap a rack to see its items"></svg>
         <div class="maphint" id="maphint">Tap a rack to see what's there.</div></div>
       <div class="menu">
-        <input id="ysearch" class="search" type="search" placeholder="Search: ladder, drill, Sika, 4&quot;#14, B-10…">
+        <div class="ysrow"><input id="ysearch" class="search" type="search" placeholder="Search: ladder, drill, Sika, 4&quot;#14, B-10…"><div class="lvseg" role="group" aria-label="View"><button type="button" data-lv="card" title="Big cards"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button><button type="button" data-lv="list" title="Compact list"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg></button></div></div>
         <div class="selhead" id="selhead" hidden><h3 id="selTitle"></h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn maponly" id="backMap">↑ Map</button><button class="btn pri" id="rackAdd">+ Add item here</button><button class="btn" id="rackSel">Select to remove</button><button class="btn admin-only" id="rackEdit" aria-pressed="false">Edit / Delete</button><button class="btn" id="selClear">Show all</button></div></div><div class="banner" id="editBanner" hidden>Edit mode — tap a card to change or delete it. Tap “Done” when finished.</div>
         <div class="cards" id="ylist"><div class="empty">Items appear here once the yard list loads.</div></div>
       </div>
@@ -562,7 +581,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.86',APP_DATE='2026-10-15';
+const APP_VERSION='1.87',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -787,7 +806,7 @@ function renderYard(){
   const rackSel=isMap&&yLoc&&!yLoc.startsWith('zone:');const catView=!isMap&&!special;if($('#selClear'))$('#selClear').hidden=catView;
   $('#rackAdd').hidden=!(rackSel||catView)||!(isAdmin||can('ADD'));$('#rackAdd').textContent=catView?'+ Add item':'+ Add item here';$('#rackEdit').hidden=!yLoc||!isAdmin;$('#rackEdit').textContent=editMode?'Done':'Edit / Delete';$('#rackEdit').setAttribute('aria-pressed',editMode);$('#editBanner').hidden=!editMode;
   $('#rackSel').hidden=!(yLoc||catView)||!(isAdmin||can('DELITEM'))||editMode;if($('#rackSel').hidden&&selMode){selMode=false;picked.clear()}$('#rackSel').textContent=selMode?'Cancel':'Select to remove';$('#ylist').classList.toggle('picking',selMode);rmBar();
-  $('#ylist').classList.toggle('editing',editMode);
+  $('#ylist').classList.toggle('editing',editMode);applyLv();
   if(!l.length&&yLoc)$('#ylist').innerHTML=`<div class="empty">Nothing recorded on this rack yet. Use “+ Add item here”.</div>`;
   if(act==='RECEIVE'&&!editMode)$('#ylist').insertAdjacentHTML('afterbegin',`<button class="card newcard" id="newCard"><span class="pic"><span class="ph" style="--h:45"><span class="ptop"><span>New purchase</span></span><span><span class="pbig">+ New item</span><span class="pbrand">Not in the list yet</span></span></span></span><span class="cbody"><span class="cname">Add an item that isn't listed</span><span class="csub">${yLoc&&!yLoc.startsWith('zone:')?'Goes to rack '+esc(yLoc):'Pick its rack in the form'}</span></span></button>`);
   if($('#newCard'))$('#newCard').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
@@ -1224,6 +1243,9 @@ function renderOnline(){const el=$('#onlineList');if(!el)return;const now=Date.n
   const row=(p,live)=>`<div class="onrow"><span class="dot ${live?'on':''}"></span><b>${esc(p.name||'(choosing name)')}</b><span class="muted">${esc(p.acct||'')} · ${esc(p.device)} · ${esc(p.tab)}${p.mode?' / '+esc(p.mode):''}</span><span class="muted onago">${live?'online':'last seen '+ago(p.ts)}</span></div>`;
   el.innerHTML=(on.map(p=>row(p,1)).join('')||'<div class="muted">Nobody else is using the app right now.</div>')+(rec.length?`<div class="qlabel" style="margin-top:10px">Earlier today</div>`+rec.map(p=>row(p,0)).join(''):'')}
 setInterval(()=>{try{renderOnline()}catch(e){}},30000);
+let ylv='card';try{ylv=localStorage.getItem('ameLv')||'card'}catch(e){}
+function applyLv(){const l=$('#ylist');if(l)l.classList.toggle('listview',ylv==='list');$$('.lvseg [data-lv]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lv===ylv))}
+$$('.lvseg [data-lv]').forEach(b=>b.onclick=()=>{ylv=b.dataset.lv;try{localStorage.setItem('ameLv',ylv)}catch(e){}applyLv()});
 function renderLog(){lBar();const q=$('#lsearch').value.trim().toLowerCase();const l=logs.filter(g=>!q||[g.name,g.by,g.job,g.loc,g.note,g.action].join(' ').toLowerCase().includes(q)).slice(0,400);
   if(!l.length){$('#lbody').innerHTML='<tr><td colspan="9" class="empty">No activity yet. Check-outs and returns from the yard iPad show up here.</td></tr>';return}
   const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${g.by!==curUser&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size)}</span></td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
