@@ -423,6 +423,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 .qph{font-weight:700;margin:4px 0 6px}.qpc{margin-bottom:8px;flex-wrap:wrap}.qpl{max-height:220px;overflow:auto;border:1px solid var(--line,#5a514a);border-radius:12px;margin-bottom:12px}.qpi{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line,#5a514a);padding:10px 12px;color:inherit;font:inherit;cursor:pointer}.qpi span{color:var(--muted,#b9aea4);font-size:13px;white-space:nowrap}.qpi:hover,.qpi.on{background:rgba(244,123,32,.18)}
 button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .15s}button.kpi:hover{border-color:var(--accent,#f47b20)}button.kpi.on{border-color:var(--accent,#f47b20);box-shadow:inset 0 0 0 1px var(--accent,#f47b20)}
 .unitbox{display:flex;flex-direction:column;gap:6px}.unitgen{display:flex;gap:8px;flex-wrap:wrap}.unitgen input{flex:1;min-width:140px}
+.thumb{width:34px;height:34px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:8px;float:left}.citem .thumb{width:40px;height:40px}
 </style>
 
 <header class="top"><div class="wrap">
@@ -559,7 +560,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.84',APP_DATE='2026-10-15';
+const APP_VERSION='1.85',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -658,6 +659,7 @@ $('#ysearch').placeholder='Search: ladder, drill, Sika, 4"#14, B-10…';
 function byId(id){return items.find(i=>i.id===id)}
 const HUE={ladder:210,power:25,hand:45,equip:190,safety:0,fast:265,nail:285,tube:160,pail:120,roll:230,iso:330,wood:35,flash:200,other:90};
 function bigTxt(i){const sz=(i.size||'').trim();if(sz&&sz!=='-')return sz;const m=(i.name||'').match(/\d[\d\/\-.]*\s*(ft|"|gal|mil|oz)?/i);return m?m[0]:(i.name||'').split(' ')[0]}
+function thumb(i){return i&&i.photo?`<img class="thumb" src="${esc(i.photo)}" alt="" loading="lazy">`:''}
 function pic(i){if(i.photo)return `<img src="${esc(i.photo)}" alt="" loading="lazy">`;const g=grp(i),gl=GROUPS.find(x=>x[0]===g);
   return `<span class="ph" style="--h:${HUE[g]??90}"><span class="ptop"><span>${esc(sub(i)||gl?.[1]||'')}</span>${IC[gl?.[2]||'box']}</span><span><span class="pbig">${esc(bigTxt(i))}</span><span class="pbrand">${esc(i.mfgr||i.cat||'')}</span></span></span>`}
 let crew=[];const ROLES=['President','PM','Office','Intern','Yard','FM','SFM','Crew'];
@@ -797,7 +799,7 @@ function renderDisposeLog(q){setTimeout(()=>$$('#ylist tr[data-hn]').forEach(r=>
   const n30=L.filter(g=>Date.now()-new Date(g.ts)<30*864e5).reduce((a,g)=>a+(g.n||0),0);
   $('#ylist').innerHTML=`<div class="rcvbox" style="max-width:none"><div class="rcvsteps">Disposal & loss record. Decisions are made in <b>Repair</b>; items lost on a job are recorded at <b>Return</b>. ${L.length} records · ${n30} pcs in the last 30 days.</div>
    <div class="tblwrap"><table><thead><tr><th>When</th><th>Type</th><th>Item</th><th>Loc</th><th>Qty</th><th>Reason / note</th><th>Job</th><th>By</th></tr></thead><tbody>
-   ${L.length?L.map(g=>`<tr class="dlrow" data-lid="${esc(g._id)}" data-hid="${esc(g.itemId||'')}" data-hn="${esc(g.name)}" title="Tap for full history"><td>${fmtD(g.ts)}</td><td class="a-${g.action}">${g.action==='LOST'?'Lost on job':'Disposed'}</td><td><b>${esc(g.name)}</b> <span class="muted">${esc(g.size||'')}</span></td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit||'')}</td><td>${esc(g.note||'')}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">Nothing disposed or lost yet.</td></tr>'}
+   ${L.length?L.map(g=>`<tr class="dlrow" data-lid="${esc(g._id)}" data-hid="${esc(g.itemId||'')}" data-hn="${esc(g.name)}" title="Tap for full history"><td>${fmtD(g.ts)}</td><td class="a-${g.action}">${g.action==='LOST'?'Lost on job':'Disposed'}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size||'')}</span></td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit||'')}</td><td>${esc(g.note||'')}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">Nothing disposed or lost yet.</td></tr>'}
    </tbody></table></div></div>`}
 function openHistory(id,nm){const H=logs.filter(g=>id?g.itemId===id:g.name===nm).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));const it=byId(id);
   const jobsUsed={};H.forEach(g=>{if(g.action==='OUT'&&g.job)jobsUsed[g.job]=(jobsUsed[g.job]||0)+g.n});
@@ -977,7 +979,7 @@ function openCheckout(){
 }
 function drawCartLines(){
   $('#cart').innerHTML=cart.map((c,k)=>{const i=byId(c.id)||{};const warn=act==='OUT'&&typeof i.qty==='number'&&c.n>i.qty;
-    return `<div class="citem"><div class="nm">${esc(i.name)}<small>${esc(i.loc)} ${esc(i.level||'')} · ${esc(i.size||'')} · in yard ${esc(qtyTxt(i))} ${esc(i.unit)}${warn?' · <b style="color:var(--bad)">more than listed</b>':''}</small>
+    return `<div class="citem"><div class="nm">${thumb(i)}${esc(i.name)}<small>${esc(i.loc)} ${esc(i.level||'')} · ${esc(i.size||'')} · in yard ${esc(qtyTxt(i))} ${esc(i.unit)}${warn?' · <b style="color:var(--bad)">more than listed</b>':''}</small>
     ${act==='OUT'&&i.report?`<small style="color:var(--warn)">${IC2.alert} Needs service${i.report?': '+esc(i.report):''} — check it before taking</small>`:''}
     ${act==='RETURN'?`<div class="lcond" data-k="${k}">${[['Good','Good'],['Needs','Needs repair'],['Lost','Lost on job']].map(([v,l])=>`<button data-lc="${v}" aria-pressed="${(c.cond||'Good')===v}">${l}</button>`).join('')}</div>`:''}
     ${sers(i).length&&(act==='OUT'||act==='RETURN')?`<div class="qlabel" style="margin-top:8px">Units</div>`+unitChips(i,sers(i).filter(sn=>act==='OUT'?ust(i,sn).st==='yard':ust(i,sn).st==='out'),c.units||[],`data-uk="${k}" data-sn`):''}
@@ -1051,7 +1053,7 @@ function renderInv(){
   if(invGroup){const order=invGroup==='cat'?GROUPS.map(g=>g[1]):null;l=[...l].sort((a,b)=>{const x=gk(a),y=gk(b);if(x===y)return 0;return order?order.indexOf(x)-order.indexOf(y):String(x).localeCompare(String(y),undefined,{numeric:true,sensitivity:'base'})})}
   const counts={};if(invGroup)l.forEach(i=>{const k=gk(i).toUpperCase();counts[k]=(counts[k]||0)+1});
   let lastG=null;
-  const rowHtml=i=>`<tr data-id="${esc(i.id)}"><td class="mono">${esc(i.loc)}</td><td>${esc(i.level)}</td><td>${esc(i.type)}</td><td>${esc(i.mfgr)}</td><td><b>${esc(i.name)}</b>${flags(i)}</td><td>${esc(i.size)}</td>
+  const rowHtml=i=>`<tr data-id="${esc(i.id)}"><td class="mono">${esc(i.loc)}</td><td>${esc(i.level)}</td><td>${esc(i.type)}</td><td>${esc(i.mfgr)}</td><td>${thumb(i)}<b>${esc(i.name)}</b>${flags(i)}</td><td>${esc(i.size)}</td>
     <td class="n">${esc(qtyTxt(i))}</td><td class="n">${i.out||''}</td><td>${esc(i.unit)}</td><td>${esc(i.cond)}</td><td class="muted">${fmtD(i.updatedAt||i.date)}</td></tr>`;
   $('#itbody').innerHTML=l.length?l.map(i=>{let h='';if(invGroup){const g=gk(i);if(lastG===null||g.toUpperCase()!==lastG.toUpperCase()){lastG=g;h=`<tr class="grp"><td colspan="11">${esc(g)}<small>${counts[g.toUpperCase()]} items</small></td></tr>`}}return h+rowHtml(i)}).join('')
     :`<tr><td colspan="11" class="empty">${items.length?'Nothing matches. Not in the yard — OK to order.':'The yard list is empty.'}</td></tr>`;
@@ -1193,7 +1195,7 @@ function renderOutJobs(){
     r.id=g.itemId;r.n+=g.action==='OUT'?g.n:-g.n;r.by.add(g.by);if(g.ts>r.last)r.last=g.ts}
   const js=Object.entries(m).map(([j,o])=>[j,Object.values(o).filter(r=>r.n>0)]).filter(([,r])=>r.length).sort((a,b)=>Math.max(...b[1].map(r=>+new Date(r.last)))-Math.max(...a[1].map(r=>+new Date(r.last))));
   $('#jobs').innerHTML=js.length?js.map(([j,r])=>{const jj=jobs.find(x=>x.no===j);return `<div class="panel" style="margin-bottom:12px"><h3>${esc(jobLabel(j))}</h3>${jj?`<p class="muted" style="margin:-4px 0 8px">PM ${esc(jj.pm||'—')} · FM ${esc(jj.fm||'—')}${jj.sfm?' · SFM '+esc(jj.sfm):''}</p>`:''}<div class="tblwrap" style="border:0"><table><thead><tr><th>Item</th><th>Size</th><th>Qty out</th><th>Unit</th><th>From</th><th>Last move</th><th>By</th></tr></thead><tbody>
-    ${r.map(x=>`<tr class="ojrow" data-id="${esc(x.id)}"><td><b>${esc(x.name)}</b></td><td>${esc(x.size)}</td><td class="n">${x.n}</td><td>${esc(x.unit)}</td><td class="mono">${esc(x.loc)}</td><td>${fmtD(x.last)}</td><td>${esc([...x.by].join(', '))}</td></tr>`).join('')}</tbody></table></div></div>`}).join('')
+    ${r.map(x=>`<tr class="ojrow" data-id="${esc(x.id)}"><td>${thumb(byId(x.id))}<b>${esc(x.name)}</b></td><td>${esc(x.size)}</td><td class="n">${x.n}</td><td>${esc(x.unit)}</td><td class="mono">${esc(x.loc)}</td><td>${fmtD(x.last)}</td><td>${esc([...x.by].join(', '))}</td></tr>`).join('')}</tbody></table></div></div>`}).join('')
     :'<div class="panel empty">Nothing is out on a job right now. Items taken out on the yard iPad will be listed here by job.</div>';
   $$('#jobs .ojrow').forEach(r=>{r.onclick=()=>openHistory(r.dataset.id,'');if(isAdmin)lp(r,()=>byId(r.dataset.id)&&openItem(r.dataset.id))});
 }
@@ -1206,7 +1208,7 @@ let lSel=false,lPick=new Set();
 function lBar(){$('#lSelBar').hidden=!lSel;$('#lSelN').textContent=lPick.size+' selected';$('#lSelDel').disabled=!lPick.size;$('#lSelBtn').textContent=lSel?'Cancel':'Select to delete'}
 function renderLog(){lBar();const q=$('#lsearch').value.trim().toLowerCase();const l=logs.filter(g=>!q||[g.name,g.by,g.job,g.loc,g.note,g.action].join(' ').toLowerCase().includes(q)).slice(0,400);
   if(!l.length){$('#lbody').innerHTML='<tr><td colspan="9" class="empty">No activity yet. Check-outs and returns from the yard iPad show up here.</td></tr>';return}
-  const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${g.by!==curUser&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td><b>${esc(g.name)}</b> <span class="muted">${esc(g.size)}</span></td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
+  const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${g.by!==curUser&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size)}</span></td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
   $$('#lbody tr[data-id]').forEach(r=>{r.title=isAdmin?'Tap to edit this record':'';r.onclick=()=>lSel?(lPick.has(r.dataset.lid)?lPick.delete(r.dataset.lid):lPick.add(r.dataset.lid),renderLog()):isAdmin?editLog(r.dataset.lid):(byId(r.dataset.id)?openItem(r.dataset.id):openHistory(r.dataset.id,''))})}
 
 /* sheet */
