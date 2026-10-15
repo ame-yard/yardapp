@@ -496,7 +496,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
   <!-- JOBS -->
   <section id="tab-jobs" hidden>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Jobs</h2>
-      <div class="filters" style="margin:0"><select id="jstat"><option value="Active">Active jobs</option><option value="">All jobs</option><option value="Closed">Closed</option></select><button class="btn pri admin-only" id="addJob">+ New job</button></div></div>
+      <div class="filters" style="margin:0"><select id="jstat"><option value="Active">Active jobs</option><option value="">All jobs</option><option value="Closed">Closed</option></select><button class="btn pri" id="addJob">+ New job</button></div></div>
     <div class="tblwrap" style="margin-bottom:18px"><table><thead><tr><th>Job #</th><th>Job name / Site</th><th>PM</th><th>FM</th><th>SFM</th><th>Status</th><th>Items out</th></tr></thead><tbody id="jbody"></tbody></table></div>
     <div class="panel" style="margin-bottom:18px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Crew List</h3><span class="muted" style="font-size:13px">Names here show as buttons in the yard and as choices for PM / FM / SFM.</span></div>
@@ -558,7 +558,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.82',APP_DATE='2026-10-15';
+const APP_VERSION='1.83',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -698,15 +698,15 @@ function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.
 async function writeItem(id,upd){const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
-const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
-const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM'];
+const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
+const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS'];
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
   if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
   const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')}
 function applyRole(){try{updBell()}catch(e){}$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
-  document.body.classList.toggle('nophoto',!can('PHOTO'));{const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
+  document.body.classList.toggle('nophoto',!can('PHOTO'));{if($('#addJob'))$('#addJob').hidden=!can('JOBS');const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
   if(!can(act)){act=['OUT','RETURN','RECEIVE','REPAIR','DISPOSE'].find(can)||'OUT';$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act))}
   _applyRole()}
 function _applyRole(){document.body.classList.toggle('ro',!isAdmin);
@@ -1174,10 +1174,10 @@ async function delJob(id){const j=jobs.find(x=>x._id===id);if(!j)return;const ou
 function renderJobs(){renderCrew();
   const st=$('#jstat').value,ob=outByJob();
   const jl=jobs.filter(j=>!st||(st==='Active'?j.status!=='Closed':j.status===st)).sort((a,b)=>a.no.localeCompare(b.no,undefined,{numeric:true}));
-  $('#jbody').innerHTML=jl.length?jl.map(j=>`<tr data-jid="${esc(j._id)}"><td class="mono"><b>${esc(j.no)}</b></td><td>${j.autoAdded&&!j.name?'<span class="pill p-ver">Needs details</span>':esc(j.name)}<br><small class="muted">${esc(j.address||'')}</small></td><td>${esc(j.pm)}</td><td>${esc(j.fm)}</td><td>${esc(j.sfm||'')}</td><td>${esc(j.status)}</td><td class="n">${ob[j.no]>0?ob[j.no]:''}${isAdmin?`<button class="jdel" data-jdel="${esc(j._id)}" title="Delete job" aria-label="Delete job">${IC2.trash}</button>`:''}</td></tr>`).join('')
+  $('#jbody').innerHTML=jl.length?jl.map(j=>`<tr data-jid="${esc(j._id)}"><td class="mono"><b>${esc(j.no)}</b></td><td>${j.autoAdded&&!j.name?'<span class="pill p-ver">Needs details</span>':esc(j.name)}<br><small class="muted">${esc(j.address||'')}</small></td><td>${esc(j.pm)}</td><td>${esc(j.fm)}</td><td>${esc(j.sfm||'')}</td><td>${esc(j.status)}</td><td class="n">${ob[j.no]>0?ob[j.no]:''}${isAdmin||can('JOBS')?`<button class="jdel" data-jdel="${esc(j._id)}" title="Delete job" aria-label="Delete job">${IC2.trash}</button>`:''}</td></tr>`).join('')
     :'<tr><td colspan="7" class="empty">No jobs yet. Add your running jobs with “+ New job” so the yard can pick them when taking things out.</td></tr>';
   $$('#jbody [data-jdel]').forEach(b=>b.onclick=e=>{e.stopPropagation();delJob(b.dataset.jdel)});
-  $$('#jbody tr[data-jid]').forEach(r=>r.onclick=()=>isAdmin?openJob(r.dataset.jid):toast('Only office editors can change job details.'));
+  $$('#jbody tr[data-jid]').forEach(r=>r.onclick=()=>isAdmin||can('JOBS')?openJob(r.dataset.jid):toast('Only office editors can change job details.'));
   renderOutJobs()}
 function renderOutJobs(){
   const m={};for(const g of logs){if(!g.job||(g.action!=='OUT'&&g.action!=='RETURN'))continue;const j=g.job;m[j]=m[j]||{};const r=m[j][g.itemId]=m[j][g.itemId]||{name:g.name,size:g.size,unit:g.unit,loc:g.loc,n:0,last:g.ts,by:new Set()};
