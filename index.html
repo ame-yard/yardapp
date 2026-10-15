@@ -422,6 +422,7 @@ tbody tr{cursor:pointer} tbody tr:hover{background:var(--chip)}
 .ic{width:1.1em;height:1.1em;vertical-align:-.18em;flex:none}.jdel .ic{width:16px;height:16px}.bell .ic{width:18px;height:18px}.lchk .ic{width:16px;height:16px}
 .qph{font-weight:700;margin:4px 0 6px}.qpc{margin-bottom:8px;flex-wrap:wrap}.qpl{max-height:220px;overflow:auto;border:1px solid var(--line,#5a514a);border-radius:12px;margin-bottom:12px}.qpi{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line,#5a514a);padding:10px 12px;color:inherit;font:inherit;cursor:pointer}.qpi span{color:var(--muted,#b9aea4);font-size:13px;white-space:nowrap}.qpi:hover,.qpi.on{background:rgba(244,123,32,.18)}
 button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .15s}button.kpi:hover{border-color:var(--accent,#f47b20)}button.kpi.on{border-color:var(--accent,#f47b20);box-shadow:inset 0 0 0 1px var(--accent,#f47b20)}
+.unitbox{display:flex;flex-direction:column;gap:6px}.unitgen{display:flex;gap:8px;flex-wrap:wrap}.unitgen input{flex:1;min-width:140px}
 </style>
 
 <header class="top"><div class="wrap">
@@ -558,7 +559,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.83',APP_DATE='2026-10-15';
+const APP_VERSION='1.84',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -698,8 +699,8 @@ function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.
 async function writeItem(id,upd){const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
-const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
-const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS'];
+const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
+const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UNITS'];
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
@@ -1071,6 +1072,12 @@ function setupQuickPick(i,isNew){fillLists(items);const box=document.getElementB
     box.querySelectorAll('[data-qi]').forEach(b=>b.onclick=()=>{const x=list[+b.dataset.qi];['type','cat','mfgr','name','size','unit','sds'].forEach(k=>{const el=document.getElementById('e_'+k);if(el&&x[k]!=null)el.value=x[k]});
       box.querySelectorAll('.qpi').forEach(e=>e.classList.toggle('on',e===b));const q=document.getElementById('e_qty');if(q){q.focus();q.select&&q.select()}toast('Copied — check location and enter the quantity')});};
   draw()}
+function bindUnits(i,id){const g=$('#e_ugen');if(!g)return;
+  g.onclick=()=>{const n=Math.max(1,Number(($('#e_qty')||{}).value||i.qty||0)+(i.out||0)+(i.repair||0));const p=$('#e_upre').value;$('#e_serials').value=Array.from({length:n},(_,k)=>p+(k+1)).join('\n')};
+  const sv=$('#e_usave');if(sv)sv.onclick=async()=>{const list=[...new Set($('#e_serials').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean))];
+    const busy=Object.entries(i.units||{}).filter(([k,u])=>u&&u.st&&u.st!=='yard'&&!list.includes(k)).map(([k])=>k);
+    if(busy.length&&!confirm('Units '+busy.join(', ')+' are currently out or in repair and will lose their tag. Continue?'))return;
+    try{await writeItem(id,{serials:list,updatedAt:new Date().toISOString(),updatedBy:curUser});await db.collection('logs').add({ts:new Date().toISOString(),action:'EDIT',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:0,before:i.qty,after:i.qty,job:'',by:curUser,note:'Unit numbers: '+(list.join(', ')||'cleared'),cond:''});toast('Unit numbers saved');openItem(id)}catch(e){toast('Could not save: '+(e.message||e.code))}}}
 function openItem(id,newLoc){
   const i=id?byId(id):{id:'',zone:(newLoc||'A')[0],loc:newLoc||'A-01',level:'L1',type:'Materials',cat:'',mfgr:'',name:'',size:'',qty:0,unit:'EA',cond:'Good',remarks:'',min:''};
   const F=(k,l,t='text',o)=>`<label class="f">${l}${o?`<select id="e_${k}">${o.map(x=>`<option ${x===i[k]?'selected':''}>${x}</option>`).join('')}</select>`:`<input id="e_${k}" type="${t}" value="${esc(i[k]??'')}" ${['cat','mfgr','name','size','unit','level','loc'].includes(k)?`list="dl_${k}" autocomplete="off"`:''}>`}</label>`;
@@ -1085,7 +1092,9 @@ function openItem(id,newLoc){
    ${F('mfgr','Manufacturer')}${F('name','Item name')}${F('size','Size')}${F('unit','Unit (EA, PL, RL, PCS, BDL, BOX, Tube)')}
    ${F('qty','Qty in yard','number')}${F('min','Reorder at (min qty)','number')}${F('cond','Condition','',['Good','Mixed','Needs Check','Bad'])}${F('sds','SDS (O/X)')}
    <label class="f wide">Remarks<input id="e_remarks" value="${esc(i.remarks||'')}"></label>
-   ${isAdmin?`<label class="f wide">Unit numbers — one per line. ${tracked(i)?'Auto-numbered #1, #2… until you replace them with the real tag / serial numbers.':'Leave empty if units aren\'t tracked.'}<textarea id="e_serials" rows="3" placeholder="e.g. GEN-01&#10;GEN-02">${esc(sers(i).join('\n'))}</textarea></label>`:''}
+   ${isAdmin||can('UNITS')?`<div class="f wide unitbox"><b>Unit numbers</b><small class="muted">Give each unit its own tag so the yard can pick “L1”, “L3”… when taking out. One per line.</small>
+     <div class="unitgen"><input id="e_upre" placeholder="Prefix, e.g. L or Ladder " value="${esc((sers(i)[0]||'').replace(/[#]?\d+$/,'')||'')}"><button type="button" class="btn" id="e_ugen">Number 1 → ${Math.max(1,(Number(i.qty)||0)+(i.out||0)+(i.repair||0))}</button>${!isAdmin&&id?`<button type="button" class="btn pri" id="e_usave">Save unit numbers</button>`:''}</div>
+     <textarea id="e_serials" rows="4" placeholder="L1&#10;L2&#10;L3">${esc(sers(i).join('\n'))}</textarea></div>`:''}
    ${id&&i.issue?`<label class="f wide" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="e_clear"> Verified on site — clear the flag</label>`:''}</div>
    ${id&&sers(i).length?`<div class="qlabel">Units</div><div class="tblwrap"><table><thead><tr><th>Unit #</th><th>Status</th><th>Job</th><th>Times out</th></tr></thead><tbody>${sers(i).map(sn=>{const u=ust(i,sn);return `<tr><td class="mono"><b>${esc(sn)}</b></td><td>${ST_LABEL[u.st]||u.st}${u.flag?' · '+esc(u.flag):''}</td><td>${esc(u.job?jobLabel(u.job):'')}</td><td class="n">${timesOut(i.id,sn)}</td></tr>`}).join('')}</tbody></table></div>`:''}
 
@@ -1105,7 +1114,7 @@ function openItem(id,newLoc){
     catch(err){toast('Could not upload: '+(err.message||err.code));$('#e_photoLbl').textContent='Add photo'}};
   const bindDel=()=>{if(id&&$('#e_del'))$('#e_del').onclick=()=>{$('#e_confirm').innerHTML=`<div class="banner" style="margin-top:10px">Delete <b>${esc(i.name)}</b> from the yard list? History stays in Activity. <button class="btn dng" id="e_del2">Yes, delete</button></div>`;
     $('#e_del2').onclick=async()=>{try{await db.collection('logs').add({ts:new Date().toISOString(),action:'DISPOSE',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:i.qty||0,before:i.qty||0,after:0,job:'',by:curUser,note:'Item removed from yard list',cond:''});await db.doc((i.pending?'newitems/':'items/')+id).delete();db.doc('stock/'+id).delete().catch(()=>{});toast('Deleted');closeDlg()}catch(e){toast('Could not delete: '+(e.message||e.code))}}};};
-  if(!isAdmin&&id){$$('.dlg .fields input,.dlg .fields select').forEach(x=>x.disabled=true);$('#e_save')?.remove();bindDel();return}
+  bindUnits(i,id);if(!isAdmin&&id){$$('.dlg .fields input,.dlg .fields select').forEach(x=>{if(!x.closest('.unitbox'))x.disabled=true});$('#e_save')?.remove();bindDel();return}
   bindDel();
   $('#e_save').onclick=async()=>{const g=k=>$('#e_'+k).value.trim();const loc=g('loc').toUpperCase();
     const serials=$('#e_serials')?[...new Set($('#e_serials').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean))]:sers(i);
