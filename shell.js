@@ -12,7 +12,12 @@ const AME=window.AME={modules:[],cur:'',
   allowed(m){return this.base(m)&&this.betaOk(m)},
   home(){const ok=this.modules.filter(m=>this.allowed(m));if(ok.length===1){this.open(ok[0].id);return}setMod('home');showTab('home')},
   open(id){const m=this.mod(id);if(!m||!this.allowed(m))return;setMod(id);m.open()}};
-AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>showTab('yard')});
+AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>{showTab('yard');yardStart()}});
+function yardStart(){const opts=[['OUT','Take Out','Take tools &amp; materials to a job','#e8594a'],['RETURN','Return','Bring things back to the yard','#3fb950'],['AUDIT','Inventory check &amp; update','Count, fix quantities, add photos','#a98bff']].filter(o=>{try{return can(o[0])}catch(e){return true}});
+  if(opts.length<2)return;const r=document.getElementById('dlgRoot');
+  r.innerHTML=`<div class="scrim sheet"><div class="dlg ystart"><h3>What are you doing?</h3><div class="ysopts">${opts.map(o=>`<button type="button" data-ys="${o[0]}" style="--c:${o[3]}"><b>${o[1]}</b><small>${o[2]}</small></button>`).join('')}</div><button class="btn" id="ysX" style="margin-top:10px;width:100%">Just look around</button></div></div>`;
+  r.querySelectorAll('[data-ys]').forEach(b=>b.onclick=()=>{closeDlg();const a=document.querySelector('#actions .act[data-act="'+b.dataset.ys+'"]');if(a)a.click();scrollTo({top:0})});document.getElementById('ysX').onclick=closeDlg;
+  if(!document.getElementById('ysCss'))document.head.insertAdjacentHTML('beforeend','<style id="ysCss">.ystart{max-width:440px}.ysopts{display:flex;flex-direction:column;gap:10px;margin-top:10px}.ysopts button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:16px 18px;border-radius:14px;border:2px solid var(--c);background:var(--panel);color:inherit;font:inherit;text-align:left;cursor:pointer}.ysopts button b{font-family:var(--display);font-size:22px;color:var(--c);text-transform:uppercase;letter-spacing:.02em}.ysopts button small{opacity:.75}.ysopts button:active{transform:scale(.98)}</style>')}
 document.querySelector('main').insertAdjacentHTML('afterbegin','<section id="tab-home" hidden></section>');
 function setMod(id){AME.cur=id;const m=AME.mod(id);const sub=document.querySelector('#brand small');if(sub)sub.textContent=m?m.name:'Apps';
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('offmod',!m||!(m.tabs||[]).includes(b.dataset.tab)));
