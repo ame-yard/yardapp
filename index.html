@@ -636,7 +636,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.53',APP_DATE='2026-10-15';
+const APP_VERSION='2.54',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1323,14 +1323,16 @@ $('#cAdd').onclick=()=>{const name=$('#cName').value.trim(),role=$('#cRole').val
   if(crew.some(c=>c.name.toLowerCase()===name.toLowerCase()&&c.role===role)){toast(name+' is already listed as '+role);return}
   saveCrew([...crew,{name,role}]);$('#cName').value='';$('#cName').focus()};$('#addJob').onclick=()=>openJob('');
 function outByJob(){const m={};for(const g of logs){if(!g.job||(g.action!=='OUT'&&g.action!=='RETURN'))continue;m[g.job]=(m[g.job]||0)+(g.action==='OUT'?g.n:-g.n)}return m}
+let SPJ={jobs:[]};
 function openJob(id){const j=id?jobs.find(x=>x._id===id):{no:'#',name:'',address:'',pm:'',fm:'',sfm:'',status:'Active',notes:''};
   const F=(k,l,ph='')=>`<label class="f">${l}<input id="j_${k}" value="${esc(j[k]||'')}" placeholder="${ph}"></label>`;
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg"><h3>${id?'Edit job':'New job'}</h3><div class="fields">
-   ${F('no','Job #','#427')}${F('name','Job name / Site','Chaffey HS')}<label class="f">PM${crewSel('j_pm','PM',j.pm)}</label><label class="f">FM (Foreman)${crewSel('j_fm','FM',j.fm)}</label><label class="f">SFM${crewSel('j_sfm','SFM',j.sfm)}</label>
+   ${id?F('no','Job #','#427'):`<label class="f wide">Job # <small class="muted">— type to search Spectrum${SPJ.at?' (updated '+fmtD(SPJ.at)+')':''}</small><input id="j_no" list="spjl" value="#" autocomplete="off" placeholder="#427 or job name"><datalist id="spjl">${(SPJ.jobs||[]).filter(x=>x.active!==false&&!jobs.some(y=>y.no==='#'+x.no)).map(x=>`<option value="#${esc(x.no)}">${esc(x.name)}${x.city?' · '+esc(x.city):''}</option>`).join('')}</datalist></label>`}${F('name','Job name / Site','Chaffey HS')}<label class="f">PM${crewSel('j_pm','PM',j.pm)}</label><label class="f">FM (Foreman)${crewSel('j_fm','FM',j.fm)}</label><label class="f">SFM${crewSel('j_sfm','SFM',j.sfm)}</label>
    <label class="f wide">Address<input id="j_address" value="${esc(j.address||'')}"></label>
    <label class="f">Status<select id="j_status">${['Active','On Hold','Closed'].map(x=>`<option ${x===j.status?'selected':''}>${x}</option>`).join('')}</select></label>
    <label class="f">Notes<input id="j_notes" value="${esc(j.notes||'')}"></label></div>
    <div class="bar">${id?`<button class="btn dng" id="j_d">Delete job</button>`:''}<button class="btn" id="j_c">Cancel</button><button class="btn pri" id="j_s">Save</button></div></div></div>`;
+  if(!id)$('#j_no').oninput=()=>{const v=$('#j_no').value.trim().replace(/^#/,'');const m=(SPJ.jobs||[]).find(x=>x.no===v)||(v.length>2?(SPJ.jobs||[]).find(x=>x.name.toLowerCase()===v.toLowerCase()):null);if(m){$('#j_no').value='#'+m.no;if(!$('#j_name').value)$('#j_name').value=m.name;if(!$('#j_address').value&&m.city)$('#j_address').value=m.city}};
   $('#j_c').onclick=closeDlg;if($('#j_d'))$('#j_d').onclick=()=>delJob(id);
   $('#j_s').onclick=async()=>{const g=k=>$('#j_'+k).value.trim();let no=g('no');if(!no||no==='#'){toast('Enter a job number.');return}if(!no.startsWith('#'))no='#'+no;
     const d={no,name:g('name'),pm:g('pm'),fm:g('fm'),sfm:g('sfm'),address:g('address'),status:g('status'),notes:g('notes'),autoAdded:false,updatedAt:new Date().toISOString()};
@@ -1550,7 +1552,7 @@ async function ameSync(){try{const d=await window.claude.use('db');await d.refre
 
 matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#tab-yard').hidden&&!isAdmin)showTab('yard')});
 (async()=>{
-  db=await window.claude?.use?.('db');if(db){const oc=db.collection.bind(db);db.collection=n=>{const c=oc(n);if(n==='logs'){const oa=c.add.bind(c);c.add=d=>oa({...d,dev:devId})}return c}}
+  db=await window.claude?.use?.('db');if(db){db.doc('config/spectrum').onSnapshot(x=>{SPJ=x.data()||{jobs:[]}},()=>{});const oc=db.collection.bind(db);db.collection=n=>{const c=oc(n);if(n==='logs'){const oa=c.add.bind(c);c.add=d=>oa({...d,dev:devId})}return c}}
   if(!db){$('#status').textContent='Not connected. Sign in with your company Microsoft account.';return}
   $('#status').textContent='Live · changes from the yard and the office show up here automatically.';
   db.collection('items').onSnapshot(s=>{rawItems=s.docs.map(d=>({...d.data(),id:d.id}));mergeItems();markSync();render()},e=>$('#status').textContent='Could not load items: '+e.message);
@@ -1593,6 +1595,6 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=240"></script>
-<script src="mpl.js?v=251"></script>
+<script src="mpl.js?v=254"></script>
 <script src="eqp.js?v=253"></script>
 </body></html>

@@ -22,7 +22,9 @@ window.MP=MP;
 async function mpJobs(){const [sj,pr]=await Promise.all([MP.get('/spectrum/jobs'),MP.get('/projects')]);const m=new Map();
   (sj?.jobs||[]).forEach(j=>m.set(String(j.Job_Number).trim(),{no:String(j.Job_Number).trim(),name:(j.Job_Description||'').trim(),city:j.City||'',active:j.Status_Code==='A',spectrum:true}));
   (pr?.projects||[]).forEach(p=>{const k=String(p.metadata.custom_id).trim();const o=m.get(k)||{no:k,name:p.metadata.project_name,active:p.metadata.status!=='completed'};o.pid=p.metadata.id;o.mp=true;m.set(k,o)});
-  return [...m.values()].sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}))}
+  const L=[...m.values()].sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}));
+  try{const jobs=L.map(j=>({no:j.no,name:j.name||'',city:j.city||'',active:!!j.active}));db.doc('config/spectrum').get().then(c=>{const o=c.data()||{};if(JSON.stringify(o.jobs)!==JSON.stringify(jobs))db.doc('config/spectrum').set({jobs,at:new Date().toISOString(),by:curUser||''})}).catch(()=>{})}catch(e){}
+  return L}
 async function mpUsers(){const u=await MP.get('/users');return (u?.users||[]).filter(x=>x.is_active!==false)}
 async function sendToMobPrep(){if(!MP.tok()){connectDlg(sendToMobPrep);return}const num=String(W.job||'').replace(/^#/,'');if(!num){toast('Pick the job first.');return}
   if(!confirm('Create this prep list in Mob Prep (amebuilders.org) under job '+num+'?'))return;
