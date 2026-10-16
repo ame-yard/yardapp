@@ -124,7 +124,7 @@ label.f input,label.f select,label.f textarea{padding:10px 12px;border:1px solid
 .bay.match rect{fill:var(--chip);stroke-width:2}
 .bay.incart rect{fill:var(--hi);stroke:var(--hi)}
 .bay.sel rect{fill:var(--steel);stroke:var(--steel)}
-.zbar{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}.zbar::-webkit-scrollbar{display:none}.zbar button{flex:0 0 auto;min-width:44px;height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 15px var(--display,system-ui)}.zbar button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:var(--hi-ink)}.zbar small{font:400 11px system-ui;opacity:.7;margin-left:4px}
+.mapwrap{min-width:0;max-width:100%}.zbar{max-width:100%;min-width:0;display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}.zbar::-webkit-scrollbar{display:none}.zbar button{flex:0 0 auto;min-width:44px;height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 15px var(--display,system-ui)}.zbar button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:var(--hi-ink)}.zbar small{font:400 11px system-ui;opacity:.7;margin-left:4px}
 .zpanel{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:calc(100vh - 230px);overflow:auto;padding:2px}.ztile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;border-radius:10px;border:1px solid var(--steel);background:var(--panel);color:var(--ink);text-align:left;font:inherit;cursor:pointer;min-height:76px}.ztile.empty{border-color:var(--line);opacity:.6}.ztile.sel{background:var(--steel);color:var(--steel-ink)}.ztile.match{background:var(--chip);border-width:2px}.ztile.incart{border-color:var(--hi);box-shadow:inset 0 0 0 2px var(--hi)}.ztile b{font:700 18px var(--mono)}.ztile .zc{font-size:13px;opacity:.8}.ztile .zi{font-size:12px;opacity:.7;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}@media(max-width:600px){.zpanel{grid-template-columns:1fr 1fr;max-height:none}}
 .bay text{font-family:var(--mono);font-size:13px;font-weight:700;fill:var(--ink);text-anchor:middle;pointer-events:none}
 .bay .bc{font-size:12px;font-weight:600;fill:var(--hi)}.bay.empty .bc{fill:var(--muted);font-weight:400}
@@ -638,7 +638,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.72',APP_DATE='2026-10-15';
+const APP_VERSION='2.73',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
