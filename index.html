@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.28',APP_DATE='2026-10-15';
+const APP_VERSION='3.29',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1424,8 +1424,13 @@ function renderOnline(){const el=$('#onlineList');if(!el)return;const now=Date.n
   const on=presence.filter(p=>now-new Date(p.ts)<150000).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
   const rec=presence.filter(p=>{const d=now-new Date(p.ts);return d>=150000&&d<86400000}).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
   $('#onlineN').textContent=on.length?'· '+on.length+' online now':'· nobody online';
-  const row=(p,live)=>`<div class="onrow"><span class="dot ${live?'on':''}"></span><b>${esc(p.name||'(choosing name)')}</b><span class="muted">${esc(p.acct||'')} · ${esc(p.device)} · ${esc(p.tab)}${p.mode?' / '+esc(p.mode):''}</span><span class="muted onago">${live?'online':'last seen '+ago(p.ts)}</span></div>`;
-  el.innerHTML=(on.map(p=>row(p,1)).join('')||'<div class="muted">Nobody else is using the app right now.</div>')+(rec.length?`<div class="qlabel" style="margin-top:10px">Earlier today</div>`+rec.map(p=>row(p,0)).join(''):'')}
+  const row=(p,live)=>`<div class="onrow"><span class="dot ${live?'on':''}"></span><b>${esc(p.name||'(choosing name)')}</b><span class="muted">${esc(p.acct||'')} · ${esc(p.device)} · ${esc(p.tab)}${p.mode?' / '+esc(p.mode):''}</span><span class="muted onago">${live?'online':'last seen '+ago(p.ts)}</span>${live?'':`<button type="button" class="tsx" data-pdel="${esc(p._id)}" title="Delete this record">×</button>`}</div>`;
+  const old=presence.filter(p=>now-new Date(p.ts)>=86400000);
+  el.innerHTML=(on.map(p=>row(p,1)).join('')||'<div class="muted">Nobody else is using the app right now.</div>')+(rec.length?`<div class="qlabel" style="margin-top:10px">Earlier today</div>`+rec.map(p=>row(p,0)).join(''):'')+(old.length?`<div class="qlabel" style="margin-top:10px">Older</div>`+old.sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).map(p=>row(p,0)).join(''):'');
+  el.style.cssText='max-height:340px;overflow-y:auto';
+  $('#onlineN').innerHTML=$('#onlineN').textContent+(presence.length>on.length?` <button type="button" class="btn small" id="onClr" style="margin-left:8px">Delete all not online (${presence.length-on.length})</button>`:'');
+  el.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=()=>db.doc('presence/'+b.dataset.pdel).delete().catch(e=>toast(e.message)));
+  const oc=$('#onClr');if(oc)oc.onclick=async()=>{const ids=presence.filter(p=>now-new Date(p.ts)>=150000).map(p=>p._id);if(!confirm('Delete '+ids.length+' records of people not online?'))return;await db.deleteMany('presence',ids);toast('Cleared')}}
 setInterval(()=>{try{renderOnline()}catch(e){}},30000);
 let ylv='card';try{ylv=localStorage.getItem('ameLv')||'card'}catch(e){}
 function applyLv(){const l=$('#ylist');if(l)l.classList.toggle('listview',ylv==='list');$$('.lvseg [data-lv]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lv===ylv))}
@@ -1646,7 +1651,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=324"></script>
 <script src="safety.js?v=326"></script>
 <script src="deliv.js?v=311"></script>
-<script src="admin.js?v=328"></script>
+<script src="admin.js?v=329"></script>
 <script src="scan.js?v=310"></script>
 <script>
 /* auto-detect a newer app version */
