@@ -3,7 +3,7 @@
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=231"></script>
+<script src="msbackend.js?v=240"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -491,6 +491,8 @@ td.bad{color:var(--bad)}
 .appic{width:56px;height:56px;border-radius:14px;background:var(--accent,#f47b20);color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:6px}.appic svg{width:32px;height:32px}
 .apptile.soon{border-style:dashed;cursor:default;opacity:.7}.apptile.soon .appic{background:var(--chip);color:var(--muted)}
 nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{visibility:hidden}
+.eqseg{display:inline-flex;margin-bottom:12px}.eqcats{margin-bottom:10px}.eqdays{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 14px}.eqdays .step{display:flex;align-items:center;gap:6px}.eqdays .step button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}.eqdays input{width:64px;text-align:center}
+.eqcard{margin-bottom:12px}.eqtitle{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}.eqtitle b{font-size:18px}.eqtbl td.best{color:#3fb950;font-weight:700}.eqtbl td.tot.best{background:rgba(63,185,80,.14)}.eqtbl tr[data-q]{cursor:pointer}.vin{width:90px}.vin.wide{width:100%}
 </style>
 
 <header class="top"><div class="wrap">
@@ -503,6 +505,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <button role="tab" data-tab="log" aria-selected="false">Activity</button>
     <button role="tab" data-tab="sheet" aria-selected="false">Sheet</button>
     <button role="tab" data-tab="mpl" aria-selected="false" hidden>MPL</button>
+    <button role="tab" data-tab="eqp" aria-selected="false" hidden>Prices</button>
   </nav>
 </div></header>
 
@@ -623,6 +626,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <div class="tblwrap sheetwrap"><table class="sheet"><thead id="shead"></thead><tbody id="sbody"></tbody></table></div>
   </section>
   <section id="tab-mpl" hidden></section>
+  <section id="tab-eqp" hidden></section>
 </main>
 
 <div class="ptr" id="ptr" aria-hidden="true"><span class="ptrspin"></span><span id="ptrTxt">Pull to sync</span></div>
@@ -630,7 +634,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.30',APP_DATE='2026-10-15';
+const APP_VERSION='2.40',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -772,13 +776,13 @@ function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.
 async function writeItem(id,upd){const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
-const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['MPL','Mobilization prep list'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
+const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['MPL','Mobilization prep list'],['EQP','Equipment prices'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
 const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UNITS'];
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
   if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
-  const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')||(f==='MPL'&&['President','PM','Office'].includes(curRole()))}
+  const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')||(['MPL','EQP'].includes(f)&&['President','PM','Office'].includes(curRole()))}
 function applyRole(){try{updBell()}catch(e){}document.body.classList.toggle('owner',isOwner(curUser));$$('nav.tabs button[data-tab]').forEach(b=>{if(['jobs','log','sheet'].includes(b.dataset.tab))b.hidden=!isAdmin});{const cur=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true');if(cur&&cur.hidden)showTab('yard')}$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
   document.body.classList.toggle('nophoto',!can('PHOTO'));{if($('#addJob'))$('#addJob').hidden=!can('JOBS');const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
   if(!can(act)){act=['OUT','RETURN','RECEIVE','REPAIR','DISPOSE'].find(can)||'OUT';$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act))}
@@ -1586,6 +1590,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=230"></script>
-<script src="mpl.js?v=230"></script>
+<script src="shell.js?v=240"></script>
+<script src="mpl.js?v=240"></script>
+<script src="eqp.js?v=240"></script>
 </body></html>

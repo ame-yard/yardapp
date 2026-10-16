@@ -136,7 +136,7 @@ function collRef(c){
     get:async()=>{const s=await ensure(c);return{docs:Object.keys(s.docs).map(id=>({id,data:()=>s.docs[id]}))}}
   };
 }
-const db={collection:collRef,doc:docRef,deleteMany:(c,ids)=>write(c,docs=>{ids.forEach(id=>delete docs[id])})};
+const db={collection:collRef,doc:docRef,deleteMany:(c,ids)=>write(c,docs=>{ids.forEach(id=>delete docs[id])}),setMany:(c,map)=>write(c,docs=>{Object.assign(docs,map)})};
 
 /* first run: create data files from seed.json */
 async function seedIfEmpty(){
