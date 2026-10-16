@@ -646,7 +646,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.96',APP_DATE='2026-10-15';
+const APP_VERSION='2.97',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1394,7 +1394,8 @@ let DEVB={},msEmail='',myIp='',devbOk=false,secReadyRes;const secReady=new Promi
 function devKey(){return (msEmail||'?')+'|'+devName()}
 async function secInit(){try{const u=await window.claude.use('user');msEmail=(u?.email?.()||'').toLowerCase();msAcct=u?.name?.()||msAcct}catch(e){}
   try{db.doc('config/devbind').onSnapshot(x=>{DEVB=x.data()||{};if(!devbOk){devbOk=true;secReadyRes()}},()=>{secReadyRes()})}catch(e){secReadyRes()}
-  try{myIp=(await (await fetch('https://api.ipify.org?format=json')).json()).ip||''}catch(e){}}
+  try{myIp=(await (await fetch('https://api.ipify.org?format=json')).json()).ip||''}catch(e){}
+  secReady.then(()=>{if(curUser&&isOwner(curUser)&&msEmail&&!(DEVB.__owners||[]).includes(msEmail))bindName(curUser)})}
 function logLogin(n,blocked){try{db.collection('logins').add({ts:new Date().toISOString(),name:n,acct:msAcct,email:msEmail,dev:devName(),key:devKey(),ip:myIp,ua:navigator.userAgent.slice(0,160),blocked:!!blocked})}catch(e){}}
 function canUseName(n){if(!n||n===curUser||!devbOk||!msEmail)return true;const own=(DEVB.__owners||[]);if(isOwner(n)){return true}
   if(msEmail&&own.includes(msEmail))return true;const b=DEVB[n]||[];return !b.length||b.some(x=>x.key===devKey())}
