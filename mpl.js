@@ -84,7 +84,7 @@ function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
   else if(s===4){if(!W.lines)W.lines=generate(W.st);body=listHtml();next='Review check-out'}
   else if(s===5){body=goHtml();next=''}
   box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2></div>${crumbs()}<div class="panel mplbody">${body}</div>
-   <div class="mplbar">${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
+   <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
   wire()}
 let mpJ=null,mpU=null,mpErr='',jq='';
 function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" style="margin:0"><p>Job numbers come from <b>Spectrum through Mob Prep</b>. Connect once on this device.</p><button class="go" id="mpConn" style="width:auto">Connect Mob Prep</button></div>`;
@@ -93,7 +93,8 @@ function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" st
   const q=jq.toLowerCase();const l=mpJ.filter(j=>j.active!==false&&(!q||j.no.includes(q)||j.name.toLowerCase().includes(q))).slice(0,60);
   const pms=(mpU||[]).filter(u=>['pm','admin','president','office'].includes(String(u.role||'').toLowerCase())||true);
   return `<h3>Which job? <small class="muted">from Spectrum · Mob Prep</small></h3><input id="mJq" class="search" placeholder="Search job # or name…" value="${esc(jq)}">
-   <div class="names jobs mpjobs">${l.map(j=>`<button data-mj="${esc(j.no)}" aria-pressed="${W.job==='#'+j.no}"><span class="mono">#${esc(j.no)}</span><small>${esc(j.name)}</small><small>${j.mp?'In Mob Prep':''}${j.city?(j.mp?' · ':'')+esc(j.city):''}</small></button>`).join('')||'<div class="muted">No match.</div>'}</div>
+   <div class="names jobs mpjobs">${l.map(j=>`<button data-mj="${esc(j.no)}" aria-pressed="${W.job==='#'+j.no}"><span class="mono">#${esc(j.no)}</span><small>${esc((jobs.find(x=>x.no==='#'+j.no)||{}).name||j.name)}</small><small>${j.mp?'In Mob Prep':''}${j.city?(j.mp?' · ':'')+esc(j.city):''}</small></button>`).join('')||'<div class="muted">No match.</div>'}</div>
+   ${W.job?`<div class="fields"><label class="f wide">Job name (as we call it)<input id="mJn" value="${esc(W.jobName||'')}" placeholder="e.g. Fullerton"></label></div>`:''}
    <div class="fields"><label class="f">Prepared by<input value="${esc(W.prep||curUser)}" disabled></label>
    <label class="f">Crew size<div class="step"><button data-cr="-1">−</button><b>${W.crew}</b><button data-cr="1">+</button></div></label>
    <label class="f">PM<select id="mPm"><option value="">—</option>${pms.map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpPm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label>
@@ -116,7 +117,8 @@ function goHtml(){const g=goLines();const yard=g.filter(x=>x.y),other=g.filter(x
 function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f);
   document.getElementById('mBack').onclick=()=>{if(W.step===0){view='list';render()}else{W.step--;render()}};
   q('[data-st]',b=>b.onclick=()=>{const n=+b.dataset.st;if(n<=W.step||W.lines){if(n===5&&!W.lines)return;W.step=n;render()}});
-  q('[data-mj]',b=>b.onclick=()=>{const j=mpJ.find(x=>x.no===b.dataset.mj);W.job='#'+j.no;W.jobName=j.name;W.mpPid=j.pid||null;render()});
+  q('[data-mj]',b=>b.onclick=()=>{const j=mpJ.find(x=>x.no===b.dataset.mj);W.job='#'+j.no;const reg=jobs.find(x=>x.no==='#'+j.no);W.jobName=(reg&&reg.name)||j.name;W.city=j.city||'';W.mpPid=j.pid||null;render()});
+  const jn=document.getElementById('mJn');if(jn)jn.onchange=()=>{W.jobName=jn.value.trim()};
   const jqi=document.getElementById('mJq');if(jqi)jqi.oninput=()=>{jq=jqi.value;const p=jqi.selectionStart;render();const n=document.getElementById('mJq');n.focus();n.setSelectionRange(p,p)};
   const cn=document.getElementById('mpConn');if(cn)cn.onclick=()=>connectDlg(()=>{mpJ=null;mpErr='';render()});
   const rt=document.getElementById('mpRetry');if(rt)rt.onclick=()=>{mpErr='';mpJ=null;MP.cache={};render()};
@@ -129,6 +131,7 @@ function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f)
   q('[data-rm]',b=>b.onclick=()=>{W.lines.splice(+b.dataset.rm,1);render()});
   q('[data-yl]',b=>b.onclick=()=>linkYard(+b.dataset.yl));
   const ad=document.getElementById('mAdd');if(ad)ad.onclick=addItem;
+  wireExport();
   const sd=document.getElementById('mSend');if(sd)sd.onclick=sendToMobPrep;
   const sv=document.getElementById('mSave');if(sv)sv.onclick=()=>save('draft').then(()=>toast('Draft saved'));
   const nx=document.getElementById('mNext');if(nx)nx.onclick=()=>{if(W.step===0){if(!W.job){toast('Pick the job first.');return}}
@@ -144,7 +147,7 @@ function linkYard(k){const l=W.lines[k];pickDlg('Link “'+esc(l.name)+'” to a
   if(x.none){l.yid='';l.nolink=true}else{l.yid=x.i.id;l.nolink=false;if(l.rid){MAP={...MAP,[l.rid]:x.i.id};try{await db.doc('config/mplmap').set(MAP)}catch(e){}}}render()})}
 function addItem(){pickDlg('Add an item',[...REF.its.filter(r=>!W.lines.some(l=>l.rid===r[0])).map(r=>({t:r[1],s:r[2]+' · '+r[3],r})),...items.map(i=>({t:i.name,s:'Yard · '+[i.size,i.loc].filter(Boolean).join(' · '),i}))],x=>{
   if(x.r)W.lines.push({rid:x.r[0],name:x.r[1],cat:x.r[2],sub:x.r[3],unit:x.r[4],n:1,from:'Added'});else W.lines.push({yid:x.i.id,name:x.i.name,cat:'Custom',sub:'From yard',unit:x.i.unit,n:1,from:'Added'});render()})}
-async function addJobIfMissing(job,now){if(job&&!jobs.some(j=>j.no===job)){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:W.jobName||'',pm:W.pm||'',fm:W.fm||'',address:'',status:'Active',notes:'Added from MPL by '+curUser,autoAdded:true,updatedAt:now})}catch(e){}}}
+async function addJobIfMissing(job,now){const ex=jobs.find(j=>j.no===job);if(ex&&W.jobName&&ex.name!==W.jobName){try{await db.doc('jobs/'+ex._id).update({name:W.jobName})}catch(e){}}if(job&&!ex){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:W.jobName||'',pm:W.pm||'',fm:W.fm||'',address:'',status:'Active',notes:'Added from MPL by '+curUser,autoAdded:true,updatedAt:now})}catch(e){}}}
 async function checkout(){const g=goLines().filter(x=>x.y&&x.take>0);if(!g.length)return;if(!confirm(`Take ${g.length} items out of the yard to ${jobLabel(W.job)}?`))return;
   const b=document.getElementById('mGo');b.disabled=true;b.textContent='Checking out…';const now=new Date().toISOString();await addJobIfMissing(W.job,now);let ok=0;
   for(const x of g){const it=byId(x.y.id);if(!it)continue;const before=Number(it.qty)||0,n=Math.min(x.take,before);if(n<=0)continue;
@@ -159,8 +162,8 @@ function renderView(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m)
    ${m.status==='out'?`<h3>Close out — what came back?</h3><p class="muted">Set how many of each came back to the yard. Anything not returned is logged as lost / used on the job.</p>`:'<h3>Items</h3>'}
    <div class="mpllines">${(m.lines||[]).map((l,k)=>`<div class="mline"><div class="mname"><b>${esc(l.name)}</b><small>${l.taken?`Taken from yard: ${l.taken}`:'Not from yard'}${l.back!=null?` · Returned ${l.back}`:''}</small></div>
      ${m.status==='out'&&l.taken?`<div class="step"><button data-b="${k}" data-d="-1">−</button><b id="bk${k}">${l.taken}</b><button data-b="${k}" data-d="1">+</button></div>`:`<span class="muted">×${l.n}</span>`}</div>`).join('')}</div></div>
-   <div class="mplbar">${m.status==='out'?`<button class="go" id="mClose" style="width:auto">Close out · return to yard</button>`:''}${m.status!=='out'&&isAdmin?'<button class="btn dng" id="mDel">Delete MPL</button>':''}</div>`;
-  document.getElementById('mBack').onclick=()=>{view='list';render()};
+   <div class="mplbar">${exportBtns()}${m.status==='out'?`<button class="go" id="mClose" style="width:auto">Close out · return to yard</button>`:''}${m.status!=='out'&&isAdmin?'<button class="btn dng" id="mDel">Delete MPL</button>':''}</div>`;
+  document.getElementById('mBack').onclick=()=>{view='list';render()};wireExport();
   const back={};taken.forEach(l=>back[m.lines.indexOf(l)]=l.taken);
   box.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const k=+b.dataset.b;back[k]=Math.min(m.lines[k].taken,Math.max(0,back[k]+ +b.dataset.d));document.getElementById('bk'+k).textContent=back[k]});
   const del=document.getElementById('mDel');if(del)del.onclick=async()=>{if(!confirm('Delete this MPL? Yard records stay in Activity.'))return;await db.doc('mpl/'+m._id).delete();view='list';render()};
@@ -171,6 +174,29 @@ function renderView(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m)
         if(lost>0)await db.collection('logs').add({ts:now,action:'LOST',itemId:it.id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:lost,before:before+r,after:before+r,job:m.job,by:curUser,note:'MPL close-out — not returned',cond:''});
         l.back=r}catch(e){toast('Could not return '+it.name+': '+(e.message||e.code))}}
     await db.doc('mpl/'+m._id).update({lines,status:'closed',closedAt:now,closedBy:curUser,updated:now});toast('MPL closed');render()}}
+
+/* ---------- export (Excel / PDF) ---------- */
+function exportRows(m){const lines=m.lines||[];const ready=[],prep=[];
+  for(const l of lines){const y=l.yid?byId(l.yid):(m.status==='draft'?yardFor(l):null);const have=y?Number(y.qty)||0:0;
+    if(y&&(l.taken>0||have>0)){const take=l.taken||Math.min(l.n,have);ready.push([l.cat||'',l.name,l.n,l.unit||'',y.name,y.loc+(y.level?' '+y.level:''),take]);if(take<l.n)prep.push([l.cat||'',l.name,l.n-take,l.unit||'','Short in yard (have '+have+')'])}
+    else prep.push([l.cat||'',l.name,l.n,l.unit||'',y?'In yard list but 0 on hand':'Not a yard item — buy / rent'])}
+  return {ready,prep}}
+function exportHead(m){return [['AME Builders — Mobilization Prep List'],['Job',jobLabel(m.job)+(m.jobName&&!jobLabel(m.job).includes(m.jobName)?' · '+m.jobName:'')],['Prepared by',m.prep||''],['PM',m.pm||''],['FM',m.fm||''],['Crew size',m.crew||''],['Scope',(m.st||[]).map(stName).join(', ')],['Status',m.status||''],['Exported',new Date().toLocaleString()]]}
+async function saveBlob(name,blob){const dl=await window.claude?.use?.('downloads');if(dl){await dl.save({filename:name,data:blob});return}const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function curDoc(){if(view==='wiz')return {...W,status:W.status||'draft'};return MPLS.find(x=>x._id===openId)}
+async function exportXlsx(){const m=curDoc();if(!m)return;if(!window.XLSX){toast('Excel library did not load.');return}const {ready,prep}=exportRows(m);const wb=XLSX.utils.book_new();
+  const s1=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['READY — from the yard ('+ready.length+')'],['Category','MPL item','Need','Unit','Yard item','Yard location','Taking'],...ready]);s1['!cols']=[16,40,7,7,40,14,8].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s1,'Ready (yard)');
+  const s2=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['TO PREPARE — buy / rent / bring ('+prep.length+')'],['Category','Item','Qty','Unit','Why'],...prep]);s2['!cols']=[16,44,7,7,34].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s2,'To prepare');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});await saveBlob(`MPL_${String(m.job).replace('#','')}_${new Date().toISOString().slice(0,10)}.xlsx`,new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
+async function exportPdf(){const m=curDoc();if(!m)return;try{if(!window.jspdf){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js')}}catch(e){toast('PDF library did not load.');return}
+  const {jsPDF}=window.jspdf;const d=new jsPDF({unit:'pt',format:'letter'});const {ready,prep}=exportRows(m);const H=exportHead(m);
+  d.setFontSize(16);d.text('AME Builders — Mobilization Prep List',40,44);d.setFontSize(10);let y=64;H.slice(1).forEach(([k,v])=>{d.text(k+': '+String(v),40,y);y+=14});
+  d.autoTable({startY:y+8,head:[['READY — from the yard ('+ready.length+')','','','Yard location','Taking']],body:ready.map(r=>[r[1],r[0],r[2]+' '+r[3],r[5],String(r[6])]),styles:{fontSize:8.5},headStyles:{fillColor:[63,150,80]},columnStyles:{0:{cellWidth:210}}});
+  d.autoTable({startY:d.lastAutoTable.finalY+18,head:[['TO PREPARE — buy / rent / bring ('+prep.length+')','','Qty','Why']],body:prep.map(r=>[r[1],r[0],r[2]+' '+r[3],r[4]]),styles:{fontSize:8.5},headStyles:{fillColor:[200,116,44]},columnStyles:{0:{cellWidth:210}}});
+  await saveBlob(`MPL_${String(m.job).replace('#','')}_${new Date().toISOString().slice(0,10)}.pdf`,d.output('blob'))}
+function exportBtns(){return '<button class="btn" id="mXls">Excel</button><button class="btn" id="mPdf">PDF</button>'}
+function wireExport(){const a=document.getElementById('mXls');if(a)a.onclick=exportXlsx;const b=document.getElementById('mPdf');if(b)b.onclick=exportPdf}
 
 /* ---------- module registration ---------- */
 AME.register({id:'mpl',name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',tabs:['mpl'],section:'tab-mpl',
