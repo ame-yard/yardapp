@@ -645,7 +645,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.91',APP_DATE='2026-10-15';
+const APP_VERSION='2.92',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1622,5 +1622,21 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 
 window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st;t.textContent=st==='saving'?'Saving…':st==='saved'?'Saved to SharePoint ✓':'Save failed — tap Sync';t.style.color=st==='error'?'#ff8a7a':st==='saved'?'#7fd18b':'';if(st!=='saved')window.__svUntil=Date.now()+60000;if(st==='saved'){window.__svUntil=Date.now()+4000;clearTimeout(window.__svT);window.__svT=setTimeout(()=>{t.style.color='';window.__svUntil=0;try{markSync()}catch(_){}},4100)}});
 window.addEventListener('beforeunload',e=>{if(document.getElementById('syncTxt')?.dataset.s==='saving'){e.preventDefault();e.returnValue=''}});
+
+/* install as an app */
+(function(){try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
+  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;if(standalone)return;
+  let deferred=null;const ua=navigator.userAgent;const ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+  let dismissed=false;try{dismissed=localStorage.getItem('ameInstallHide')===String(new Date().toDateString())}catch(e){}
+  function show(){if(dismissed||document.getElementById('instBar'))return;const b=document.createElement('div');b.id='instBar';
+    b.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;align-items:center;gap:10px;background:#3a3430;color:#f3ede6;border:1px solid #c8742c;border-radius:14px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);font:15px system-ui;max-width:560px;margin:0 auto';
+    b.innerHTML='<img src="ame-192.png" alt="" style="width:36px;height:36px;border-radius:8px;background:#fff"><div style="flex:1;line-height:1.3"><b>Install the AME app</b><br><small style="opacity:.8">'+(deferred?'Opens like a normal app, no browser bar.':ios?'Tap the Share button, then “Add to Home Screen”.':'Use your browser menu → Install app / Add to Home screen.')+'</small></div>'+(deferred?'<button id="instGo" style="background:#c8742c;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:700 15px system-ui">Install</button>':'')+'<button id="instX" aria-label="Close" style="background:none;border:0;color:#f3ede6;font-size:22px;padding:4px 8px">×</button>';
+    document.body.appendChild(b);document.getElementById('instX').onclick=()=>{b.remove();try{localStorage.setItem('ameInstallHide',new Date().toDateString())}catch(e){}};
+    const g=document.getElementById('instGo');if(g)g.onclick=async()=>{b.remove();deferred.prompt();try{await deferred.userChoice}catch(e){}deferred=null}}
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;document.getElementById('instBar')?.remove();setTimeout(show,1500)});
+  window.addEventListener('appinstalled',()=>document.getElementById('instBar')?.remove());
+  if(ios)setTimeout(show,4000);
+  window.ameInstall=()=>{try{localStorage.removeItem('ameInstallHide')}catch(e){}dismissed=false;document.getElementById('instBar')?.remove();show()};
+})();
 </script>
 </body></html>
