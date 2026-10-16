@@ -123,9 +123,9 @@ async function pdfText(file){if(!window.pdfjsLib){await new Promise((ok,no)=>{co
   return lines.filter(Boolean)}
 const EQWORDS=/telehandler|tele-?handler|reach ?fork|boom|scissor|forklift|generator|compressor|light tower|tower light|toilet|restroom|porta|hand ?wash|fence|dumpster|roll-?off|container|lift|scraper|blaster/i;
 function parseDoc(lines){const txt=lines.join('\n');const vendors=[...new Set([...Q.map(q=>q.vendor),'Sunbelt Rentals','United Rentals','Herc Rentals','EquipmentShare','American Rental','Mobile Mini','Diamond'])];
-  const vendor=vendors.find(v=>new RegExp(v.split(/\s+/)[0].replace(/[^a-z]/gi,''),'i').test(txt))||'';
-  const dm=txt.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);let date='';if(dm){const y=dm[3].length===2?'20'+dm[3]:dm[3];date=`${y}-${dm[1].padStart(2,'0')}-${dm[2].padStart(2,'0')}`}
-  const jm=txt.match(/(?:job|po|p\.o\.)\s*(?:#|no\.?|number)?\s*:?\s*([0-9]{3,5})/i);
+  const flat=txt.toLowerCase().replace(/[^a-z]/g,'');const vendor=vendors.find(v=>{const k=v.toLowerCase().split(/\s+/).slice(0,2).join('').replace(/[^a-z]/g,'');return k.length>3&&flat.includes(k)})||'';
+  const dm=txt.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);let date='';if(dm){const y=dm[3].length===2?'20'+dm[3]:dm[3];date=`${y}-${dm[1].padStart(2,'0')}-${dm[2].padStart(2,'0')}`}else{const mm=txt.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? (\d{1,2}),? (\d{4})/i);if(mm){const mi='janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(mm[1].slice(0,3).toLowerCase())/3+1;date=`${mm[3]}-${String(mi).padStart(2,'0')}-${mm[2].padStart(2,'0')}`}}
+  const jm=txt.match(/(?:job|po|p\.o\.)\s*(?:#|no\.?|number)?\s*:?\s*([0-9]{3,5})\b/i)||txt.match(/^\s*([0-9]{3,5})\s*-\s*[A-Z]{3}/m);
   const m$=s=>(s.match(/\$?\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})|\$\s?\d+/g)||[]).map(x=>num(x));
   const fee=re=>{const l=lines.find(x=>re.test(x));const v=l?m$(l):[];return v.length?v[v.length-1]:null};
   const items=[];lines.forEach((l,i)=>{if(!EQWORDS.test(l))return;const ctx=[l,lines[i+1]||'',lines[i+2]||''].join(' ');const nums=m$(ctx).filter(x=>x>=20);
@@ -136,7 +136,22 @@ function parseDoc(lines){const txt=lines.join('\n');const vendors=[...new Set([.
     const sz=l.match(/(\d{2,3})\s*(?:'|ft|foot)/i),lb=l.match(/(\d{1,2}(?:,\d{3})?)\s*(?:k|,000)\s*(?:lb|#)?/i);
     const type=(l.match(/telehandler|reach ?fork|articulating boom|art(?:\.|iculating)? boom|straight boom|telescopic boom|boom lift|rough terrain scissor|rt scissor|scissor lift|forklift|generator|air compressor|light tower|tower light|toilet|restroom|porta|hand ?wash|fence|dumpster|container/i)||[''])[0];
     items.push({line:l,cat:normType(type),size:sz?+sz[1]:null,lbs:lb?Math.round(num(lb[1])/(lb[1].includes(',')?1000:1)):null,day,week,m4:m4,amount:(day==null&&week==null&&m4==null)?nums[nums.length-1]:null})});
-  return {vendor,date,job:jm?jm[1]:'',deliv:fee(/deliver/i),pick:fee(/pick ?up|return/i),items:items.slice(0,15)}}
+  const tb=tableItems(lines);let deliv=fee(/deliver/i),pick=fee(/pick ?up|return/i);if(tb.deliv!=null){deliv=tb.deliv;if(pick==null||tb.both)pick=tb.both?tb.deliv:pick}
+  const credit=/credit memo/i.test(lines.slice(0,8).join(' '));
+  return {vendor,date,job:jm?jm[1]:'',deliv,pick,credit,items:(tb.items.length?tb.items:items).slice(0,15)}}
+/* table-style lines: a header like "QTY EQUIPMENT # Min Day Week 4 Week Amount" or "Qty Description Service Rental A&E Tax Total" */
+function tableItems(lines){const out={items:[],deliv:null,both:false};const hi=lines.findIndex(l=>/\bqty\b/i.test(l)&&(/\bday\b.*\bweek\b/i.test(l)||/\bservice\b.*\brental\b/i.test(l)));if(hi<0)return out;
+  const H=lines[hi];const cols=[];const re=/\b(min|day|week|4 ?weeks?|month|amount|service|rental|a&e|tax|total|rate|price)\b/gi;let m;const tail=H.replace(/^.*?(?:description|equipment\s*#?|item)\s*/i,'');while((m=re.exec(tail)))cols.push(m[1].toLowerCase().replace(/\s/g,''));
+  for(let i=hi+1;i<Math.min(lines.length,hi+40);i++){const l=lines[i];if(/sub-?total|sales items|^total/i.test(l))break;const q=l.match(/^\s*(\d+(?:\.\d+)?)\s+(.+?)((?:\s+\$?[\d,]+\.\d{2,3}|\s+N\/C)+)\s*$/i);if(!q)continue;
+    const desc=q[2].trim();const nums=q[3].trim().split(/\s+/).map(x=>/n\/c/i.test(x)?0:num(x));if(nums.every(x=>!x))continue;
+    const v={};const off=cols.length-nums.length;nums.forEach((n,k)=>{const c=cols[k+Math.max(0,off)];if(c)v[c]=n});
+    if(/deliver|removal|pick ?up|haul/i.test(desc)){out.deliv=v.service??v.rental??v.rate??v.price??nums[0];out.both=/removal|\//.test(desc);continue}
+    const ty=normType(desc)||desc.replace(/\s*-?\s*\d+\s*x\s*\d+.*$/i,'').replace(/\b\d+x\s*week service\b|\bservice\b/ig,'').trim().toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+    const opt=(desc.match(/\d+\s*x\s*\d+/i)||[''])[0].replace(/\s/g,'');const sz=desc.match(/(\d{2,3})\s*(?:'|ft)/i);
+    const it={line:l,cat:ty,option:opt,size:sz?+sz[1]:null,lbs:null,day:v.day??null,week:v.week??null,m4:v['4week']??v['4weeks']??null,amount:null};
+    if(v.service!=null||v.rental!=null)it.amount=+((v.service||0)+(v.rental||0)).toFixed(2);else if(v.month!=null)it.amount=v.month;
+    if([it.day,it.week,it.m4,it.amount].some(x=>x))out.items.push(it)}
+  return out}
 function normType(t){t=String(t).toLowerCase();if(/tele|reach/.test(t))return 'Telehandler';if(/art/.test(t))return 'ART Boom Lift';if(/straight|telescopic/.test(t))return 'ST Boom Lift';if(/boom/.test(t))return 'ART Boom Lift';if(/rough|rt scissor/.test(t))return 'RT Scissor Lift';if(/scissor/.test(t))return 'Scissor Lift';if(/forklift/.test(t))return 'Mast Forklift';if(/generator/.test(t))return 'Generator';if(/compressor/.test(t))return 'Air Compressor';if(/light/.test(t))return 'Tower Light';if(/toilet|restroom|porta/.test(t))return 'Toilet';if(/wash/.test(t))return 'Hand Wash Station';if(/fence/.test(t))return 'Fence';if(/dumpster/.test(t))return 'Dumpster';if(/container/.test(t))return 'Storage Container';return ''}
 
 async function loadJs(src){if(document.querySelector(`script[src="${src}"]`))return;await new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
@@ -149,19 +164,20 @@ async function readLines(file){const isPdf=/pdf/i.test(file.type)||/\.pdf$/i.tes
 function vendorGuess(lines){const t=lines.join(' ');const m=t.match(/www\.([a-z0-9\-]+)\.com|@([a-z0-9\-]+)\.com/i);if(m){const d=(m[1]||m[2]).toLowerCase();const known=[...new Set(Q.map(q=>q.vendor))].find(v=>d.includes(v.toLowerCase().replace(/[^a-z]/g,'').slice(0,6)));if(known)return known;return d.replace(/rentals?$/,' Rentals').replace(/^./,c=>c.toUpperCase())}
   const top=lines.slice(0,5).find(l=>/rental|equipment|sanitation|waste|fence|disposal|inc\b|llc/i.test(l));return top?top.replace(/[^\w &.,'-]/g,'').trim().slice(0,40):''}
 const hasPrice=it=>[it.day,it.week,it.m4,it.amount].some(v=>v!=null&&v>0);
-async function saveParsed(P,doc){const ok=P.items.filter(it=>it.cat&&hasPrice(it));if(!P.vendor||!ok.length)return 0;const now=new Date().toISOString();const map={};
+async function saveParsed(P,doc){if(P.credit)return -1;const same=(a,it)=>a.vendor===clean(P.vendor)&&a.cat===fixType(it.cat)&&(a.option||'')===(it.option||'')&&a.day==(it.day??null)&&a.week==(it.week??null)&&a.m4==(it.m4??null)&&a.month==(it.amount??null);
+  const ok0=P.items.filter(it=>it.cat&&hasPrice(it));if(!P.vendor||!ok0.length)return 0;const ok=ok0.filter(it=>!Q.some(a=>same(a,it)));if(!ok.length)return -2;const now=new Date().toISOString();const map={};
   ok.forEach((it,i)=>map['q'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)+i]={cat:fixType(it.cat),size:it.size??null,lbs:it.lbs??null,kw:null,option:it.option||'',fuel:'',vendor:clean(P.vendor),day:it.day??null,week:it.week??null,m4:it.m4??null,month:it.amount??null,deliv:P.deliv??null,pick:P.pick??null,date:P.date||now.slice(0,10),job:P.job?normJob(P.job):'',site:'',note:doc.kind+' (auto)',doc,by:curUser,at:now,src:'doc'});
   if(db.setMany)await db.setMany('eqp',map);else for(const [k,v] of Object.entries(map))await db.doc('eqp/'+k).set(v);return ok.length}
-async function handleDocs(files){let saved=0,prices=0,review=0,fail=0;const prog=m=>{let t=document.getElementById('eqProg');if(!t){t=document.createElement('div');t.id='eqProg';t.className='toast';t.style.animation='none';document.body.appendChild(t)}t.textContent=m};
+async function handleDocs(files){let skip=0,saved=0,prices=0,review=0,fail=0;const prog=m=>{let t=document.getElementById('eqProg');if(!t){t=document.createElement('div');t.id='eqProg';t.className='toast';t.style.animation='none';document.body.appendChild(t)}t.textContent=m};
   for(let i=0;i<files.length;i++){const file=files[i];const tag=`(${i+1}/${files.length}) `;
     try{prog(tag+'Uploading '+file.name+'…');const fs=await window.claude.use('files');const path='eqdocs/'+new Date().toISOString().slice(0,10)+'_'+Date.now().toString(36).slice(-4)+'_'+file.name.replace(/[^\w.\-]+/g,'_');const r=await fs.save(path,file);DOCBLOB[path]=file;
       prog(tag+'Reading '+file.name+'…');let lines=[];try{lines=await readLines(file)}catch(e){console.warn(e)}
       const kind=/invoice/i.test(lines.slice(0,25).join(' '))?'Invoice':'Quote';const doc={url:r.url,name:file.name,kind,path,type:file.type||''};
       let P={vendor:'',date:'',job:'',deliv:null,pick:null,items:[]};try{P=parseDoc(lines)}catch(e){}if(!P.vendor)P.vendor=vendorGuess(lines);
-      const n=await saveParsed(P,doc);if(n){saved++;prices+=n}else{review++;await db.doc('eqinbox/d'+Date.now().toString(36)+i).set({P,doc,by:curUser,at:new Date().toISOString(),text:lines.slice(0,60).join('\n')})}}
+      const n=await saveParsed(P,doc);if(n===-1||n===-2){skip++}else if(n){saved++;prices+=n}else{review++;await db.doc('eqinbox/d'+Date.now().toString(36)+i).set({P,doc,by:curUser,at:new Date().toISOString(),text:lines.slice(0,60).join('\n')})}}
     catch(e){fail++;console.warn(e)}}
   document.getElementById('eqProg')?.remove();
-  toast(`${files.length} file(s): ${prices} price(s) recorded from ${saved}`+(review?` · ${review} need a quick look`:'')+(fail?` · ${fail} failed`:''));view='cmp';render()}
+  toast(`${files.length} file(s): ${prices} price(s) recorded from ${saved}`+(skip?` · ${skip} credit memo/duplicate skipped`:'')+(review?` · ${review} need a quick look`:'')+(fail?` · ${fail} failed`:''));view='cmp';render()}
 let INBOX=[];const DOCBLOB={};
 async function showPreview(doc){const el=document.getElementById('dPrev');if(!el)return;if(!doc.path&&doc.name){try{const fs=await window.claude.use('files');const nm=doc.name.replace(/[^\w.\-]+/g,'_');const f=(await fs.list('eqdocs')).filter(n=>n.endsWith(nm)).sort().pop();if(f)doc.path='eqdocs/'+f}catch(e){}}if(!doc.path){el.innerHTML=`<p class="muted">Preview not available — <a href="${esc(doc.url)}" target="_blank" rel="noopener">open the file</a></p>`;return}
   el.innerHTML='<p class="muted">Loading document…</p>';try{let b=DOCBLOB[doc.path];if(!b){const fs=await window.claude.use('files');b=await fs.get(doc.path);DOCBLOB[doc.path]=b}
@@ -231,7 +247,7 @@ async function importFile(f){try{const wb=XLSX.read(await f.arrayBuffer(),{type:
 /* dumpsters & flat prices show in Compare via the "flat" field */
 const _bc=bestCost;bestCost=function(q,D){if(num(q.flat)!=null)return {cost:num(q.flat),how:q.note||'flat'};return _bc(q,D)};
 
-AME.eqParse=parseWB;AME.eqDocs=handleDocs;
+AME.eqParse=parseWB;AME.eqDocs=handleDocs;AME.eqRetry=async()=>{let r=[0,0,0];for(const x of INBOX){const lines=(x.text||'').split('\n');let P=parseDoc(lines);if(!P.vendor)P.vendor=vendorGuess(lines);const n=await saveParsed(P,x.doc);if(n!==0){await db.doc('eqinbox/'+x._id).delete();r[n>0?0:1]+=n>0?n:1}else{r[2]++;await db.doc('eqinbox/'+x._id).update({P})}}return r};AME.eqParseDoc=parseDoc;
 AME.register({id:'eqp',name:'Equipment Prices',desc:'Rental quotes by vendor · compare · cheapest for N days',perm:'EQP',tabs:['eqp'],section:'tab-eqp',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h13l3-6h-4l-2-4H7"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="18" r="2"/><path d="M10 7l2 4"/></svg>',
   open:()=>showTab('eqp'),onShow:render});
