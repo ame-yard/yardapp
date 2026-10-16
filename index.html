@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png"><meta name="apple-mobile-web-app-title" content="AME Yard"><meta name="theme-color" content="#2b2724"></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png"><meta name="apple-mobile-web-app-title" content="AME Yard"><meta name="theme-color" content="#2b2724"></head><body>
 <title>AME Yard Inventory</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
@@ -385,7 +385,7 @@ table.sheet td.saved{background:color-mix(in srgb,var(--ok) 25%,transparent)}
 .done b{display:block;font-family:var(--display);font-size:40px;text-transform:uppercase;color:var(--ok)}
 @media (max-width:820px),(orientation:portrait) and (max-width:1100px){
   .kiosk.map{grid-template-columns:1fr}
-  .mapwrap{position:static}
+  .mapwrap{position:relative}
   .mapwrap svg{max-height:44vh}
   .kiosk.map .menu{scroll-margin-top:calc(70px + env(safe-area-inset-top,0px))}}
 @media (max-width:700px){.kiosk{grid-template-columns:1fr}.rail{flex-direction:row;position:static;overflow-x:auto;max-height:none}.cat{min-width:96px}.seg{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -449,8 +449,10 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 #repBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:#3a332e;border:1px solid #f47b20;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#f3ede6;max-width:calc(100% - 24px)}#repBar[hidden]{display:none!important}#repBar select{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:10px;padding:8px}
 #bellPop{position:fixed;z-index:300;width:min(380px,calc(100vw - 16px));max-height:min(70vh,520px);overflow:auto;background:var(--panel,#3a332e);border:1px solid var(--line,#5a514a);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--ink,#f3ede6)}.bph{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line,#5a514a);position:sticky;top:0;background:inherit}.bpi{display:flex;gap:8px;padding:10px 14px;border-bottom:1px dashed var(--line,#5a514a);font-size:14px;line-height:1.35}.bpi small{display:block;margin-top:2px}.bpi.new{background:rgba(244,123,32,.14);box-shadow:inset 3px 0 #f47b20}.bpi .thumb{width:32px;height:32px;margin:0}
 .sht{display:none}@media (max-width:600px){.lgt{display:none}.sht{display:inline}}
-#rackElev{margin:10px 0 4px;border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--panel)}
-.elhead{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;margin-bottom:10px}.elcfg{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:13px}.elcfg button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}
+#rackElev{position:absolute;inset:6px;z-index:6;overflow:auto;border:1px solid var(--accent,#f47b20);border-radius:12px;padding:12px;background:var(--panel);box-shadow:0 8px 24px rgba(0,0,0,.4)}#rackElev[hidden],#elevBtn[hidden]{display:none!important}
+#elevBtn{position:absolute;top:12px;right:12px;z-index:5;background:var(--accent,#f47b20);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer}
+.elx{position:sticky;float:right;top:0;margin:-4px -4px 0 8px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--chip);color:inherit;font-size:16px;cursor:pointer}.elcfg{margin-left:0!important;width:100%}
+.elhead{padding-right:40px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;margin-bottom:10px}.elcfg{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:13px}.elcfg button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}
 .rack{display:flex;flex-direction:column;gap:0;border-left:6px solid #8a6a3a;border-right:6px solid #8a6a3a;padding:0 6px}
 .lvrow{display:grid;grid-template-columns:34px minmax(0,1fr);gap:6px;align-items:stretch;border-bottom:5px solid #c8742c;padding:6px 0}
 .lvrow .unp{grid-column:2;font-size:12px;border:1px dashed var(--line);background:none;color:var(--muted);border-radius:8px;padding:4px;cursor:pointer}.lvrow .unp.on{border-color:var(--accent,#f47b20);color:inherit}
@@ -459,6 +461,8 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 .pal{min-height:64px;text-align:left;border:2px solid var(--line);border-radius:8px;background:var(--chip);color:inherit;padding:6px;display:flex;flex-direction:column;gap:3px;cursor:pointer;font:inherit;overflow:hidden}
 .pal.has{background:rgba(200,116,44,.14)}.pal.on{border-color:var(--accent,#f47b20);box-shadow:0 0 0 2px var(--accent,#f47b20)}
 .pal .pn{font:700 11px var(--mono,monospace);color:var(--muted)}.pal .pi{font-size:12.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pal .pi .thumb{width:18px;height:18px;margin-right:4px;border-radius:3px}.pal .pm,.pal .pe{font-size:11px;color:var(--muted)}
+html,body,button,a,.card,.pal{touch-action:manipulation}@media (max-width:820px){input,select,textarea{font-size:16px!important}}
+.pick{width:100%;min-width:0;box-sizing:border-box}.pickwrap{display:flex;flex-direction:column;gap:6px}
 </style>
 
 <header class="top"><div class="wrap">
@@ -489,12 +493,12 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
     <div class="viewseg" role="group" aria-label="Find items by"><button data-v="map" aria-pressed="true">Yard Map</button><button data-v="cat" aria-pressed="false">Categories</button></div>
     <div class="kiosk" id="kiosk">
       <nav class="rail" id="rail" aria-label="Categories"></nav>
-      <div class="mapwrap" id="mapwrap" hidden><svg id="ymap" viewBox="190 10 630 690" role="img" aria-label="Yard map — tap a rack to see its items"></svg>
+      <div class="mapwrap" id="mapwrap" hidden><svg id="ymap" viewBox="190 10 630 690" role="img" aria-label="Yard map — tap a rack to see its items"></svg><button type="button" id="elevBtn" hidden></button><div id="rackElev" hidden></div>
         <div class="maphint" id="maphint">Tap a rack to see what's there.</div></div>
       <div class="menu">
         <div class="ysrow"><input id="ysearch" class="search" type="search" placeholder="Search: ladder, drill, Sika, 4&quot;#14, B-10…"><div class="lvseg" role="group" aria-label="View"><button type="button" data-lv="card" title="Big cards"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button><button type="button" data-lv="list" title="Compact list"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg></button></div></div>
         <div class="selhead" id="selhead" hidden><h3 id="selTitle"></h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn maponly" id="backMap">↑ Map</button><button class="btn pri" id="rackAdd">+ Add item here</button><button class="btn" id="rackSel">Select to remove</button><button class="btn admin-only" id="rackEdit" aria-pressed="false">Edit / Delete</button><button class="btn" id="selClear">Show all</button></div></div><div class="banner" id="editBanner" hidden>Edit mode — tap a card to change or delete it. Tap “Done” when finished.</div>
-        <div id="rackElev" hidden></div><div class="cards" id="ylist"><div class="empty">Items appear here once the yard list loads.</div></div>
+        <div class="cards" id="ylist"><div class="empty">Items appear here once the yard list loads.</div></div>
       </div>
     </div>
     <div class="cartbar" id="cartbar" hidden>
@@ -596,7 +600,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.97',APP_DATE='2026-10-15';
+const APP_VERSION='1.99',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -769,11 +773,11 @@ function renderYard(){
   $$('#rail .cat').forEach(b=>b.onclick=()=>{yGroup=b.dataset.g;if(yGroup.startsWith('rj:')&&yGroup!=='rj:all')selJob=yGroup.slice(3);$('#ysearch').value='';renderYard();window.scrollTo({top:0})});
   $$('.viewseg button[data-v]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===yView));
   const special=['RETURN','RECEIVE','REPAIR','DISPOSE'].includes(act);const isMap=yView==='map'&&!special;$('.viewseg:not(#sheetSeg)').hidden=special;$('#kiosk').classList.toggle('rcvmode',act==='RECEIVE'||act==='DISPOSE');$('#kiosk').classList.toggle('map',isMap);$('#rail').hidden=isMap;$('#mapwrap').hidden=!isMap;
-  if($('#rackElev'))$('#rackElev').hidden=true;
+  if($('#rackElev'))$('#rackElev').hidden=true;if($('#elevBtn'))$('#elevBtn').hidden=true;
   if(isMap)renderMap();
   const q=$('#ysearch').value.trim();
   let l,subBar='';
-  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));const _rs=yLoc&&!yLoc.startsWith('zone:')&&!q;if(_rs){const el=items.filter(i=>locOf(i)===yLoc);drawElev(el);if(elevSel&&elevSel.loc===yLoc){const d=rackDef(yLoc);l=l.filter(i=>lvNum(i)===elevSel.lv&&(elevSel.unp?(!i.pallet||+i.pallet>d.p||+i.pallet<1):(!elevSel.p||String(i.pallet||'')===String(elevSel.p))))}}else{$('#rackElev').hidden=true}
+  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));const _rs=yLoc&&!yLoc.startsWith('zone:')&&!q;if(_rs){const el=items.filter(i=>locOf(i)===yLoc);drawElev(el);if(elevSel&&elevSel.loc===yLoc){const d=rackDef(yLoc);l=l.filter(i=>lvNum(i)===elevSel.lv&&(elevSel.unp?(!i.pallet||+i.pallet>d.p||+i.pallet<1):(!elevSel.p||String(i.pallet||'')===String(elevSel.p))))}}else{$('#rackElev').hidden=true;$('#elevBtn').hidden=true}
     if(!q&&!yLoc)l=[];
     $('#selhead').hidden=!yLoc;$('#selTitle').textContent=yLoc.startsWith('zone:')?'Zone '+yLoc.slice(5):yLoc?'Rack '+yLoc:'';
     l.sort((a,b)=>(a.level||'').localeCompare(b.level||'')||a.name.localeCompare(b.name));
@@ -920,19 +924,20 @@ async function applyDecision(i,mode,each,reason){const id=i.id,now=new Date().to
     if(dsel.length){const um={};SN.forEach(sn=>um[sn]=ust(i,sn));Object.assign(um,i.units||{});if(!(Array.isArray(i.serials)&&i.serials.length))upd.serials=SN;for(const sn of dsel)um[sn]={st:mode==='done'?'yard':mode==='repair'?'repair':'disposed'};upd.units=um}}
   await writeItem(id,{...upd,updatedAt:now,updatedBy:curUser});
   await db.collection('logs').add({units:dsel.length?dsel:null,ts:now,action:act2,itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n,before,after:qty,job:'',by:curUser,note:lognote,cond:''})}
-let rackCfg={},elevSel=null;
+let rackCfg={},elevSel=null,elevOpen=false;
 const lvNum=i=>{const m=String(i.level||'').toUpperCase().match(/L\s*(\d+)/);return m?+m[1]:0};
 function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};return{lv:c.levels||4,p:c.pallets||2}}
-function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=Math.max(d.lv,...list.map(lvNum));box.hidden=false;
+function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=Math.max(d.lv,...list.map(lvNum));const eb=$('#elevBtn');eb.hidden=elevOpen;eb.innerHTML=`Side view · ${esc(yLoc)}`;eb.onclick=()=>{elevOpen=true;renderYard()};box.hidden=!elevOpen;if(!elevOpen)return;
   const rows=[];for(let lv=maxLv;lv>=1;lv--)rows.push(lv);if(list.some(i=>!lvNum(i)))rows.push(0);
   const cell=(lv,p,its)=>{const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p||'')===String(p||'');
     return `<button type="button" class="pal ${its.length?'has':''} ${on?'on':''}" data-lv="${lv}" data-p="${p||''}"><span class="pn">${p?'P'+p:lv?'Not placed':'Floor / GR'}</span>${its.slice(0,3).map(i=>`<span class="pi">${thumb(i)}${esc(i.name)}${i.size&&i.size!=='-'?' <small>'+esc(i.size)+'</small>':''}</span>`).join('')}${its.length>3?`<span class="pm">+${its.length-3} more</span>`:''}${!its.length?'<span class="pe">empty</span>':''}</button>`};
-  box.innerHTML=`<div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">Tap a pallet to see what's on it</small>${isAdmin?`<span class="elcfg">Levels <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button> Pallets <button data-c="p-">−</button><b>${d.p}</b><button data-c="p+">+</button></span>`:''}</div>
+  box.innerHTML=`<button type="button" class="elx" id="elX" aria-label="Close side view">✕</button><div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">Tap a pallet to see what's on it</small>${isAdmin?`<span class="elcfg">Levels <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button> Pallets <button data-c="p-">−</button><b>${d.p}</b><button data-c="p+">+</button></span>`:''}</div>
   <div class="rack">${rows.map(lv=>{const its=list.filter(i=>lvNum(i)===lv);if(!lv)return `<div class="lvrow"><span class="lvl">GR</span><div class="pals" style="grid-template-columns:1fr">${cell(0,'',its)}</div></div>`;
     const unp=its.filter(i=>!i.pallet||+i.pallet>d.p||+i.pallet<1);
     return `<div class="lvrow"><span class="lvl">L${lv}</span><div class="pals" style="grid-template-columns:repeat(${d.p},minmax(0,1fr))">${Array.from({length:d.p},(_,k)=>cell(lv,k+1,its.filter(i=>+i.pallet===k+1))).join('')}</div>${unp.length?`<button type="button" class="unp ${elevSel&&elevSel.lv===lv&&elevSel.p==='x'?'on':''}" data-lv="${lv}" data-p="x">${unp.length} not placed on a pallet</button>`:''}</div>`}).join('')}</div>
   ${elevSel&&elevSel.loc===yLoc?`<button class="btn" id="elClr" style="margin-top:8px">Show whole rack</button>`:''}`;
   box.querySelectorAll('.pal,.unp').forEach(b=>b.onclick=()=>{const lv=+b.dataset.lv,p=b.dataset.p;const same=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p||'')===p;elevSel=same?null:{loc:yLoc,lv,p:p==='x'?'':p,unp:p==='x'};renderYard()});
+  $('#elX').onclick=()=>{elevOpen=false;renderYard()};
   if($('#elClr'))$('#elClr').onclick=()=>{elevSel=null;renderYard()};
   box.querySelectorAll('[data-c]').forEach(b=>b.onclick=async()=>{const c={...rackDef(yLoc)};const k=b.dataset.c;if(k==='lv-')c.lv=Math.max(1,c.lv-1);if(k==='lv+')c.lv=Math.min(8,c.lv+1);if(k==='p-')c.p=Math.max(1,c.p-1);if(k==='p+')c.p=Math.min(6,c.p+1);
     rackCfg={...rackCfg,[yLoc]:{levels:c.lv,pallets:c.p}};renderYard();try{await db.doc('config/racks').set(rackCfg)}catch(e){toast('Could not save rack setup')}})}
@@ -1149,7 +1154,16 @@ function renderInv(){
   $$('#itbody tr[data-id]').forEach(r=>r.onclick=()=>openItem(r.dataset.id));
 }
 function uniq(a){return [...new Set(a.filter(x=>x&&String(x).trim()&&x!=='-'))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}))}
-function fillLists(pool){const keys=['cat','mfgr','name','size','unit','level','loc'];let dl=document.getElementById('dlbox');if(!dl){dl=document.createElement('div');dl.id='dlbox';dl.hidden=true;document.body.appendChild(dl)}
+const PICKK=['cat','mfgr','name','size','unit','level','loc'];
+function syncPick(k){const inp=document.getElementById('e_'+k),sel=document.getElementById('pk_'+k);if(!inp||!sel)return;const v=inp.value;
+  if(v&&![...sel.options].some(o=>o.value===v)){const o=document.createElement('option');o.value=v;o.textContent=v;sel.insertBefore(o,sel.options[1])}
+  sel.value=v||'';inp.hidden=!!(v===''?false:[...sel.options].some(o=>o.value===v));if(!v)inp.hidden=true}
+function buildPicks(pool){for(const k of PICKK){const inp=document.getElementById('e_'+k);if(!inp||inp.disabled)continue;let sel=document.getElementById('pk_'+k);
+    if(!sel){sel=document.createElement('select');sel.id='pk_'+k;sel.className='pick';inp.parentNode.insertBefore(sel,inp);
+      sel.onchange=()=>{if(sel.value==='__new'){inp.hidden=false;inp.value='';inp.focus()}else{inp.value=sel.value;inp.hidden=true}};}
+    const vals=uniq((k==='loc'||k==='level'?items:pool).map(x=>x[k]));const cur=inp.value;
+    sel.innerHTML=`<option value="">— Select —</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+`<option value="__new">+ Type a new one…</option>`;syncPick(k)}}
+function fillLists(pool){setTimeout(()=>buildPicks(pool),0);const keys=['cat','mfgr','name','size','unit','level','loc'];let dl=document.getElementById('dlbox');if(!dl){dl=document.createElement('div');dl.id='dlbox';dl.hidden=true;document.body.appendChild(dl)}
   dl.innerHTML=keys.map(k=>`<datalist id="dl_${k}">${uniq((k==='loc'||k==='level'?items:pool).map(x=>x[k])).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
 function setupQuickPick(i,isNew){fillLists(items);const box=document.getElementById('qp');if(!box)return;let g='',sb='';
   const draw=()=>{const pool=items.filter(x=>(!g||grp(x)===g)&&(!sb||sub(x)===sb));fillLists(g?pool:items);
@@ -1160,7 +1174,7 @@ function setupQuickPick(i,isNew){fillLists(items);const box=document.getElementB
     ${g?`<div class="qpl">${list.length?list.slice(0,80).map((x,n)=>`<button type="button" class="qpi" data-qi="${n}"><b>${esc(x.name)}</b><span>${esc([x.size&&x.size!=='-'?x.size:'',x.mfgr,x.unit].filter(Boolean).join(' · '))}</span></button>`).join(''):'<div class="muted" style="padding:8px">No similar items yet — type the details below.</div>'}</div>`:''}`;
     box.querySelectorAll('[data-qg]').forEach(b=>b.onclick=()=>{g=g===b.dataset.qg?'':b.dataset.qg;sb='';draw()});
     box.querySelectorAll('[data-qs]').forEach(b=>b.onclick=()=>{sb=sb===b.dataset.qs?'':b.dataset.qs;draw()});
-    box.querySelectorAll('[data-qi]').forEach(b=>b.onclick=()=>{const x=list[+b.dataset.qi];['type','cat','mfgr','name','size','unit','sds'].forEach(k=>{const el=document.getElementById('e_'+k);if(el&&x[k]!=null)el.value=x[k]});
+    box.querySelectorAll('[data-qi]').forEach(b=>b.onclick=()=>{const x=list[+b.dataset.qi];['type','cat','mfgr','name','size','unit','sds'].forEach(k=>{const el=document.getElementById('e_'+k);if(el&&x[k]!=null){el.value=x[k];syncPick(k)}});
       box.querySelectorAll('.qpi').forEach(e=>e.classList.toggle('on',e===b));const q=document.getElementById('e_qty');if(q){q.focus();q.select&&q.select()}toast('Copied — check location and enter the quantity')});};
   draw()}
 function bindUnits(i,id){const g=$('#e_ugen');if(!g)return;
