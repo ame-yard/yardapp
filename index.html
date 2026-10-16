@@ -472,7 +472,7 @@ body.hascart main{padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))}
 *{touch-action:manipulation}@media (max-width:820px){input,select,textarea{font-size:16px!important}}
 .pick{width:100%;min-width:0;box-sizing:border-box}.pickwrap{display:flex;flex-direction:column;gap:6px}
 .lvl{display:flex;flex-direction:column;align-items:center;gap:4px}.lpc{display:flex;flex-direction:column;align-items:center;gap:2px}.lpc button{width:24px;height:22px;border-radius:6px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700;line-height:1;padding:0}.lpc b{font-size:11px}.lvrow{grid-template-columns:38px minmax(0,1fr)}
-.tray{margin-bottom:10px;border-style:dashed!important;background:rgba(244,123,32,.06)!important}
+.cant{display:grid;grid-template-columns:22px 1fr;position:relative}.cpost{background:linear-gradient(90deg,#1f2a44,#34446b,#1f2a44);border-radius:3px}.carms{display:flex;flex-direction:column;gap:14px;padding:6px 0}.carm{position:relative;border:0!important;background:none!important;padding:4px 6px 14px 10px!important;min-height:52px}.carm .cbeam{position:absolute;left:-4px;right:8%;bottom:0;height:10px;background:linear-gradient(#e0782a,#b85a17);border-radius:0 4px 4px 0;box-shadow:0 2px 4px rgba(0,0,0,.35)}.carm.on .cbeam,.carm.drop .cbeam{background:linear-gradient(#5ad06a,#2f9a40)}.carm.drop{box-shadow:none!important}.cfoot{height:12px;width:55%;background:linear-gradient(#34446b,#1f2a44);border-radius:0 4px 4px 0;margin-top:2px}.tray{margin-bottom:10px;border-style:dashed!important;background:rgba(244,123,32,.06)!important}
 #rackElev .pal{cursor:default;min-height:58px}#rackElev .pal.drop{border-color:#3fb950!important;box-shadow:0 0 0 2px #3fb950;background:rgba(63,185,80,.12)}
 .pal .ph{background:none;border:0;color:var(--muted);font:700 11px var(--mono,monospace);text-align:left;padding:0;cursor:pointer}
 .pchips{display:flex;flex-wrap:wrap;gap:4px}
@@ -648,7 +648,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.13',APP_DATE='2026-10-15';
+const APP_VERSION='3.14',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -833,7 +833,7 @@ function renderYard(){
   if(isMap)renderMap();
   const q=$('#ysearch').value.trim();
   let l,subBar='';
-  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));const _rs=yLoc&&!yLoc.startsWith('zone:')&&!q;if(_rs){const el=items.filter(i=>locOf(i)===yLoc);drawElev(el);if(elevSel&&elevSel.loc===yLoc){l=l.filter(i=>lvNum(i)===elevSel.lv&&String(i.pallet||'')===String(elevSel.p))}}else{$('#rackElev').hidden=true;$('#elevBtn').hidden=true}
+  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));const _rs=yLoc&&!yLoc.startsWith('zone:')&&!q;if(_rs){const el=items.filter(i=>locOf(i)===yLoc);drawElev(el);if(elevSel&&elevSel.loc===yLoc){l=l.filter(i=>lvNum(i)===elevSel.lv&&(rackDef(yLoc).type==='cant'||String(i.pallet||'')===String(elevSel.p)))}}else{$('#rackElev').hidden=true;$('#elevBtn').hidden=true}
     if(!q&&!yLoc)l=[];
     $('#selhead').hidden=!yLoc;$('#selTitle').textContent=yLoc.startsWith('zone:')?'Zone '+yLoc.slice(5):yLoc?'Rack '+yLoc:'';
     l.sort((a,b)=>(a.level||'').localeCompare(b.level||'')||a.name.localeCompare(b.name));
@@ -982,20 +982,23 @@ async function applyDecision(i,mode,each,reason){const id=i.id,now=new Date().to
   await db.collection('logs').add({units:dsel.length?dsel:null,ts:now,action:act2,itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n,before,after:qty,job:'',by:curUser,note:lognote,cond:''})}
 let rackCfg={},elevSel=null,elevOpen=false;
 const lvNum=i=>{const m=String(i.level||'').toUpperCase().match(/L\s*(\d+)/);return m?+m[1]:0};
-function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};const lp=c.lp||{};return{lv:c.levels||4,p:c.pallets||2,lp,pl:l=>lp[l]||c.pallets||2}}
+function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};const lp=c.lp||{};const type=(rackCfg[loc]||{}).type||(/^D-0[1-4]$/.test(loc)?'cant':'pallet');return{type,lv:c.levels||4,p:c.pallets||2,lp,pl:l=>type==='cant'?1:(lp[l]||c.pallets||2)}}
 function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=Math.max(d.lv,...list.map(lvNum));const eb=$('#elevBtn');eb.hidden=elevOpen;eb.innerHTML=`Side view · ${esc(yLoc)}`;eb.onclick=()=>{elevOpen=true;renderYard()};box.hidden=!elevOpen;if(!elevOpen)return;
-  const canMove=isAdmin||can('UNITS');const placed=i=>{const lv=lvNum(i);return lv>=1&&lv<=maxLv&&+i.pallet>=1&&+i.pallet<=d.pl(lv)};
+  const canMove=isAdmin||can('UNITS');const cant=d.type==='cant';const placed=i=>{const lv=lvNum(i);return lv>=1&&lv<=maxLv&&(cant||(+i.pallet>=1&&+i.pallet<=d.pl(lv)))};
   const unpl=list.filter(i=>!placed(i));
   const chip=i=>`<span class="pchip ${elPick===i.id?'sel':''}" data-iid="${esc(i.id)}">${thumb(i)}<span>${esc(i.name)}${i.size&&i.size!=='-'?' <small>'+esc(i.size)+'</small>':''}</span><b>${esc(qtyTxt(i))}</b></span>`;
   const rows=[];for(let lv=maxLv;lv>=1;lv--)rows.push(lv);
-  box.innerHTML=`<button type="button" class="elx" id="elX" aria-label="Close side view">✕</button><div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">${canMove?'Drag an item onto a pallet (or tap the item, then tap the pallet). Tap a pallet header to filter the list.':'Tap a pallet to see what\'s on it'}</small>${isAdmin?`<span class="elcfg">Levels <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button><small class="muted">· pallets per level: − / + on each level</small></span>`:''}</div>
+  box.innerHTML=`<button type="button" class="elx" id="elX" aria-label="Close side view">✕</button><div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">${canMove?(cant?'Drag an item onto an arm (or tap the item, then tap the arm). Tap an arm label to filter the list.':'Drag an item onto a pallet (or tap the item, then tap the pallet). Tap a pallet header to filter the list.'):'Tap a pallet to see what\'s on it'}</small>${isAdmin?`<span class="elcfg">${cant?'Arms':'Levels'} <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button>${cant?'':'<small class="muted">· pallets per level: − / + on each level</small>'}<button type="button" id="elType" style="width:auto;padding:0 10px">${cant?'Cantilever rack':'Pallet rack'} ⇄</button></span>`:''}</div>
   ${unpl.length?`<div class="tray pal" data-lv="0" data-p=""><span class="pn">Not placed yet · ${unpl.length}</span><div class="pchips">${unpl.map(chip).join('')}</div></div>`:''}
-  <div class="rack">${rows.map(lv=>{const np=d.pl(lv);return `<div class="lvrow"><span class="lvl">L${lv}${isAdmin?`<span class="lpc"><button data-lp="${lv}" data-d="-1">−</button><b>${np}</b><button data-lp="${lv}" data-d="1">+</button></span>`:''}</span><div class="pals" style="grid-template-columns:repeat(${np},minmax(0,1fr))">${Array.from({length:np},(_,k)=>{const p=k+1;const its=list.filter(i=>placed(i)&&lvNum(i)===lv&&+i.pallet===p);const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p)===String(p);
+  ${cant?`<div class="cant"><div class="cpost"></div><div class="carms">${rows.map(lv=>{const its=list.filter(i=>placed(i)&&lvNum(i)===lv);const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv;
+      return `<div class="pal carm ${its.length?'has':''} ${on?'on':''}" data-lv="${lv}" data-p="1"><button type="button" class="pn ph" data-flt="1">Arm L${lv}${its.length?' · '+its.length:''}</button><div class="pchips">${its.map(chip).join('')||'<span class="pe">empty</span>'}</div><div class="cbeam"></div></div>`}).join('')}</div></div><div class="cfoot"></div>`:''}
+  <div class="rack"${cant?' hidden':''}>${rows.map(lv=>{const np=d.pl(lv);return `<div class="lvrow"><span class="lvl">L${lv}${isAdmin?`<span class="lpc"><button data-lp="${lv}" data-d="-1">−</button><b>${np}</b><button data-lp="${lv}" data-d="1">+</button></span>`:''}</span><div class="pals" style="grid-template-columns:repeat(${np},minmax(0,1fr))">${Array.from({length:np},(_,k)=>{const p=k+1;const its=list.filter(i=>placed(i)&&lvNum(i)===lv&&+i.pallet===p);const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p)===String(p);
       return `<div class="pal ${its.length?'has':''} ${on?'on':''}" data-lv="${lv}" data-p="${p}"><button type="button" class="pn ph" data-flt="1">L${lv} · P${p}${its.length?' · '+its.length:''}</button><div class="pchips">${its.map(chip).join('')||'<span class="pe">empty</span>'}</div></div>`}).join('')}</div></div>`}).join('')}</div>
   ${elevSel&&elevSel.loc===yLoc?`<button class="btn" id="elClr" style="margin-top:8px">Show whole rack</button>`:''}`;
   $('#elX').onclick=()=>{elevOpen=false;elPick='';renderYard()};
   box.querySelectorAll('[data-flt]').forEach(b=>b.onclick=e=>{e.stopPropagation();const c=b.closest('.pal');const lv=+c.dataset.lv,p=c.dataset.p;const same=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p)===p;elevSel=same?null:{loc:yLoc,lv,p};renderYard()});
   if($('#elClr'))$('#elClr').onclick=()=>{elevSel=null;renderYard()};
+  if($('#elType'))$('#elType').onclick=async()=>{rackCfg={...rackCfg,[yLoc]:{...(rackCfg[yLoc]||{levels:d.lv}),type:cant?'pallet':'cant'}};renderYard();try{await db.doc('config/racks').set(rackCfg)}catch(e){toast('Could not save rack setup')}};
   const moveTo=async(id,lv,p)=>{const it=byId(id);if(!it)return;const nl=lv?'L'+lv:it.level,np=lv?String(p):'';if(lvNum(it)===lv&&String(it.pallet||'')===np)return;
     it.level=nl;it.pallet=np;elPick='';renderYard();
     try{await writeItem(id,{level:nl,pallet:np,updatedAt:new Date().toISOString(),updatedBy:curUser});await db.collection('logs').add({ts:new Date().toISOString(),action:'EDIT',itemId:id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:0,before:it.qty,after:it.qty,job:'',by:curUser,note:lv?`Placed on ${yLoc} L${lv} · Pallet ${p}`:'Removed from pallet',cond:''})}catch(e){toast('Could not save: '+(e.message||e.code))}};
