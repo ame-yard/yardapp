@@ -124,8 +124,10 @@ label.f input,label.f select,label.f textarea{padding:10px 12px;border:1px solid
 .bay.match rect{fill:var(--chip);stroke-width:2}
 .bay.incart rect{fill:var(--hi);stroke:var(--hi)}
 .bay.sel rect{fill:var(--steel);stroke:var(--steel)}
-.bay text{font-family:var(--mono);font-size:11px;font-weight:600;fill:var(--ink);text-anchor:middle;pointer-events:none}
-.bay .bc{font-size:10px;font-weight:400;fill:var(--muted)}
+.zbar{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}.zbar::-webkit-scrollbar{display:none}.zbar button{flex:0 0 auto;min-width:44px;height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:700 15px var(--display,system-ui)}.zbar button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:var(--hi-ink)}.zbar small{font:400 11px system-ui;opacity:.7;margin-left:4px}
+.zpanel{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:calc(100vh - 230px);overflow:auto;padding:2px}.ztile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;border-radius:10px;border:1px solid var(--steel);background:var(--panel);color:var(--ink);text-align:left;font:inherit;cursor:pointer;min-height:76px}.ztile.empty{border-color:var(--line);opacity:.6}.ztile.sel{background:var(--steel);color:var(--steel-ink)}.ztile.match{background:var(--chip);border-width:2px}.ztile.incart{border-color:var(--hi);box-shadow:inset 0 0 0 2px var(--hi)}.ztile b{font:700 18px var(--mono)}.ztile .zc{font-size:13px;opacity:.8}.ztile .zi{font-size:12px;opacity:.7;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}@media(max-width:600px){.zpanel{grid-template-columns:1fr 1fr;max-height:none}}
+.bay text{font-family:var(--mono);font-size:13px;font-weight:700;fill:var(--ink);text-anchor:middle;pointer-events:none}
+.bay .bc{font-size:12px;font-weight:600;fill:var(--hi)}.bay.empty .bc{fill:var(--muted);font-weight:400}
 .bay.sel text,.bay.sel .bc{fill:var(--steel-ink)}
 .bay.incart text,.bay.incart .bc{fill:var(--hi-ink)}
 .bldg{fill:none;stroke:var(--muted);stroke-width:2}
@@ -527,7 +529,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <div class="viewseg" role="group" aria-label="Find items by"><button data-v="map" aria-pressed="true">Yard Map</button><button data-v="cat" aria-pressed="false">Categories</button></div>
     <div class="kiosk" id="kiosk">
       <nav class="rail" id="rail" aria-label="Categories"></nav>
-      <div class="mapwrap" id="mapwrap" hidden><svg id="ymap" viewBox="190 10 630 690" role="img" aria-label="Yard map — tap a rack to see its items"></svg><button type="button" id="elevBtn" hidden></button><div id="rackElev" hidden></div>
+      <div class="mapwrap" id="mapwrap" hidden><div class="zbar" id="zbar"></div><div class="zpanel" id="zpanel" hidden></div><svg id="ymap" viewBox="190 10 630 690" role="img" aria-label="Yard map — tap a rack to see its items"></svg><button type="button" id="elevBtn" hidden></button><div id="rackElev" hidden></div>
         <div class="maphint" id="maphint">Tap a rack to see what's there.</div></div>
       <div class="menu">
         <div class="ysrow"><input id="ysearch" class="search" type="search" placeholder="Search: ladder, drill, Sika, 4&quot;#14, B-10…"><div class="lvseg" role="group" aria-label="View"><button type="button" data-lv="card" title="Big cards"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button><button type="button" data-lv="list" title="Compact list"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg></button></div></div>
@@ -636,7 +638,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.70',APP_DATE='2026-10-15';
+const APP_VERSION='2.71',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -713,6 +715,7 @@ $('#rackAdd').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
 $('#rackSel').onclick=()=>{selMode=!selMode;picked.clear();renderYard()};
 $('#rackEdit').onclick=()=>{editMode=!editMode;renderYard()};
 function scrollToList(){if(!yLoc)return;const m=$('#kiosk .menu');if(m&&getComputedStyle($('#kiosk')).gridTemplateColumns.split(' ').length===1)m.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}
+let yZone='';
 function renderMap(){
   const q=$('#ysearch').value.trim();const cnt={},hit={},inc={};
   items.forEach(i=>{const l=locOf(i);cnt[l]=(cnt[l]||0)+1;if(q&&match(i,q))hit[l]=1;if(cart.some(c=>c.id===i.id))inc[l]=1});
@@ -720,10 +723,18 @@ function renderMap(){
   h+=ZONES.map(([z,x,y,w,hh])=>`<rect class="z ${yLoc==='zone:'+z?'sel':''}" data-zone="${z}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="4"/>${z==='Y'?`<text class="zl" style="font-size:18px" x="${x+12}" y="${y+24}">OUTDOOR YARD</text>`:`<text class="zl" x="${x+w-10}" y="${y+hh-10}" text-anchor="end">${z}</text>`}`).join('');
   h=h.replace('<rect class="z','<rect class="z')
   h+=Object.entries(BAYS).map(([l,[x,y]])=>{const n=cnt[l]||0;const c=['bay',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
-    return `<g class="${c}" data-loc="${l}"><rect x="${x-22}" y="${y-18}" width="44" height="36" rx="5"/><text x="${x}" y="${y-2}">${l}</text><text class="bc" x="${x}" y="${y+12}">${n?n:'—'}</text></g>`}).join('');
+    return `<g class="${c}" data-loc="${l}"><rect x="${x-23}" y="${y-20}" width="46" height="40" rx="5"/><text x="${x}" y="${y-3}">${l}</text><text class="bc" x="${x}" y="${y+14}">${n?n:'—'}</text></g>`}).join('');
   $('#ymap').innerHTML=h;
+  {const ZN={A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',Y:'Outdoor'};const zc=z=>Object.keys(BAYS).filter(l=>l.startsWith(z+'-')).reduce((a,l)=>a+(cnt[l]||0),0);
+   $('#zbar').innerHTML=`<button type="button" data-zb="" aria-pressed="${!yZone}">Map</button>`+ZONES.map(([z])=>`<button type="button" data-zb="${z}" aria-pressed="${yZone===z}">${ZN[z]}<small>${zc(z)||''}</small></button>`).join('');
+   $$('#zbar [data-zb]').forEach(b=>b.onclick=()=>{yZone=b.dataset.zb;renderMap()});
+   const zp=$('#zpanel');zp.hidden=!yZone;$('#ymap').style.display=yZone?'none':'';if($('#maphint'))$('#maphint').textContent=yZone?'Tap a rack to see its items.':'Tap a rack, or pick a zone above for big buttons.';
+   if(yZone){const L=Object.keys(BAYS).filter(l=>l.startsWith(yZone+'-')).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+     zp.innerHTML=L.map(l=>{const n=cnt[l]||0;const its=items.filter(i=>locOf(i)===l).map(i=>i.name).filter(Boolean);const c=['ztile',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
+       return `<button type="button" class="${c}" data-zl="${l}"><b>${l}</b><span class="zc">${n?n+' item'+(n>1?'s':''):'Empty'}</span>${its.length?`<span class="zi">${esc([...new Set(its)].slice(0,3).join(' · '))}</span>`:''}</button>`}).join('')||'<p class="muted">No racks in this zone.</p>';
+     $$('#zpanel [data-zl]').forEach(g=>g.onclick=()=>{yLoc=yLoc===g.dataset.zl?'':g.dataset.zl;$('#ysearch').value='';renderYard();scrollToList()})}}
   $$('#ymap [data-loc]').forEach(g=>g.onclick=e=>{e.stopPropagation();yLoc=yLoc===g.dataset.loc?'':g.dataset.loc;$('#ysearch').value='';renderYard();scrollToList()});
-  $$('#ymap [data-zone]').forEach(r=>r.onclick=()=>{const z='zone:'+r.dataset.zone;yLoc=yLoc===z?'':z;$('#ysearch').value='';renderYard();scrollToList()});
+  $$('#ymap [data-zone]').forEach(r=>r.onclick=()=>{yZone=r.dataset.zone;const z='zone:'+r.dataset.zone;yLoc=z;$('#ysearch').value='';renderYard();scrollToList()});
 }
 const jobLabel=no=>{const j=jobs.find(x=>x.no===no)||jobs.find(x=>x.no==='#'+no);return j?(j.name?`${j.no} · ${j.name}`:j.no):no};
 $$('#actions .act').forEach(b=>b.onclick=()=>{act=b.dataset.act;$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x===b));
