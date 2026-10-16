@@ -81,10 +81,11 @@ async function exportX(){if(!window.XLSX)return;const rows=[...Q].sort((a,b)=>a.
 /* ---------- Excel import (your “Equipment Price Tracking” workbook layout) ---------- */
 function wireImp(){const b=document.getElementById('eqImp');if(!b)return;b.onclick=()=>{let f=document.getElementById('eqFile');if(!f){f=document.createElement('input');f.type='file';f.id='eqFile';f.accept='.xlsx,.xls';f.hidden=true;document.body.appendChild(f);f.onchange=()=>{const x=f.files[0];f.value='';if(x)importFile(x)}}f.click()}}
 function vendorHead(t){const m=String(t).match(/^(.*?)\s*\(\$?([\d.]+)\s*\+\s*\$?([\d.]+)\)/);return m?{name:clean(m[1]),deliv:+m[2],pick:+m[3]}:{name:clean(t)}}
-function parseWB(wb){const out=[],ven={};const iso=v=>v instanceof Date?v.toISOString().slice(0,10):(typeof v==='number'&&v>30000?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):'');
+function parseWB(wb){const out=[],ven={};const iso=v=>v instanceof Date?v.toISOString().slice(0,10):(typeof v==='number'&&v>30000?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):(typeof v==='string'&&/^\d{4}-\d\d-\d\d/.test(v)?v.slice(0,10):''));
+  const above=(A,i)=>{for(let k=i-1;k>=0;k--)if(A[k]&&A[k].some(c=>clean(c)))return A[k];return []};
   for(const sn of wb.SheetNames){const A=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,raw:true});
     const h=A.findIndex(r=>r&&r.some(c=>/^equipment type$/i.test(clean(c))));
-    if(h>0){const H=A[h].map(c=>clean(c).toLowerCase()),V=A[h-1]||[];const groups=[];V.forEach((c,i)=>{if(clean(c))groups.push({i,...vendorHead(c)})});
+    if(h>0){const H=A[h].map(c=>clean(c).toLowerCase()),V=above(A,h);const groups=[];V.forEach((c,i)=>{if(clean(c))groups.push({i,...vendorHead(c)})});
       groups.forEach((g,n)=>{g.end=n+1<groups.length?groups[n+1].i:H.length;if(g.deliv!=null)ven[g.name]={deliv:g.deliv,pick:g.pick}});
       const ci=n=>H.findIndex(x=>x.startsWith(n));const cType=ci('equipment type'),cL=ci('lbs'),cS=ci('size'),cK=ci('kw'),cO=ci('option'),cF=ci('fuel'),cD=ci('date'),cJ=ci('job'),cSite=ci('site');
       const master=/rental list/i.test(sn);
@@ -97,7 +98,7 @@ function parseWB(wb){const out=[],ven={};const iso=v=>v instanceof Date?v.toISOS
       continue}
     /* month-based sheets: vendor row, then Month/Delivery/Pickup row */
     const mh=A.findIndex(r=>r&&r.some(c=>/^month$/i.test(clean(c))));
-    if(mh>0){const H=A[mh].map(c=>clean(c).toLowerCase()),V=A[mh-1];const gs=[];V.forEach((c,i)=>{if(clean(c))gs.push({i,name:clean(c)})});gs.forEach((g,n)=>g.end=n+1<gs.length?gs[n+1].i:H.length);
+    if(mh>=0){const H=A[mh].map(c=>clean(c).toLowerCase()),V=above(A,mh);const gs=[];V.forEach((c,i)=>{if(clean(c))gs.push({i,name:clean(c)})});gs.forEach((g,n)=>g.end=n+1<gs.length?gs[n+1].i:H.length);
       for(const r of A.slice(mh+1)){if(!r||!clean(r[0]))continue;for(const g of gs){const pr={};for(let i=g.i;i<g.end;i++){if(H[i]==='month')pr.month=num(r[i]);else if(H[i]==='delivery')pr.deliv=num(r[i]);else if(H[i]==='pickup')pr.pick=num(r[i])}
         if(pr.month==null)continue;out.push({cat:fixType(r[0]),lbs:null,size:null,kw:null,option:'',fuel:'',vendor:g.name,day:null,week:null,m4:null,month:pr.month,deliv:pr.deliv??null,pick:pr.pick??null,date:'',job:'',site:'',note:'',src:'xlsx:'+sn})}}continue}
     /* dumpster layout */
