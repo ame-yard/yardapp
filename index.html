@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.31',APP_DATE='2026-10-15';
+const APP_VERSION='3.32',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1435,9 +1435,11 @@ setInterval(()=>{try{renderOnline()}catch(e){}},30000);
 let ylv='card';try{ylv=localStorage.getItem('ameLv')||'card'}catch(e){}
 function applyLv(){const l=$('#ylist');if(l)l.classList.toggle('listview',ylv==='list');$$('.lvseg [data-lv]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lv===ylv))}
 $$('.lvseg [data-lv]').forEach(b=>b.onclick=()=>{ylv=b.dataset.lv;try{localStorage.setItem('ameLv',ylv)}catch(e){}applyLv()});
+function viewItem(id){if(!id)return;if(AME.cur!=='yard')AME.open('yard');showTab('inv');setTimeout(()=>{const it=byId(id);if(it){const q=$('#isearch')||$('#search');if(q){q.value=it.name;q.dispatchEvent(new Event('input'))}openItem(id)}else openHistory(id,'')},150)}
 function renderLog(){lBar();const q=$('#lsearch').value.trim().toLowerCase();const l=logs.filter(g=>!q||[g.name,g.by,g.job,g.loc,g.note,g.action].join(' ').toLowerCase().includes(q)).slice(0,400);
   if(!l.length){$('#lbody').innerHTML='<tr><td colspan="9" class="empty">No activity yet. Check-outs and returns from the yard iPad show up here.</td></tr>';return}
-  const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${isOther(g)&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size)}</span></td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
+  const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${isOther(g)&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size)}</span>${g.itemId?` <button type="button" class="btn small" data-vi="${esc(g.itemId)}" title="Go to this item">View →</button>`:''}</td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
+  $$('#lbody [data-vi]').forEach(b=>b.onclick=e=>{e.stopPropagation();viewItem(b.dataset.vi)});
   $$('#lbody tr[data-id]').forEach(r=>{r.title=isAdmin?'Tap to edit this record':'';r.onclick=()=>lSel?(lPick.has(r.dataset.lid)?lPick.delete(r.dataset.lid):lPick.add(r.dataset.lid),renderLog()):isAdmin?editLog(r.dataset.lid):(byId(r.dataset.id)?openItem(r.dataset.id):openHistory(r.dataset.id,''))})}
 
 /* sheet */
@@ -1594,8 +1596,8 @@ $('#lSelDel').onclick=async()=>{const ids=[...lPick];if(!ids.length||!confirm('D
 $('#brand').onclick=()=>{closeDlg&&closeDlg();yView='map';yLoc='';act='OUT';selMode=false;repMode=false;repPick.clear();picked.clear();showTab('yard');renderYard();scrollTo({top:0,behavior:'smooth'})};
 $('#bellBtn').onclick=e=>{e.stopPropagation();let p=$('#bellPop');if(p){p.remove();return}
   const seen=seenTs();const l=logs.slice(0,20);p=document.createElement('div');p.id='bellPop';
-  p.innerHTML=`<div class="bph"><b>Recent updates</b><small class="muted">${logs.filter(g=>g.ts>seen&&isOther(g)).length} new</small></div>`+(l.length?l.map(g=>`<div class="bpi ${isOther(g)&&g.ts>seen?'new':''}">${thumb(byId(g.itemId))}<div><b>${esc(g.by||'')}</b> <span class="a-${g.action}">${ACTNAME[g.action]||g.action}</span> · ${esc(g.name||'')}${g.n?` <span class="muted">(${g.n} ${esc(g.unit||'')})</span>`:''}${g.job?` <span class="muted">${esc(g.job)}</span>`:''}<small class="muted">${fmtD(g.ts)}${g.note?' · '+esc(g.note):''}</small></div></div>`).join(''):'<div class="muted" style="padding:12px">No activity yet.</div>');
-  document.body.appendChild(p);const r=$('#bellBtn').getBoundingClientRect();p.style.top=(r.bottom+8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';markSeen()};
+  p.innerHTML=`<div class="bph"><b>Recent updates</b><small class="muted">${logs.filter(g=>g.ts>seen&&isOther(g)).length} new</small></div>`+(l.length?l.map(g=>`<div class="bpi ${isOther(g)&&g.ts>seen?'new':''}" data-vi="${esc(g.itemId||'')}" style="cursor:pointer" title="Open this item">${thumb(byId(g.itemId))}<div><b>${esc(g.by||'')}</b> <span class="a-${g.action}">${ACTNAME[g.action]||g.action}</span> · ${esc(g.name||'')}${g.n?` <span class="muted">(${g.n} ${esc(g.unit||'')})</span>`:''}${g.job?` <span class="muted">${esc(g.job)}</span>`:''}<small class="muted">${fmtD(g.ts)}${g.note?' · '+esc(g.note):''}</small></div></div>`).join(''):'<div class="muted" style="padding:12px">No activity yet.</div>');
+  p.querySelectorAll('[data-vi]').forEach(x=>x.onclick=()=>{p.remove();viewItem(x.dataset.vi)});document.body.appendChild(p);const r=$('#bellBtn').getBoundingClientRect();p.style.top=(r.bottom+8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';markSeen()};
 document.addEventListener('click',e=>{const p=$('#bellPop');if(p&&!p.contains(e.target))p.remove()});
 $('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;ameSync().finally(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false})};
 async function ameSync(){try{const d=await window.claude.use('db');await d.refresh();try{markSync()}catch(e){}}catch(e){toast&&toast('Sync failed — check connection')}}
@@ -1648,7 +1650,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="mpl.js?v=306"></script>
 <script src="eqp.js?v=313"></script>
 <script src="field.js?v=330"></script>
-<script src="trucks.js?v=331"></script>
+<script src="trucks.js?v=332"></script>
 <script src="safety.js?v=326"></script>
 <script src="deliv.js?v=311"></script>
 <script src="admin.js?v=329"></script>
