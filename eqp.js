@@ -9,10 +9,11 @@ const num=v=>{if(v==null||v==='')return null;const n=Number(String(v).replace(/[
 const canEdit=()=>isAdmin||can('EQP');
 function spec(q){return [q.lbs?q.lbs+'K lbs':'',q.size?q.size+"'":'',q.kw?q.kw+' kW':'',q.option||''].filter(Boolean).join(' · ')}
 function key(q){return [q.cat,q.lbs||'',q.size||'',q.kw||'',(q.option||'').toLowerCase()].join('|')}
-function load(){db.collection('eqp').onSnapshot(s=>{Q=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn())render()},()=>{});
-  db.doc('config/eqvendors').onSnapshot(s=>{VEN=s.data()||{};if(isOn())render()},()=>{});
-  db.collection('eqinbox').onSnapshot(s=>{INBOX=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn()&&!arranging)render()},()=>{});
-  db.doc('config/eqorder').onSnapshot(s=>{ORD=(s.data()||{}).order||[];if(isOn()&&!arranging)render()},()=>{})}
+const venDirty=()=>{const b=document.getElementById('vSave');return !!(b&&!b.disabled)};
+function load(){db.collection('eqp').onSnapshot(s=>{Q=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn()&&!venDirty())render()},()=>{});
+  db.doc('config/eqvendors').onSnapshot(s=>{VEN=s.data()||{};if(isOn()&&!venDirty())render()},()=>{});
+  db.collection('eqinbox').onSnapshot(s=>{INBOX=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn()&&!arranging&&!venDirty())render()},()=>{});
+  db.doc('config/eqorder').onSnapshot(s=>{ORD=(s.data()||{}).order||[];if(isOn()&&!arranging&&!venDirty())render()},()=>{})}
 let ORD=[],arranging=false;
 const isOn=()=>el()&&!el().hidden;
 
@@ -93,8 +94,10 @@ function renderList(){const q=qf.toLowerCase();const l=[...Q].filter(x=>!q||[x.c
 function renderVen(){const vs=[...new Set(Q.map(q=>q.vendor))].sort();
   document.getElementById('eqBody').innerHTML=`<div class="panel"><p class="muted">Default delivery and pickup fees per vendor. A quote's own fee overrides these.</p>
    <div class="tblwrap"><table><thead><tr><th>Vendor</th><th class="n">Quotes</th><th class="n">Delivery</th><th class="n">Pickup</th><th>Contact / notes</th></tr></thead><tbody>
-   ${vs.map(v=>{const d=VEN[v]||{};return `<tr><td><b>${esc(v)}</b></td><td class="n">${Q.filter(q=>q.vendor===v).length}</td>${canEdit()?`<td class="n"><input class="vin" data-v="${esc(v)}" data-f="deliv" value="${esc(d.deliv??'')}" inputmode="decimal"></td><td class="n"><input class="vin" data-v="${esc(v)}" data-f="pick" value="${esc(d.pick??'')}" inputmode="decimal"></td><td><input class="vin wide" data-v="${esc(v)}" data-f="note" value="${esc(d.note||'')}"></td>`:`<td class="n">${money(num(d.deliv))}</td><td class="n">${money(num(d.pick))}</td><td>${esc(d.note||'')}</td>`}</tr>`}).join('')}</tbody></table></div></div>`;
-  document.querySelectorAll('.vin').forEach(i=>i.onchange=async()=>{const v=i.dataset.v,f=i.dataset.f;const val=f==='note'?i.value.trim():num(i.value);VEN={...VEN,[v]:{...(VEN[v]||{}),[f]:val}};try{await db.doc('config/eqvendors').set(VEN);toast('Saved')}catch(e){toast('Could not save')}})}
+   ${vs.map(v=>{const d=VEN[v]||{};return `<tr><td><b>${esc(v)}</b></td><td class="n">${Q.filter(q=>q.vendor===v).length}</td>${canEdit()?`<td class="n"><input class="vin" data-v="${esc(v)}" data-f="deliv" value="${esc(d.deliv??'')}" inputmode="decimal"></td><td class="n"><input class="vin" data-v="${esc(v)}" data-f="pick" value="${esc(d.pick??'')}" inputmode="decimal"></td><td><input class="vin wide" data-v="${esc(v)}" data-f="note" value="${esc(d.note||'')}"></td>`:`<td class="n">${money(num(d.deliv))}</td><td class="n">${money(num(d.pick))}</td><td>${esc(d.note||'')}</td>`}</tr>`}).join('')}</tbody></table></div>${canEdit()?'<div class="bar" style="justify-content:flex-end;margin-top:10px"><span class="muted" id="vSt">No changes</span><button class="btn" id="vSave" disabled>Save vendor changes</button></div>':''}</div>`;
+  const P={};const sb=document.getElementById('vSave');
+  document.querySelectorAll('.vin').forEach(i=>i.oninput=()=>{P[i.dataset.v+'|'+i.dataset.f]=i;sb.disabled=false;sb.classList.add('pri');document.getElementById('vSt').textContent='Unsaved changes'});
+  if(sb)sb.onclick=async()=>{const N=JSON.parse(JSON.stringify(VEN));Object.values(P).forEach(i=>{const v=i.dataset.v,f=i.dataset.f;N[v]={...(N[v]||{}),[f]:f==='note'?i.value.trim():num(i.value)}});sb.disabled=true;try{await db.doc('config/eqvendors').set(N);VEN=N;Object.keys(P).forEach(k=>delete P[k]);sb.classList.remove('pri');document.getElementById('vSt').textContent='All changes saved';toast('Vendor changes saved')}catch(e){sb.disabled=false;toast('Could not save: '+(e.message||e))}}}
 function openQuote(id){const q=id?Q.find(x=>x._id===id):{cat:cat||'',vendor:'',date:new Date().toISOString().slice(0,10)};if(!q)return;editId=id;
   const vs=[...new Set(Q.map(x=>x.vendor))].sort(),cs=[...new Set(Q.map(x=>x.cat))].sort();
   const F=(k,l,t='text',list)=>`<label class="f">${l}<input id="eq_${k}" type="${t}" value="${esc(q[k]??'')}" ${list?`list="eqdl_${k}"`:''} ${t==='number'?'inputmode="decimal" step="any"':''}></label>`;

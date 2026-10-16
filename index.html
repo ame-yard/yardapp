@@ -487,7 +487,7 @@ body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{disp
 .mplsteps{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.mplsteps button{flex:none;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--muted);font:600 13px inherit}.mplsteps button span{width:20px;height:20px;border-radius:50%;background:var(--chip);display:inline-flex;align-items:center;justify-content:center;font-size:11px}.mplsteps .on{border-color:var(--accent,#f47b20);color:var(--ink)}.mplsteps .on span{background:var(--accent,#f47b20);color:#fff}.mplsteps .done{color:var(--ink)}
 .mplseg{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:4px 0 14px}.mplseg button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;text-align:left;cursor:pointer}.mplseg button b{font-size:16px}.mplseg button small{font-size:12px;opacity:.75}.mplseg button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:var(--hi-ink)}@media(max-width:600px){.mplseg{grid-template-columns:1fr 1fr}.mplseg button[data-seg=all]{grid-column:1/-1;flex-direction:row;justify-content:center;gap:6px;padding:8px}}
 .mplchips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}.mplchips button{min-height:52px;padding:10px 16px;border-radius:12px;border:2px solid var(--line);background:var(--chip);color:inherit;font:600 15px inherit;cursor:pointer}.mplchips button[aria-pressed="true"]{border-color:var(--accent,#f47b20);background:rgba(244,123,32,.2)}
-.mplbar{display:flex;gap:10px;justify-content:flex-end;margin:12px 0 90px;flex-wrap:wrap}
+.mplsv{align-self:center;font-size:13px;opacity:.75;margin-right:auto}.mplbar{display:flex;gap:10px;justify-content:flex-end;margin:12px 0 90px;flex-wrap:wrap}
 .mpllines{display:flex;flex-direction:column}.mline{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.mname{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.mname small{color:var(--muted)}
 .mline .step{display:flex;align-items:center;gap:8px}.mline .step button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}.mx{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px}
 .ylink{align-self:flex-start;background:none;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted);cursor:pointer}.ylink.ok{border-color:#3fb950;color:#3fb950}.ylink.low{border-color:var(--warn);color:var(--warn)}
@@ -645,7 +645,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.90',APP_DATE='2026-10-15';
+const APP_VERSION='2.91',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1613,8 +1613,8 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=240"></script>
-<script src="mpl.js?v=290"></script>
-<script src="eqp.js?v=270"></script>
+<script src="mpl.js?v=291"></script>
+<script src="eqp.js?v=291"></script>
 <script>
 /* auto-detect a newer app version */
 (function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}

@@ -74,16 +74,19 @@ function stat(m){return m.status==='closed'?'<span class="pill p-good">Closed</s
 async function delMpl(id){const m=MPLS.find(x=>x._id===id);if(!m)return;if(!confirm('Delete the MPL for '+jobLabel(m.job)+'?'+(m.status==='out'?'\n\nIts items are still checked out — they stay out on the job (return them with Return).':'')+'\n\nYard records stay in Activity.'))return;
   try{await db.doc('mpl/'+id).delete();toast('MPL deleted');if(openId===id){openId='';view='list'}render()}catch(e){toast('Could not delete: '+(e.message||e.code))}}
 function topBtns(m,id){return `<span class="mtop">${exportBtns('t')}${m&&(isAdmin||m.prep===curUser)&&id?`<button class="btn dng" data-tdel="${esc(id)}">Delete</button>`:''}</span>`}
-function renderList(){const box=el();const l=[...MPLS].sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
+function renderList(){if(W&&W._dirty&&W.job){W._dirty=false;saveDraft(false)}const box=el();const l=[...MPLS].sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
   box.innerHTML=`<div class="mplhead"><h2>Mobilization Prep Lists</h2><button class="btn pri" id="mplNew">+ New MPL</button></div>
   ${l.length?`<div class="mplcards">${l.map(m=>`<button class="mplcard" data-m="${esc(m._id)}"><b>${esc(jobLabel(m.job))}</b>${stat(m)}<small>Prepared by ${esc(m.prep||'')} · crew ${m.crew||'-'} · ${(m.lines||[]).length} items</small><small class="muted">${esc((m.st||[]).map(stName).join(', '))}</small><small class="muted">Updated ${fmtD(m.updated)}</small>${(isAdmin||m.prep===curUser)?`<span class="mcdel" data-del="${esc(m._id)}" role="button" aria-label="Delete MPL" title="Delete">${IC2.trash}</span>`:''}</button>`).join('')}</div>`:'<div class="panel muted">No MPLs yet. Tap “+ New MPL” to prepare a job.</div>'}`;
-  document.getElementById('mplNew').onclick=()=>{W={step:0,job:'',pm:'',fm:'',crew:6,st:[],lines:null,prep:curUser};openId='';view='wiz';render()};
+  document.getElementById('mplNew').onclick=()=>{openId='';W={step:0,job:'',pm:'',fm:'',crew:6,st:[],lines:null,prep:curUser};openId='';view='wiz';render()};
   box.querySelectorAll('[data-del]').forEach(x=>x.onclick=e=>{e.stopPropagation();delMpl(x.dataset.del)});
   box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=MPLS.find(x=>x._id===b.dataset.m);if(!m)return;openId=m._id;
     if(m.status==='draft'){W={...JSON.parse(JSON.stringify(m)),step:4,_seg:'yard'};view='wiz'}else view='view';render()})}
 function crumbs(){return `<div class="mplsteps">${STEPS.map(([k,l],n)=>`<button data-st="${n}" class="${n===W.step?'on':n<W.step?'done':''}" ${n>W.step+0&&!W.lines?'disabled':''}><span>${n+1}</span>${l}</button>`).join('')}</div>`}
 function chips(list,sel,attr){return `<div class="mplchips">${list.map(([id,name])=>`<button data-${attr}="${id}" aria-pressed="${sel.includes(id)}">${esc(name)}</button>`).join('')}</div>`}
-function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
+let svT=null;const snap=()=>JSON.stringify([W.job,W.jobName,W.mpPm,W.mpFm,W.pm,W.fm,W.crew,W.st,W.lines]);
+async function saveDraft(manual){clearTimeout(svT);if(!W||!W.job)return;try{await save(W.status==='out'||W.status==='closed'?W.status:'draft');W._saved=snap();W._dirty=false;const e=document.getElementById('mSv');if(e)e.textContent='All changes saved';const b=document.getElementById('mSave');if(b)b.classList.remove('pri');if(manual)toast('MPL saved')}catch(e){toast('Could not save: '+(e.message||e))}}
+window.addEventListener('beforeunload',e=>{if(view==='wiz'&&W&&W._dirty){e.preventDefault();e.returnValue=''}});
+function renderWiz(){if(W&&W._saved===undefined)W._saved=openId?snap():'';W._dirty=!!W.job&&snap()!==W._saved;if(W._dirty){clearTimeout(svT);svT=setTimeout(()=>{if(view==='wiz')saveDraft(false)},2500)}const box=el();const s=W.step;let body='',next='Next';
   if(s===0){body=jobStep()}
   else if(s===1){body=`<h3>Roof system</h3><p class="muted">Pick every system on this job.</p>${chips(kids(8).map(x=>[x[0],x[1]]),W.st,'s')}`}
   else if(s===2){body=`<h3>Deck type</h3>${chips(kids(1).map(x=>[x[0],x[1]]),W.st,'s')}`}
@@ -91,7 +94,7 @@ function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
   else if(s===4){if(!W.lines)W.lines=generate(W.st);if(!W._seg)W._seg='yard';body=listHtml();next='Review check-out'}
   else if(s===5){body=goHtml();next=''}
   box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2>${W.step>=4?topBtns(W,openId):''}</div>${crumbs()}<div class="panel mplbody">${body}</div>
-   <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
+   <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${W.job?`<span class="mplsv" id="mSv">${W._dirty?'Unsaved changes':'All changes saved'}</span><button class="btn ${W._dirty?'pri':''}" id="mSave">Save</button>`:''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
   wire()}
 let mpJ=null,mpU=null,mpErr='',jq='',mpLive=false,mpBusy=false,SPC=null;
 function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" style="margin:0"><p>Job numbers come from <b>Spectrum through Mob Prep</b>. Connect once on this device.</p><button class="go" id="mpConn" style="width:auto">Connect Mob Prep</button></div>`;
@@ -144,7 +147,7 @@ function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f)
   const ad=document.getElementById('mAdd');if(ad)ad.onclick=addItem;q('[data-seg]',b=>b.onclick=()=>{W._seg=b.dataset.seg;render()});
   wireExport();
   const sd=document.getElementById('mSend');if(sd)sd.onclick=sendToMobPrep;
-  const sv=document.getElementById('mSave');if(sv)sv.onclick=()=>save('draft').then(()=>toast('Draft saved'));
+  const sv=document.getElementById('mSave');if(sv)sv.onclick=()=>saveDraft(true);
   const nx=document.getElementById('mNext');if(nx)nx.onclick=()=>{if(W.step===0){if(!W.job){toast('Pick the job first.');return}}
     if(W.step===3&&!W.st.length){toast('Pick at least one scope.');return}if(W.step===3)W.lines=generate(W.st);W.step++;render();scrollTo({top:0})};
   const go=document.getElementById('mGo');if(go)go.onclick=checkout}
