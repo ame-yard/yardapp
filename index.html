@@ -472,6 +472,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 .pchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}.pchip b{font:600 11px var(--mono,monospace);color:var(--muted)}.pchip .thumb{width:18px;height:18px;margin:0;border-radius:3px}
 .pchip.sel{border-color:var(--accent,#f47b20);box-shadow:0 0 0 2px var(--accent,#f47b20)}.pchip.dragging{opacity:.35}
 .pchip.ghost{position:fixed;z-index:999;pointer-events:none;transform:translate(-50%,-120%);box-shadow:0 8px 20px rgba(0,0,0,.5);border-color:var(--accent,#f47b20)}
+body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{display:none!important}
 </style>
 
 <header class="top"><div class="wrap">
@@ -554,8 +555,8 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
       <div id="crewList"></div>
       <div class="filters admin-only" style="margin-top:12px"><span class="muted" id="pinState"></span><input id="newPin" inputmode="numeric" maxlength="4" placeholder="New 4-digit editor PIN" style="width:200px"><input id="ownPin" inputmode="numeric" maxlength="4" type="password" placeholder="My personal 4-digit PIN" style="width:200px"><button class="btn" id="saveOwnPin">Set my PIN</button><button class="btn" id="savePin">Set editor PIN</button></div>
     </div>
-    <div class="panel admin-only" style="margin-bottom:18px"><h3 style="margin-top:0">Who's using the app <small class="muted" id="onlineN"></small></h3><div id="onlineList" class="muted">Loading…</div></div>
-    <div class="panel admin-only permpanel" style="margin-bottom:18px">
+    <div class="panel admin-only owner-only" style="margin-bottom:18px"><h3 style="margin-top:0">Who's using the app <small class="muted" id="onlineN"></small></h3><div id="onlineList" class="muted">Loading…</div></div>
+    <div class="panel admin-only owner-only permpanel" style="margin-bottom:18px">
       <h3 style="margin:0">Permissions</h3>
       <p class="muted" style="font-size:13px;margin:4px 0 10px">Editors always have everything. Changes apply right away on every device.</p>
       <div class="qlabel">By role</div>
@@ -609,7 +610,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.01',APP_DATE='2026-10-15';
+const APP_VERSION='2.02',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -758,7 +759,7 @@ function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
   if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
   const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')}
-function applyRole(){try{updBell()}catch(e){}$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
+function applyRole(){try{updBell()}catch(e){}document.body.classList.toggle('owner',isOwner(curUser));$$('nav.tabs button[data-tab]').forEach(b=>{if(['jobs','log','sheet'].includes(b.dataset.tab))b.hidden=!isAdmin});{const cur=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true');if(cur&&cur.hidden)showTab('yard')}$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
   document.body.classList.toggle('nophoto',!can('PHOTO'));{if($('#addJob'))$('#addJob').hidden=!can('JOBS');const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
   if(!can(act)){act=['OUT','RETURN','RECEIVE','REPAIR','DISPOSE'].find(can)||'OUT';$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act))}
   _applyRole()}
