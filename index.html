@@ -461,8 +461,8 @@ body.hascart main{padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))}
 #elevBtn{position:absolute;top:12px;right:12px;z-index:5;background:var(--accent,#f47b20);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer}
 .elx{position:sticky;float:right;top:0;margin:-4px -4px 0 8px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--chip);color:inherit;font-size:16px;cursor:pointer}.elcfg{margin-left:0!important;width:100%}
 .elhead{padding-right:40px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;margin-bottom:10px}.elcfg{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:13px}.elcfg button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}
-.rack{display:flex;flex-direction:column;gap:0;border-left:6px solid #8a6a3a;border-right:6px solid #8a6a3a;padding:0 6px}
-.lvrow{display:grid;grid-template-columns:34px minmax(0,1fr);gap:6px;align-items:stretch;border-bottom:5px solid #c8742c;padding:6px 0}
+.rack{display:flex;flex-direction:column;gap:0;padding:0 14px;position:relative;background:linear-gradient(90deg,#2e6b4e 0,#3d8a64 5px,#2e6b4e 10px,transparent 10px,transparent calc(100% - 10px),#2e6b4e calc(100% - 10px),#3d8a64 calc(100% - 5px),#2e6b4e 100%)}.rack::before,.rack::after{content:'';position:absolute;top:0;bottom:0;width:10px;background:repeating-linear-gradient(#0000 0 6px,rgba(0,0,0,.35) 6px 8px);pointer-events:none}.rack::before{left:0}.rack::after{right:0}
+.lvrow{display:grid;grid-template-columns:34px minmax(0,1fr);gap:6px;align-items:stretch;border-bottom:8px solid #ff5a1f;box-shadow:0 3px 0 -1px #c2410c;padding:8px 0 4px;margin-bottom:6px}
 .lvrow .unp{grid-column:2;font-size:12px;border:1px dashed var(--line);background:none;color:var(--muted);border-radius:8px;padding:4px;cursor:pointer}.lvrow .unp.on{border-color:var(--accent,#f47b20);color:inherit}
 .lvl{font:700 13px var(--mono,monospace);color:var(--muted);align-self:center;text-align:center}
 .pals{display:grid;gap:6px}
@@ -648,7 +648,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.14',APP_DATE='2026-10-15';
+const APP_VERSION='3.15',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
