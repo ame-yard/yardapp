@@ -1,7 +1,7 @@
 /* AME Safety — weekly crew safety meetings with sign-in sheet upload, and the courses each job needs based on its roof systems & equipment. */
 (function(){
 const sec=document.getElementById('tab-safety');
-let M=[],SJ={},CFG=null,view='home',job='',edit=null;
+let FS=[],M=[],SJ={},CFG=null,view='home',job='',edit=null;
 /* IIPP programs (page = first page in the company IIPP binder) */
 const DEF_COURSES=[
  ['iipp','Injury & Illness Prevention Program (IIPP)',1],['ppe','Personal Protective Equipment',16],['eap','Emergency Action / Medical Services Plan',28],['roof','Roofing Operations Safety',37],
@@ -17,23 +17,25 @@ const iso=d=>d.toISOString().slice(0,10);const today=()=>iso(new Date());const m
 const md=d=>{const x=new Date(d+'T12:00');return (x.getMonth()+1)+'/'+x.getDate()+'/'+String(x.getFullYear()).slice(2)};
 const jk=j=>String(j).replace(/[^A-Za-z0-9]/g,'');const isMgr=()=>typeof isAdmin!=='undefined'&&isAdmin;
 (function w(){if(typeof db!=='undefined'&&db&&db.collection){db.collection('safetymeet').onSnapshot(s=>{M=s.docs.map(d=>({...d.data(),_id:d.id}));if(AME.cur==='safety'&&!edit)render()},()=>{});
-  db.collection('safetyjobs').onSnapshot(s=>{SJ={};s.docs.forEach(d=>SJ[d.id]=d.data());if(AME.cur==='safety'&&!edit)render()},()=>{});db.doc('config/safety').onSnapshot(s=>{CFG=s.data()||null;if(AME.cur==='safety'&&!edit)render()},()=>{})}else setTimeout(w,400)})();
+  db.collection('safetyjobs').onSnapshot(s=>{SJ={};s.docs.forEach(d=>SJ[d.id]=d.data());if(AME.cur==='safety'&&!edit)render()},()=>{});db.collection('fsites').onSnapshot(s=>{FS=s.docs.map(d=>d.data());if(AME.cur==='safety'&&!edit)render()},()=>{});db.doc('config/safety').onSnapshot(s=>{CFG=s.data()||null;if(AME.cur==='safety'&&!edit)render()},()=>{})}else setTimeout(w,400)})();
+const jl=n=>{const x=FS.find(y=>y.no===n);return x?n+(x.name?' · '+x.name:''):jobLabel(n)};
 function required(j){const s=SJ[jk(j)]||{};const r=REQ();const set=new Set(r._all||[]);[...(s.sys||[]),...(s.eq||[])].forEach(x=>(r[x]||[]).forEach(k=>set.add(k)));return C().map(c=>c[0]).filter(k=>set.has(k))}
 function trainedOn(name,k,j){return M.filter(m=>(!j||m.job===j)&&(m.attend||[]).includes(name)&&(m.topics||[]).includes(k)).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]}
+async function openFile(p,pg){try{toast('Opening…');const fs=await window.claude.use('files');const b=await fs.get(p);const u=URL.createObjectURL(b instanceof Blob?new Blob([b],{type:'application/pdf'}):new Blob([b],{type:'application/pdf'}));window.open(u+(pg?'#page='+pg:''),'_blank')}catch(e){toast('Could not open: '+(e.message||e))}}
 async function openCourse(k){const c=C().find(x=>x[0]===k);if(!c)return;if(!c[2]){toast('No binder page for this course yet — use your own material.');return}
   if(!CFG?.binder){toast(isMgr()?'Upload the IIPP binder PDF under Course settings first.':'The safety binder has not been uploaded yet.');return}
-  try{toast('Opening…');const f=await window.claude.use('files');const b=await f.get(CFG.binder);const u=URL.createObjectURL(new Blob([b],{type:'application/pdf'}));window.open(u+'#page='+c[2],'_blank')}catch(e){toast('Could not open: '+(e.message||e))}}
+  openFile(CFG.binder,c[2])}
 /* ---------------- views ---------------- */
 function render(){if(!sec)return;if(edit)return renderMeet();if(view==='job'&&job)return renderJob();if(view==='cfg')return renderCfg();
-  const wk=monday();const act=jobs.filter(j=>j.status!=='Closed').sort((a,b)=>String(b.no).localeCompare(String(a.no),undefined,{numeric:true}));
+  const wk=monday();const act=(FS.length?FS:jobs.filter(j=>j.status!=='Closed')).sort((a,b)=>String(b.no).localeCompare(String(a.no),undefined,{numeric:true}));
   sec.innerHTML=`<div class="mplhead"><h2>Safety</h2>${isMgr()?'<span class="mtop"><button class="btn" id="sfCfg">Course settings</button></span>':''}</div>
    <p class="muted" style="margin-top:0">Crew safety meetings must be held at least every 10 working days (IIPP 4.3). Weekly is the AME standard — on Monday or the first day of the week.</p>
    <h3>This week · ${md(wk)}</h3><div class="jlist">${act.map(j=>{const m=M.filter(x=>x.job===j.no&&x.date>=wk).sort((a,b)=>String(b.date).localeCompare(a.date))[0];const last=M.filter(x=>x.job===j.no).sort((a,b)=>String(b.date).localeCompare(a.date))[0];
-     const days=last?Math.round((Date.now()-new Date(last.date+'T12:00'))/864e5):null;return `<button class="jrow" data-sj="${esc(j.no)}"><span class="jno">${esc(j.no)}</span><span class="jnm">${esc(j.name||'')}</span><span class="jct">${m?'✔ '+md(m.date)+' · '+(m.attend||[]).length+' crew':last?'Last: '+md(last.date)+' ('+days+' days)':'No meeting yet'}</span><span>${m?'<span class="pill p-good">Done</span>':days!==null&&days>13?'<span class="pill p-bad">Overdue</span>':'<span class="pill p-needs">Due</span>'}</span></button>`}).join('')||'<div class="muted" style="padding:12px">No active jobs.</div>'}</div>`;
+     const days=last?Math.round((Date.now()-new Date(last.date+'T12:00'))/864e5):null;return `<button class="jrow" data-sj="${esc(j.no)}"><span class="jno">${esc(j.no)}</span><span class="jnm">${esc(j.name||'')}</span><span class="jct">${m?'✔ '+md(m.date)+' · '+(m.attend||[]).length+' crew':last?'Last: '+md(last.date)+' ('+days+' days)':'No meeting yet'}</span><span>${m?'<span class="pill p-good">Done</span>':days!==null&&days>13?'<span class="pill p-bad">Overdue</span>':'<span class="pill p-needs">Due</span>'}</span></button>`}).join('')||'<div class="muted" style="padding:12px">No jobs yet — add them in Field Reports.</div>'}</div>`;
   sec.querySelectorAll('[data-sj]').forEach(b=>b.onclick=()=>{job=b.dataset.sj;view='job';render();scrollTo({top:0})});const cf=document.getElementById('sfCfg');if(cf)cf.onclick=()=>{view='cfg';render()}}
 function renderJob(){const s=SJ[jk(job)]||{};const req=required(job);const L=M.filter(m=>m.job===job).sort((a,b)=>String(b.date).localeCompare(a.date));
   const crewL=[...new Set([...(s.crew||[]),...L.flatMap(m=>m.attend||[])])];
-  sec.innerHTML=`<div class="mplhead"><button class="btn" id="sfBack">← All jobs</button><h2>${esc(jobLabel(job))}</h2><span class="mtop"><button class="btn pri" id="sfNew">+ Safety meeting</button></span></div>
+  sec.innerHTML=`<div class="mplhead"><button class="btn" id="sfBack">← All jobs</button><h2>${esc(jl(job))}</h2><span class="mtop"><button class="btn pri" id="sfNew">+ Safety meeting</button></span></div>
    <div class="panel"><h3 style="margin-top:0">Roof systems &amp; equipment on this job</h3><p class="muted" style="margin-top:0">Pick what this job uses — the required courses below update automatically.</p>
     <div class="qlabel">Roof systems</div><div class="units">${SYS.map(x=>`<button type="button" data-sys="${esc(x)}" aria-pressed="${(s.sys||[]).includes(x)}"><b>${esc(x)}</b></button>`).join('')}</div>
     <div class="qlabel" style="margin-top:10px">Equipment</div><div class="units">${EQ.map(x=>`<button type="button" data-eq="${esc(x)}" aria-pressed="${(s.eq||[]).includes(x)}"><b>${esc(x)}</b></button>`).join('')}</div></div>
@@ -47,7 +49,7 @@ function renderJob(){const s=SJ[jk(job)]||{};const req=required(job);const L=M.f
   document.getElementById('sfBack').onclick=()=>{view='home';job='';render()};document.getElementById('sfNew').onclick=()=>{const last=L[0];edit={_new:1,job,date:monday()<today()&&!L.some(m=>m.date>=monday())?today():today(),lead:curUser,topics:req.filter(k=>!crewL.length||crewL.some(n=>!trainedOn(n,k))).slice(0,3),other:'',attend:last?[...(last.attend||[])]:[],files:[],note:''};render()};
   sec.querySelectorAll('[data-om]').forEach(r=>r.onclick=()=>{const m=M.find(x=>x._id===r.dataset.om);edit=JSON.parse(JSON.stringify(m));render()})}
 function renderMeet(){const e=edit;const req=required(e.job);const names=[...new Set([...crew.filter(c=>['FM','SFM','Crew','Yard'].includes(c.role)).map(c=>c.name),...(e.attend||[])])];
-  sec.innerHTML=`<div class="mplhead"><button class="btn" id="smBack">← ${esc(jobLabel(e.job))}</button><h2>Safety meeting</h2>${e._id?'<span class="mtop"><button class="btn dng" id="smDel">Delete</button></span>':''}</div>
+  sec.innerHTML=`<div class="mplhead"><button class="btn" id="smBack">← ${esc(jl(e.job))}</button><h2>Safety meeting</h2>${e._id?'<span class="mtop"><button class="btn dng" id="smDel">Delete</button></span>':''}</div>
    <div class="panel"><div class="fields"><label class="f">Date<input type="date" id="sm_date" value="${e.date}"></label><label class="f">Led by<input id="sm_lead" list="smCrew" value="${esc(e.lead||'')}"><datalist id="smCrew">${crew.map(c=>`<option value="${esc(c.name)}">`).join('')}</datalist></label></div>
    <div class="qlabel">Topics covered</div><div class="units">${C().map(c=>`<button type="button" data-tp="${c[0]}" aria-pressed="${(e.topics||[]).includes(c[0])}" class="${req.includes(c[0])?'sfneed':''}"><b>${esc(c[1])}</b>${req.includes(c[0])?'<small>required for this job</small>':''}</button>`).join('')}</div>
    <div class="fields" style="margin-top:8px"><label class="f wide">Other topic<input id="sm_other" value="${esc(e.other||'')}" placeholder="e.g. Hot weather — water, rest, shade"></label></div>
@@ -62,7 +64,7 @@ function renderMeet(){const e=edit;const req=required(e.job);const names=[...new
   g('add').onkeydown=ev=>{if(ev.key==='Enter'&&g('add').value.trim()){e.attend=[...new Set([...(e.attend||[]),g('add').value.trim()])];re()}};g('add').onchange=()=>{if(g('add').value.trim()){e.attend=[...new Set([...(e.attend||[]),g('add').value.trim()])];re()}};
   sec.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{e.files.splice(+b.dataset.fx,1);re()});
   document.getElementById('smUp').onclick=()=>{const f=document.createElement('input');f.type='file';f.accept='image/*,application/pdf';f.multiple=true;f.onchange=async()=>{for(const x of f.files){try{toast('Uploading…');if(/pdf/i.test(x.type)){const fs=await window.claude.use('files');const p='safety/'+jk(e.job)+'/'+Date.now().toString(36)+'_'+x.name.replace(/[^\w.\-]+/g,'_');const r=await fs.save(p,x);e.files.push({url:r.url,path:p,name:x.name,type:'pdf'})}else{const a=await window.claude.use('assets');const r=await a.upload(await shrink(x));e.files.push({url:r.url,name:x.name,type:'img'})}}catch(err){toast('Could not upload: '+(err.message||err))}}re()};f.click()};
-  sec.querySelectorAll('.sfpdf').forEach((d,i)=>d.onclick=()=>{const f=(e.files||[]).filter(x=>/pdf/i.test(x.type||x.name))[i];if(f)window.open(f.url,'_blank')});
+  sec.querySelectorAll('.sfpdf').forEach((d,i)=>d.onclick=()=>{const f=(e.files||[]).filter(x=>/pdf/i.test(x.type||x.name))[i];if(f)openFile(f.path)});
   document.getElementById('smBack').onclick=document.getElementById('smX').onclick=()=>{edit=null;render()};
   const d=document.getElementById('smDel');if(d)d.onclick=async()=>{if(!confirm('Delete this safety meeting?'))return;await db.doc('safetymeet/'+e._id).delete();edit=null;render()};
   document.getElementById('smS').onclick=async()=>{keep();if(!(e.topics||[]).length&&!e.other){toast('Pick at least one topic.');return}if(!(e.attend||[]).length){toast('Mark who attended.');return}
