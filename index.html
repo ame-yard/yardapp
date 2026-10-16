@@ -449,6 +449,16 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 #repBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:#3a332e;border:1px solid #f47b20;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#f3ede6;max-width:calc(100% - 24px)}#repBar[hidden]{display:none!important}#repBar select{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:10px;padding:8px}
 #bellPop{position:fixed;z-index:300;width:min(380px,calc(100vw - 16px));max-height:min(70vh,520px);overflow:auto;background:var(--panel,#3a332e);border:1px solid var(--line,#5a514a);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--ink,#f3ede6)}.bph{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line,#5a514a);position:sticky;top:0;background:inherit}.bpi{display:flex;gap:8px;padding:10px 14px;border-bottom:1px dashed var(--line,#5a514a);font-size:14px;line-height:1.35}.bpi small{display:block;margin-top:2px}.bpi.new{background:rgba(244,123,32,.14);box-shadow:inset 3px 0 #f47b20}.bpi .thumb{width:32px;height:32px;margin:0}
 .sht{display:none}@media (max-width:600px){.lgt{display:none}.sht{display:inline}}
+#rackElev{margin:10px 0 4px;border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--panel)}
+.elhead{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;margin-bottom:10px}.elcfg{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:13px}.elcfg button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}
+.rack{display:flex;flex-direction:column;gap:0;border-left:6px solid #8a6a3a;border-right:6px solid #8a6a3a;padding:0 6px}
+.lvrow{display:grid;grid-template-columns:34px minmax(0,1fr);gap:6px;align-items:stretch;border-bottom:5px solid #c8742c;padding:6px 0}
+.lvrow .unp{grid-column:2;font-size:12px;border:1px dashed var(--line);background:none;color:var(--muted);border-radius:8px;padding:4px;cursor:pointer}.lvrow .unp.on{border-color:var(--accent,#f47b20);color:inherit}
+.lvl{font:700 13px var(--mono,monospace);color:var(--muted);align-self:center;text-align:center}
+.pals{display:grid;gap:6px}
+.pal{min-height:64px;text-align:left;border:2px solid var(--line);border-radius:8px;background:var(--chip);color:inherit;padding:6px;display:flex;flex-direction:column;gap:3px;cursor:pointer;font:inherit;overflow:hidden}
+.pal.has{background:rgba(200,116,44,.14)}.pal.on{border-color:var(--accent,#f47b20);box-shadow:0 0 0 2px var(--accent,#f47b20)}
+.pal .pn{font:700 11px var(--mono,monospace);color:var(--muted)}.pal .pi{font-size:12.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pal .pi .thumb{width:18px;height:18px;margin-right:4px;border-radius:3px}.pal .pm,.pal .pe{font-size:11px;color:var(--muted)}
 </style>
 
 <header class="top"><div class="wrap">
@@ -484,7 +494,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
       <div class="menu">
         <div class="ysrow"><input id="ysearch" class="search" type="search" placeholder="Search: ladder, drill, Sika, 4&quot;#14, B-10…"><div class="lvseg" role="group" aria-label="View"><button type="button" data-lv="card" title="Big cards"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button><button type="button" data-lv="list" title="Compact list"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg></button></div></div>
         <div class="selhead" id="selhead" hidden><h3 id="selTitle"></h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn maponly" id="backMap">↑ Map</button><button class="btn pri" id="rackAdd">+ Add item here</button><button class="btn" id="rackSel">Select to remove</button><button class="btn admin-only" id="rackEdit" aria-pressed="false">Edit / Delete</button><button class="btn" id="selClear">Show all</button></div></div><div class="banner" id="editBanner" hidden>Edit mode — tap a card to change or delete it. Tap “Done” when finished.</div>
-        <div class="cards" id="ylist"><div class="empty">Items appear here once the yard list loads.</div></div>
+        <div id="rackElev" hidden></div><div class="cards" id="ylist"><div class="empty">Items appear here once the yard list loads.</div></div>
       </div>
     </div>
     <div class="cartbar" id="cartbar" hidden>
@@ -586,7 +596,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.96',APP_DATE='2026-10-15';
+const APP_VERSION='1.97',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -658,7 +668,7 @@ const locOf=i=>(i.loc||'').split('~')[0];
 $$('.viewseg button[data-v]').forEach(b=>b.onclick=()=>{yView=b.dataset.v;LS.set('yview',yView);if(yView==='cat')yLoc='';renderYard()});
 let editMode=false,selMode=false,picked=new Set();
 $('#backMap').onclick=()=>$('#mapwrap').scrollIntoView({behavior:'smooth',block:'start'});
-$('#selClear').onclick=()=>{yLoc='';editMode=false;selMode=false;picked.clear();renderYard()};
+$('#selClear').onclick=()=>{elevSel=null;yLoc='';editMode=false;selMode=false;picked.clear();renderYard()};
 $('#rackAdd').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
 $('#rackSel').onclick=()=>{selMode=!selMode;picked.clear();renderYard()};
 $('#rackEdit').onclick=()=>{editMode=!editMode;renderYard()};
@@ -714,7 +724,7 @@ function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePi
   $$('#crewList [data-ed]').forEach(b=>b.onclick=()=>{const k=Number(b.dataset.ed);const c=crew[k];if(c.editor&&crew.filter(x=>x.editor).length===1){toast('Keep at least one editor.');return}saveCrew(crew.map((x,i)=>i===k?{...x,editor:!x.editor}:x))});
   $$('#crewList [data-ck]').forEach(b=>b.onclick=()=>{if(b.dataset.sure){const k=Number(b.dataset.ck);saveCrew(crew.filter((_,i)=>i!==k))}else{b.dataset.sure=1;b.textContent='Remove?';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='✕'}},3000)}})}
 let isAdmin=false,rawItems=[],stockMap={};
-const STOCKF=['issue','qtyNote','verifiedAt','verifiedBy','qty','out','cond','lastJob','updatedAt','updatedBy','repair','report','units','photo','photoId','photoBy','serials'];
+const STOCKF=['issue','qtyNote','verifiedAt','verifiedBy','qty','out','cond','lastJob','updatedAt','updatedBy','repair','report','units','photo','photoId','photoBy','serials','pallet','level'];
 const tracked=i=>i&&(i.type==='Equipment'||(i.cat||'').toLowerCase()==='power'||(i.cat||'').toLowerCase()==='ladder');
 const sers=i=>{if(Array.isArray(i?.serials)&&i.serials.length)return i.serials;if(!tracked(i))return[];const t=(Number(i.qty)||0)+(i.out||0)+(i.repair||0);return t>0&&t<=50?Array.from({length:t},(_,k)=>'#'+(k+1)):[]};
 const ust=(i,sn)=>{const u=(i?.units||{})[sn];if(u)return u;if(Array.isArray(i?.serials)&&i.serials.length)return{st:'yard'};
@@ -759,10 +769,11 @@ function renderYard(){
   $$('#rail .cat').forEach(b=>b.onclick=()=>{yGroup=b.dataset.g;if(yGroup.startsWith('rj:')&&yGroup!=='rj:all')selJob=yGroup.slice(3);$('#ysearch').value='';renderYard();window.scrollTo({top:0})});
   $$('.viewseg button[data-v]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===yView));
   const special=['RETURN','RECEIVE','REPAIR','DISPOSE'].includes(act);const isMap=yView==='map'&&!special;$('.viewseg:not(#sheetSeg)').hidden=special;$('#kiosk').classList.toggle('rcvmode',act==='RECEIVE'||act==='DISPOSE');$('#kiosk').classList.toggle('map',isMap);$('#rail').hidden=isMap;$('#mapwrap').hidden=!isMap;
+  if($('#rackElev'))$('#rackElev').hidden=true;
   if(isMap)renderMap();
   const q=$('#ysearch').value.trim();
   let l,subBar='';
-  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));
+  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));const _rs=yLoc&&!yLoc.startsWith('zone:')&&!q;if(_rs){const el=items.filter(i=>locOf(i)===yLoc);drawElev(el);if(elevSel&&elevSel.loc===yLoc){const d=rackDef(yLoc);l=l.filter(i=>lvNum(i)===elevSel.lv&&(elevSel.unp?(!i.pallet||+i.pallet>d.p||+i.pallet<1):(!elevSel.p||String(i.pallet||'')===String(elevSel.p))))}}else{$('#rackElev').hidden=true}
     if(!q&&!yLoc)l=[];
     $('#selhead').hidden=!yLoc;$('#selTitle').textContent=yLoc.startsWith('zone:')?'Zone '+yLoc.slice(5):yLoc?'Rack '+yLoc:'';
     l.sort((a,b)=>(a.level||'').localeCompare(b.level||'')||a.name.localeCompare(b.name));
@@ -909,6 +920,22 @@ async function applyDecision(i,mode,each,reason){const id=i.id,now=new Date().to
     if(dsel.length){const um={};SN.forEach(sn=>um[sn]=ust(i,sn));Object.assign(um,i.units||{});if(!(Array.isArray(i.serials)&&i.serials.length))upd.serials=SN;for(const sn of dsel)um[sn]={st:mode==='done'?'yard':mode==='repair'?'repair':'disposed'};upd.units=um}}
   await writeItem(id,{...upd,updatedAt:now,updatedBy:curUser});
   await db.collection('logs').add({units:dsel.length?dsel:null,ts:now,action:act2,itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n,before,after:qty,job:'',by:curUser,note:lognote,cond:''})}
+let rackCfg={},elevSel=null;
+const lvNum=i=>{const m=String(i.level||'').toUpperCase().match(/L\s*(\d+)/);return m?+m[1]:0};
+function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};return{lv:c.levels||4,p:c.pallets||2}}
+function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=Math.max(d.lv,...list.map(lvNum));box.hidden=false;
+  const rows=[];for(let lv=maxLv;lv>=1;lv--)rows.push(lv);if(list.some(i=>!lvNum(i)))rows.push(0);
+  const cell=(lv,p,its)=>{const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p||'')===String(p||'');
+    return `<button type="button" class="pal ${its.length?'has':''} ${on?'on':''}" data-lv="${lv}" data-p="${p||''}"><span class="pn">${p?'P'+p:lv?'Not placed':'Floor / GR'}</span>${its.slice(0,3).map(i=>`<span class="pi">${thumb(i)}${esc(i.name)}${i.size&&i.size!=='-'?' <small>'+esc(i.size)+'</small>':''}</span>`).join('')}${its.length>3?`<span class="pm">+${its.length-3} more</span>`:''}${!its.length?'<span class="pe">empty</span>':''}</button>`};
+  box.innerHTML=`<div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">Tap a pallet to see what's on it</small>${isAdmin?`<span class="elcfg">Levels <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button> Pallets <button data-c="p-">−</button><b>${d.p}</b><button data-c="p+">+</button></span>`:''}</div>
+  <div class="rack">${rows.map(lv=>{const its=list.filter(i=>lvNum(i)===lv);if(!lv)return `<div class="lvrow"><span class="lvl">GR</span><div class="pals" style="grid-template-columns:1fr">${cell(0,'',its)}</div></div>`;
+    const unp=its.filter(i=>!i.pallet||+i.pallet>d.p||+i.pallet<1);
+    return `<div class="lvrow"><span class="lvl">L${lv}</span><div class="pals" style="grid-template-columns:repeat(${d.p},minmax(0,1fr))">${Array.from({length:d.p},(_,k)=>cell(lv,k+1,its.filter(i=>+i.pallet===k+1))).join('')}</div>${unp.length?`<button type="button" class="unp ${elevSel&&elevSel.lv===lv&&elevSel.p==='x'?'on':''}" data-lv="${lv}" data-p="x">${unp.length} not placed on a pallet</button>`:''}</div>`}).join('')}</div>
+  ${elevSel&&elevSel.loc===yLoc?`<button class="btn" id="elClr" style="margin-top:8px">Show whole rack</button>`:''}`;
+  box.querySelectorAll('.pal,.unp').forEach(b=>b.onclick=()=>{const lv=+b.dataset.lv,p=b.dataset.p;const same=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p||'')===p;elevSel=same?null:{loc:yLoc,lv,p:p==='x'?'':p,unp:p==='x'};renderYard()});
+  if($('#elClr'))$('#elClr').onclick=()=>{elevSel=null;renderYard()};
+  box.querySelectorAll('[data-c]').forEach(b=>b.onclick=async()=>{const c={...rackDef(yLoc)};const k=b.dataset.c;if(k==='lv-')c.lv=Math.max(1,c.lv-1);if(k==='lv+')c.lv=Math.min(8,c.lv+1);if(k==='p-')c.p=Math.max(1,c.p-1);if(k==='p+')c.p=Math.min(6,c.p+1);
+    rackCfg={...rackCfg,[yLoc]:{levels:c.lv,pallets:c.p}};renderYard();try{await db.doc('config/racks').set(rackCfg)}catch(e){toast('Could not save rack setup')}})}
 function openDispose(id,mode){const i=byId(id);if(!i)return;const max=Math.max(1,(Number(i.qty)||0)+(i.repair||0));let n=1;let reason='';
   $('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" role="dialog" aria-modal="true">
    <h3>${i.repair>0?'Repair result':'Repair decision'}</h3>
@@ -1141,7 +1168,7 @@ function bindUnits(i,id){const g=$('#e_ugen');if(!g)return;
   const sv=$('#e_usave');if(sv)sv.onclick=async()=>{const list=[...new Set($('#e_serials').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean))];
     const busy=Object.entries(i.units||{}).filter(([k,u])=>u&&u.st&&u.st!=='yard'&&!list.includes(k)).map(([k])=>k);
     if(busy.length&&!confirm('Units '+busy.join(', ')+' are currently out or in repair and will lose their tag. Continue?'))return;
-    try{await writeItem(id,{serials:list,updatedAt:new Date().toISOString(),updatedBy:curUser});await db.collection('logs').add({ts:new Date().toISOString(),action:'EDIT',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:0,before:i.qty,after:i.qty,job:'',by:curUser,note:'Unit numbers: '+(list.join(', ')||'cleared'),cond:''});toast('Unit numbers saved');openItem(id)}catch(e){toast('Could not save: '+(e.message||e.code))}}}
+    try{await writeItem(id,{serials:list,level:($('#e_level')?.value||i.level||'').trim(),pallet:($('#e_pallet')?.value||'').trim(),updatedAt:new Date().toISOString(),updatedBy:curUser});await db.collection('logs').add({ts:new Date().toISOString(),action:'EDIT',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:0,before:i.qty,after:i.qty,job:'',by:curUser,note:'Unit numbers: '+(list.join(', ')||'cleared'),cond:''});toast('Unit numbers saved');openItem(id)}catch(e){toast('Could not save: '+(e.message||e.code))}}}
 function openItem(id,newLoc){
   const i=id?byId(id):{id:'',zone:(newLoc||'A')[0],loc:newLoc||'A-01',level:'L1',type:'Materials',cat:'',mfgr:'',name:'',size:'',qty:0,unit:'EA',cond:'Good',remarks:'',min:''};
   const F=(k,l,t='text',o)=>`<label class="f">${l}${o?`<select id="e_${k}">${o.map(x=>`<option ${x===i[k]?'selected':''}>${x}</option>`).join('')}</select>`:`<input id="e_${k}" type="${t}" value="${esc(i[k]??'')}" ${['cat','mfgr','name','size','unit','level','loc'].includes(k)?`list="dl_${k}" autocomplete="off"`:''}>`}</label>`;
@@ -1152,12 +1179,12 @@ function openItem(id,newLoc){
    <button type="button" class="btn" id="e_photoLbl">${i.photo?'Change photo':'Add photo'}</button>
    <button class="btn pri" id="e_hist" style="margin-left:auto">History</button></div>`:''}
    ${i.issue?`<div class="banner"><b>To verify:</b> ${esc(i.issue)}</div>`:''}
-   ${!id?'<div id="qp"></div>':''}<div class="fields">${F('loc','Location (e.g. B-10)')}${F('level','Level (GR, L1–L5)')}${F('type','Type','',['Materials','Tools','Equipment','Safety'])}${F('cat','Category')}
+   ${!id?'<div id="qp"></div>':''}<div class="fields">${F('loc','Location (e.g. B-10)')}${F('level','Level (GR, L1–L5)')}${F('pallet','Pallet # on that level (1, 2…)')}${F('type','Type','',['Materials','Tools','Equipment','Safety'])}${F('cat','Category')}
    ${F('mfgr','Manufacturer')}${F('name','Item name')}${F('size','Size')}${F('unit','Unit (EA, PL, RL, PCS, BDL, BOX, Tube)')}
    ${F('qty','Qty in yard','number')}${F('min','Reorder at (min qty)','number')}${F('cond','Condition','',['Good','Mixed','Needs Check','Bad'])}${F('sds','SDS (O/X)')}
    <label class="f wide">Remarks<input id="e_remarks" value="${esc(i.remarks||'')}"></label>
    ${isAdmin||can('UNITS')?`<div class="f wide unitbox"><b>Unit numbers</b><small class="muted">Give each unit its own tag so the yard can pick “L1”, “L3”… when taking out. One per line.</small>
-     <div class="unitgen"><input id="e_upre" placeholder="Prefix, e.g. L or Ladder " value="${esc((sers(i)[0]||'').replace(/[#]?\d+$/,'')||'')}"><button type="button" class="btn" id="e_ugen">Number 1 → ${Math.max(1,(Number(i.qty)||0)+(i.out||0)+(i.repair||0))}</button>${!isAdmin&&id?`<button type="button" class="btn pri" id="e_usave">Save unit numbers</button>`:''}</div>
+     <div class="unitgen"><input id="e_upre" placeholder="Prefix, e.g. L or Ladder " value="${esc((sers(i)[0]||'').replace(/[#]?\d+$/,'')||'')}"><button type="button" class="btn" id="e_ugen">Number 1 → ${Math.max(1,(Number(i.qty)||0)+(i.out||0)+(i.repair||0))}</button>${!isAdmin&&id?`<button type="button" class="btn pri" id="e_usave">Save level, pallet &amp; unit numbers</button>`:''}</div>
      <textarea id="e_serials" rows="4" placeholder="L1&#10;L2&#10;L3">${esc(sers(i).join('\n'))}</textarea></div>`:''}
    ${id&&i.issue?`<label class="f wide" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="e_clear"> Verified on site — clear the flag</label>`:''}</div>
    ${id&&sers(i).length?`<div class="qlabel">Units</div><div class="tblwrap"><table><thead><tr><th>Unit #</th><th>Status</th><th>Job</th><th>Times out</th></tr></thead><tbody>${sers(i).map(sn=>{const u=ust(i,sn);return `<tr><td class="mono"><b>${esc(sn)}</b></td><td>${ST_LABEL[u.st]||u.st}${u.flag?' · '+esc(u.flag):''}</td><td>${esc(u.job?jobLabel(u.job):'')}</td><td class="n">${timesOut(i.id,sn)}</td></tr>`}).join('')}</tbody></table></div>`:''}
@@ -1178,7 +1205,7 @@ function openItem(id,newLoc){
     catch(err){toast('Could not upload: '+(err.message||err.code));$('#e_photoLbl').textContent='Add photo'}};
   const bindDel=()=>{if(id&&$('#e_del'))$('#e_del').onclick=()=>{$('#e_confirm').innerHTML=`<div class="banner" style="margin-top:10px">Delete <b>${esc(i.name)}</b> from the yard list? History stays in Activity. <button class="btn dng" id="e_del2">Yes, delete</button></div>`;
     $('#e_del2').onclick=async()=>{try{await db.collection('logs').add({ts:new Date().toISOString(),action:'DISPOSE',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:i.qty||0,before:i.qty||0,after:0,job:'',by:curUser,note:'Item removed from yard list',cond:''});await db.doc((i.pending?'newitems/':'items/')+id).delete();db.doc('stock/'+id).delete().catch(()=>{});toast('Deleted');closeDlg()}catch(e){toast('Could not delete: '+(e.message||e.code))}}};};
-  bindUnits(i,id);if(!isAdmin&&id){$$('.dlg .fields input,.dlg .fields select').forEach(x=>{if(!x.closest('.unitbox'))x.disabled=true});$('#e_save')?.remove();bindDel();return}
+  bindUnits(i,id);if(!isAdmin&&id){$$('.dlg .fields input,.dlg .fields select').forEach(x=>{if(!x.closest('.unitbox')&&!(can('UNITS')&&['e_level','e_pallet'].includes(x.id)))x.disabled=true});$('#e_save')?.remove();bindDel();return}
   bindDel();
   $('#e_save').onclick=async()=>{const g=k=>$('#e_'+k).value.trim();const loc=g('loc').toUpperCase();
     const serials=$('#e_serials')?[...new Set($('#e_serials').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean))]:sers(i);
@@ -1470,6 +1497,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
     $('#logoIn').onchange=async e=>{const f=e.target.files[0];if(!f)return;const as=await window.claude?.use?.('assets');if(!as){toast('Logo upload is not available.');return}
       try{const r=await as.upload(f);await db.doc('config/brand').set({logo:r.url,logoId:r.id});toast('Logo updated')}catch(err){toast('Could not upload: '+(err.message||err.code))}}}
   db.doc('config/crew').onSnapshot(s=>{crew=(s.data()?.members)||[];renderCrew();if(!curUser)showLogin();else setUser(curUser)},()=>{});
+  db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()},()=>{});
   db.doc('config/perms').onSnapshot(s=>{perms=s.data()||{roles:{},grants:[]};if(curUser)setUser(curUser);renderPerms()},()=>{});
   setInterval(()=>{if(curUser)setUser(curUser)},60e3);
   db.doc('config/security').onSnapshot(s=>{officePin=s.data()?.officePin||'';ownerPinH=s.data()?.ownerPinH||'';renderCrew()},()=>{});
