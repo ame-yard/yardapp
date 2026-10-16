@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.36',APP_DATE='2026-10-15';
+const APP_VERSION='3.37',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1407,7 +1407,7 @@ async function secInit(){try{const u=await window.claude.use('user');msEmail=(u?
   secReady.then(()=>{if(curUser&&isOwner(curUser)&&msEmail&&!(DEVB.__owners||[]).includes(msEmail))bindName(curUser)})}
 function logLogin(n,blocked){try{db.collection('logins').add({ts:new Date().toISOString(),name:n,acct:msAcct,email:msEmail,dev:devName(),key:devKey(),ip:myIp,ua:navigator.userAgent.slice(0,160),blocked:!!blocked})}catch(e){}}
 function canUseName(n){if(!n||n===curUser||!devbOk||!msEmail)return true;const own=(DEVB.__owners||[]);if(isOwner(n)){return true}
-  if(msEmail&&own.includes(msEmail))return true;const b=DEVB[n]||[];return !b.length||b.some(x=>x.key===devKey())}
+  if(msEmail&&own.includes(msEmail))return true;const b=DEVB[n]||[];return !b.length||b.some(x=>x.key===devKey()||String(x.key).split('|')[0]===msEmail)}
 async function bindName(n){await secReady;if(!msEmail)return;const k=devKey();const own=new Set(DEVB.__owners||[]);let ch=false;if(isOwner(n)&&msEmail&&!own.has(msEmail)){own.add(msEmail);ch=true}
   const b=[...(DEVB[n]||[])];const i=b.findIndex(x=>x.key===k);const now=new Date().toISOString();
   if(i<0&&!(msEmail&&own.has(msEmail)&&!isOwner(n))){b.push({key:k,acct:msAcct,dev:devName(),first:now,last:now});ch=true}else if(i>=0){if(Date.now()-new Date(b[i].last||0)>36e5){b[i]={...b[i],last:now};ch=true}}
@@ -1653,7 +1653,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=336"></script>
 <script src="safety.js?v=326"></script>
 <script src="deliv.js?v=311"></script>
-<script src="admin.js?v=329"></script>
+<script src="admin.js?v=337"></script>
 <script src="scan.js?v=310"></script>
 <script>
 /* auto-detect a newer app version */
