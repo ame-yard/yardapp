@@ -1,6 +1,6 @@
 /* AME — Equipment Price Tracker (rental quotes by vendor) */
 (function(){
-let Q=[],VEN={},view='cmp',cat='',days=7,qf='',editId='';
+let histOpen=new Set(),Q=[],VEN={},view='cmp',cat='',days=7,qf='',editId='';
 const el=()=>document.getElementById('tab-eqp');
 const money=v=>v==null||v===''?'—':(typeof v==='number'?'$'+v.toLocaleString(undefined,{maximumFractionDigits:2}):esc(String(v)));
 const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
@@ -22,11 +22,11 @@ function delivFor(q){const v=VEN[q.vendor]||{};const dl=num(q.deliv)??num(v.deli
 
 /* ---------- views ---------- */
 function render(){const box=el();if(!box)return;
-  box.innerHTML=`<div class="mplhead"><h2>Equipment Prices</h2>${canEdit()?'<button class="btn pri" id="eqAdd">+ Add quote</button>':''}</div>
+  box.innerHTML=`<div class="mplhead"><h2>Equipment Prices</h2>${canEdit()?'<span class="mtop"><button class="btn" id="eqUp">Upload quote / invoice</button><button class="btn pri" id="eqAdd">+ Add quote</button></span>':''}</div>
    <div class="viewseg eqseg"><button data-ev="cmp" aria-pressed="${view==='cmp'}">Compare</button><button data-ev="list" aria-pressed="${view==='list'}">All quotes</button><button data-ev="ven" aria-pressed="${view==='ven'}">Vendors</button></div>
    <div id="eqBody"></div>`;
   box.querySelectorAll('[data-ev]').forEach(b=>b.onclick=()=>{view=b.dataset.ev;render()});
-  const a=document.getElementById('eqAdd');if(a)a.onclick=()=>openQuote('');
+  const a=document.getElementById('eqAdd');if(a)a.onclick=()=>openQuote('');const up=document.getElementById('eqUp');if(up)up.onclick=pickDoc;
   if(!Q.length){document.getElementById('eqBody').innerHTML=`<div class="panel"><p>No prices yet.</p>${canEdit()?'<p><button class="btn pri" id="eqImp">Import from Excel</button> <span class="muted">— pick your “Equipment Price Tracking” workbook</span></p>':''}</div>`;wireImp();return}
   if(view==='cmp')renderCmp();else if(view==='list')renderList();else renderVen()}
 function cats(){const m={};Q.forEach(q=>m[q.cat]=(m[q.cat]||0)+1);return Object.keys(m).sort((a,b)=>a.localeCompare(b)).map(c=>[c,m[c]])}
@@ -43,8 +43,8 @@ function renderCmp(){const cs=cats();if(!cat||!cs.some(c=>c[0]===cat))cat=cs[0][
       ${vs.sort((a,b)=>(tot[vs.indexOf(a)]??1e12)-(tot[vs.indexOf(b)]??1e12)).map(q=>{const i=vs.indexOf(q);const b=bestCost(q,days);const t=tot[i];
         return `<tr data-q="${esc(q._id)}"><td><b>${esc(q.vendor)}</b>${q.note?`<br><small class="muted">${esc(q.note)}</small>`:''}</td>${['day','week','m4'].map(f=>`<td class="n ${num(q[f])!=null&&num(q[f])===mn[f]&&vs.length>1?'best':''}">${money(num(q[f])??q[f])}</td>`).join('')}${hasMo?`<td class="n ${num(q.month)!=null&&num(q.month)===mn.month&&vs.length>1?'best':''}">${money(num(q.month)??q.month)}</td>`:''}
         <td class="n">${delivFor(q)?money(delivFor(q)):'—'}</td><td class="n ${t!=null&&t===minT&&vs.length>1?'best tot':''}">${t!=null?money(t)+`<br><small class="muted">${esc(b.how)}</small>`:'—'}</td><td><small>${esc(q.date||'')}${q.job?' · '+esc(q.job):''}</small></td></tr>`}).join('')}
-      </tbody></table></div>${g.length>vs.length?`<small class="muted">${g.length-vs.length} older quote(s) in “All quotes”.</small>`:''}</div>`}).join('')}`;
-  const b=document.getElementById('eqBody');b.querySelectorAll('[data-ec]').forEach(x=>x.onclick=()=>{cat=x.dataset.ec;render()});
+      </tbody></table></div>${(()=>{const best=g.filter(q=>num(q.day)!=null).sort((a,b)=>num(a.day)-num(b.day))[0];const open=histOpen.has(k);return `<div class="eqhist"><button class="btn small" data-hk="${esc(k)}">${open?'Hide':'Price history'} · ${g.length} quote${g.length>1?'s':''}</button>${best?` <small class="muted">Lowest day rate ever: ${money(num(best.day))} · ${esc(best.vendor)}${best.date?' · '+esc(best.date):''}</small>`:''}${open?`<div class="tblwrap"><table><thead><tr><th>Date</th><th>Vendor</th><th class="n">Day</th><th class="n">Week</th><th class="n">4 Weeks</th><th class="n">Month</th><th>Job · Site</th><th>Doc</th></tr></thead><tbody>${[...g].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).map(q=>`<tr><td>${esc(q.date||'—')}</td><td>${esc(q.vendor)}</td><td class="n">${money(num(q.day))}</td><td class="n">${money(num(q.week))}</td><td class="n">${money(num(q.m4))}</td><td class="n">${money(num(q.month))}</td><td>${esc([q.job,q.site].filter(Boolean).join(' · '))}</td><td>${q.doc?`<a href="${esc(q.doc.url)}" target="_blank" rel="noopener">${esc(q.doc.kind||'file')}</a>`:''}</td></tr>`).join('')}</tbody></table></div>`:''}</div>`})()}</div>`}).join('')}`;
+  const b=document.getElementById('eqBody');b.querySelectorAll('[data-hk]').forEach(x=>x.onclick=()=>{const k=x.dataset.hk;histOpen.has(k)?histOpen.delete(k):histOpen.add(k);render()});b.querySelectorAll('[data-ec]').forEach(x=>x.onclick=()=>{cat=x.dataset.ec;render()});
   b.querySelectorAll('[data-dd]').forEach(x=>x.onclick=()=>{days=Math.max(1,days+ +x.dataset.dd);render()});
   const di=document.getElementById('eqD');di.onchange=()=>{days=Math.max(1,parseInt(di.value)||1);render()};
   if(canEdit())b.querySelectorAll('tr[data-q]').forEach(r=>r.onclick=()=>openQuote(r.dataset.q))}
@@ -77,6 +77,56 @@ function openQuote(id){const q=id?Q.find(x=>x._id===id):{cat:cat||'',vendor:'',d
 async function exportX(){if(!window.XLSX)return;const rows=[...Q].sort((a,b)=>a.cat.localeCompare(b.cat)||(num(a.size)||0)-(num(b.size)||0)).map(q=>[q.cat,q.lbs??'',q.size??'',q.kw??'',q.option||'',q.fuel||'',q.vendor,num(q.day)??q.day??'',num(q.week)??q.week??'',num(q.m4)??q.m4??'',q.month??'',q.deliv??'',q.pick??'',q.date||'',q.job||'',q.site||'',q.note||'']);
   const ws=XLSX.utils.aoa_to_sheet([['Equipment','K lbs','Size ft','kW','Option','Fuel','Vendor','Day','Week','4 Weeks','Month','Delivery','Pickup','Quote date','Job','Site','Note'],...rows]);ws['!autofilter']={ref:ws['!ref']};const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Prices');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});const dl=await window.claude?.use?.('downloads');const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const name='AME_Equipment_Prices_'+new Date().toISOString().slice(0,10)+'.xlsx';if(dl)dl.save({filename:name,data:blob})}
+
+/* ---------- quote / invoice upload ---------- */
+function pickDoc(){let f=document.getElementById('eqDoc');if(!f){f=document.createElement('input');f.type='file';f.id='eqDoc';f.accept='application/pdf,image/*';f.hidden=true;document.body.appendChild(f);f.onchange=()=>{const x=f.files[0];f.value='';if(x)handleDoc(x)}}f.click()}
+function askKind(){return new Promise(ok=>{document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>What is this document?</h3><div class="names"><button data-k="Quote">Quote</button><button data-k="Invoice">Invoice</button></div><div class="bar"><button class="btn" id="kC">Cancel</button></div></div></div>`;
+  document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>ok(b.dataset.k));document.getElementById('kC').onclick=()=>{closeDlg();ok(null)}})}
+async function pdfText(file){if(!window.pdfjsLib){await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;const lines=[];
+  for(let p=1;p<=Math.min(pdf.numPages,8);p++){const c=await (await pdf.getPage(p)).getTextContent();const rows={};c.items.forEach(it=>{const y=Math.round(it.transform[5]/3);(rows[y]=rows[y]||[]).push([it.transform[4],it.str])});
+    Object.keys(rows).sort((a,b)=>b-a).forEach(y=>lines.push(rows[y].sort((a,b)=>a[0]-b[0]).map(x=>x[1]).join(' ').replace(/\s+/g,' ').trim()))}
+  return lines.filter(Boolean)}
+const EQWORDS=/telehandler|tele-?handler|reach ?fork|boom|scissor|forklift|generator|compressor|light tower|tower light|toilet|restroom|hand ?wash|fence|dumpster|roll-?off|container|lift|scraper|blaster/i;
+function parseDoc(lines){const txt=lines.join('\n');const vendors=[...new Set([...Q.map(q=>q.vendor),'Sunbelt Rentals','United Rentals','Herc Rentals','EquipmentShare','American Rental','Mobile Mini','Diamond'])];
+  const vendor=vendors.find(v=>new RegExp(v.split(/\s+/)[0].replace(/[^a-z]/gi,''),'i').test(txt))||'';
+  const dm=txt.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);let date='';if(dm){const y=dm[3].length===2?'20'+dm[3]:dm[3];date=`${y}-${dm[1].padStart(2,'0')}-${dm[2].padStart(2,'0')}`}
+  const jm=txt.match(/(?:job|po|p\.o\.)\s*(?:#|no\.?|number)?\s*:?\s*([0-9]{3,5})/i);
+  const m$=s=>(s.match(/\$?\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})|\$\s?\d+/g)||[]).map(x=>num(x));
+  const fee=re=>{const l=lines.find(x=>re.test(x));const v=l?m$(l):[];return v.length?v[v.length-1]:null};
+  const items=[];lines.forEach((l,i)=>{if(!EQWORDS.test(l))return;const ctx=[l,lines[i+1]||'',lines[i+2]||''].join(' ');const nums=m$(ctx).filter(x=>x>=20);
+    const lab=ctx.toLowerCase();const pick=w=>{const m=ctx.match(new RegExp(w+'\\s*:?\\s*\\$?\\s?([\\d,]+(?:\\.\\d{2})?)','i'));return m?num(m[1]):null};
+    let day=pick('(?:day|daily)'),week=pick('(?:week|weekly)'),m4=pick('(?:4 ?weeks?|4wk|28 ?days?|month(?:ly)?)');
+    if(day==null&&week==null&&m4==null&&nums.length>=3){const s3=nums.slice(0,3);if(s3[0]<=s3[1]&&s3[1]<=s3[2])[day,week,m4]=s3}
+    if(day==null&&week==null&&m4==null&&!nums.length)return;
+    const sz=l.match(/(\d{2,3})\s*(?:'|ft|foot)/i),lb=l.match(/(\d{1,2}(?:,\d{3})?)\s*(?:k|,000)\s*(?:lb|#)?/i);
+    const type=(l.match(/telehandler|reach ?fork|articulating boom|art(?:\.|iculating)? boom|straight boom|telescopic boom|boom lift|rough terrain scissor|rt scissor|scissor lift|forklift|generator|air compressor|light tower|tower light|toilet|hand ?wash|fence|dumpster|container/i)||[''])[0];
+    items.push({line:l,cat:normType(type),size:sz?+sz[1]:null,lbs:lb?Math.round(num(lb[1])/(lb[1].includes(',')?1000:1)):null,day,week,m4:m4,amount:(day==null&&week==null&&m4==null)?nums[nums.length-1]:null})});
+  return {vendor,date,job:jm?jm[1]:'',deliv:fee(/deliver/i),pick:fee(/pick ?up|return/i),items:items.slice(0,15)}}
+function normType(t){t=String(t).toLowerCase();if(/tele|reach/.test(t))return 'Telehandler';if(/art/.test(t))return 'ART Boom Lift';if(/straight|telescopic/.test(t))return 'ST Boom Lift';if(/boom/.test(t))return 'ART Boom Lift';if(/rough|rt scissor/.test(t))return 'RT Scissor Lift';if(/scissor/.test(t))return 'Scissor Lift';if(/forklift/.test(t))return 'Mast Forklift';if(/generator/.test(t))return 'Generator';if(/compressor/.test(t))return 'Air Compressor';if(/light/.test(t))return 'Tower Light';if(/toilet/.test(t))return 'Toilet';if(/wash/.test(t))return 'Hand Wash Station';if(/fence/.test(t))return 'Fence';if(/dumpster/.test(t))return 'Dumpster';if(/container/.test(t))return 'Storage Container';return ''}
+async function handleDoc(file){const kind=await askKind();if(!kind)return;closeDlg();toast('Uploading '+kind.toLowerCase()+'…');
+  let doc=null;try{const f=await window.claude.use('files');const r=await f.save('eqdocs/'+new Date().toISOString().slice(0,10)+'_'+file.name.replace(/[^\w.\-]+/g,'_'),file);doc={url:r.url,name:file.name,kind}}catch(e){toast('Could not store the file: '+(e.message||e));return}
+  let P={vendor:'',date:'',job:'',deliv:null,pick:null,items:[]};
+  if(/pdf/i.test(file.type)||/\.pdf$/i.test(file.name)){try{P=parseDoc(await pdfText(file))}catch(e){toast('Could not read the PDF text — fill it in by hand.')}}
+  else toast('Photo saved — type the prices from it below.');
+  if(!P.items.length)P.items=[{cat:cat||'',size:null,lbs:null,day:null,week:null,m4:null}];reviewDoc(P,doc)}
+function reviewDoc(P,doc){const cs=[...new Set(Q.map(x=>x.cat))].sort(),vs=[...new Set(Q.map(x=>x.vendor))].sort();
+  const row=(it,i)=>`<div class="drow" data-i="${i}"><div class="fields">
+    <label class="f">Equipment<input data-f="cat" list="eqdl_cat2" value="${esc(it.cat||'')}"></label><label class="f">Size ft<input data-f="size" inputmode="decimal" value="${esc(it.size??'')}"></label><label class="f">K lbs<input data-f="lbs" inputmode="decimal" value="${esc(it.lbs??'')}"></label><label class="f">Option<input data-f="option" value=""></label>
+    <label class="f">Day $<input data-f="day" inputmode="decimal" value="${esc(it.day??'')}"></label><label class="f">Week $<input data-f="week" inputmode="decimal" value="${esc(it.week??'')}"></label><label class="f">4 Weeks $<input data-f="m4" inputmode="decimal" value="${esc(it.m4??'')}"></label><label class="f">Month / flat $<input data-f="month" inputmode="decimal" value="${esc(it.amount??'')}"></label></div>
+    ${it.line?`<small class="muted">From: “${esc(it.line.slice(0,120))}”</small>`:''}<button class="btn small dng" data-rmi="${i}">Remove line</button></div>`;
+  document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>${esc(doc.kind)} — check the prices</h3><p class="muted">Read from the document as best as possible. Fix anything wrong, then save. The file is kept with each price.</p>
+   <datalist id="eqdl_cat2">${cs.map(c=>`<option value="${esc(c)}">`).join('')}</datalist><datalist id="eqdl_v2">${vs.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+   <div class="fields"><label class="f">Vendor<input id="dv" list="eqdl_v2" value="${esc(P.vendor)}"></label><label class="f">Date<input id="dd" type="date" value="${esc(P.date)}"></label><label class="f">Job #<input id="dj" value="${esc(P.job)}"></label><label class="f">Site<input id="ds"></label><label class="f">Delivery $<input id="ddl" inputmode="decimal" value="${esc(P.deliv??'')}"></label><label class="f">Pickup $<input id="dpk" inputmode="decimal" value="${esc(P.pick??'')}"></label></div>
+   <div id="drows">${P.items.map(row).join('')}</div><button class="btn" id="dadd">+ Add line</button>
+   <p><a href="${esc(doc.url)}" target="_blank" rel="noopener">Open the uploaded ${esc(doc.kind.toLowerCase())}</a></p>
+   <div class="bar"><button class="btn" id="dC">Cancel</button><button class="go" id="dS" style="width:auto">Save prices</button></div></div></div>`;
+  const wire=()=>document.querySelectorAll('[data-rmi]').forEach(b=>b.onclick=()=>{P.items.splice(+b.dataset.rmi,1);collect();reviewDoc(P,doc)});
+  const collect=()=>{document.querySelectorAll('.drow').forEach(r=>{const it=P.items[+r.dataset.i];if(!it)return;r.querySelectorAll('[data-f]').forEach(i=>{const f=i.dataset.f;it[f]=['cat','option'].includes(f)?i.value.trim():num(i.value)});it.amount=it.month});['vendor','date','job'].forEach((k,n)=>P[k]=document.getElementById(['dv','dd','dj'][n]).value.trim());P.site=document.getElementById('ds').value.trim();P.deliv=num(document.getElementById('ddl').value);P.pick=num(document.getElementById('dpk').value)};
+  wire();document.getElementById('dadd').onclick=()=>{collect();P.items.push({cat:'',size:null});reviewDoc(P,doc)};document.getElementById('dC').onclick=closeDlg;
+  document.getElementById('dS').onclick=async()=>{collect();if(!P.vendor){toast('Enter the vendor.');return}const ok=P.items.filter(it=>it.cat&&[it.day,it.week,it.m4,it.month].some(v=>v!=null));if(!ok.length){toast('Add at least one priced line.');return}
+    const now=new Date().toISOString();const map={};ok.forEach((it,i)=>map['q'+Date.now().toString(36)+i]={cat:fixType(it.cat),size:it.size??null,lbs:it.lbs??null,kw:null,option:it.option||'',fuel:'',vendor:clean(P.vendor),day:it.day??null,week:it.week??null,m4:it.m4??null,month:it.month??null,deliv:P.deliv,pick:P.pick,date:P.date||now.slice(0,10),job:P.job?normJob(P.job):'',site:P.site||'',note:doc.kind,doc,by:curUser,at:now,src:'doc'});
+    try{if(db.setMany)await db.setMany('eqp',map);else for(const [k,v] of Object.entries(map))await db.doc('eqp/'+k).set(v);closeDlg();cat=fixType(ok[0].cat);view='cmp';toast(ok.length+' price(s) saved from the '+doc.kind.toLowerCase());render()}catch(e){toast('Could not save: '+(e.message||e.code))}}}
 
 /* ---------- Excel import (your “Equipment Price Tracking” workbook layout) ---------- */
 function wireImp(){const b=document.getElementById('eqImp');if(!b)return;b.onclick=()=>{let f=document.getElementById('eqFile');if(!f){f=document.createElement('input');f.type='file';f.id='eqFile';f.accept='.xlsx,.xls';f.hidden=true;document.body.appendChild(f);f.onchange=()=>{const x=f.files[0];f.value='';if(x)importFile(x)}}f.click()}}

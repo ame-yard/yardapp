@@ -494,6 +494,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 .eqseg{display:inline-flex;margin-bottom:12px}.eqcats{margin-bottom:10px}.eqdays{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 14px}.eqdays .step{display:flex;align-items:center;gap:6px}.eqdays .step button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}.eqdays input{width:64px;text-align:center}
 .eqcard{margin-bottom:12px}.eqtitle{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}.eqtitle b{font-size:18px}.eqtbl td.best{color:#3fb950;font-weight:700}.eqtbl td.tot.best{background:rgba(63,185,80,.14)}.eqtbl tr[data-q]{cursor:pointer}.vin{width:90px}.vin.wide{width:100%}
 .mplcard{position:relative}.mplcard .pill{align-self:flex-start}.mcdel{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted)}.mcdel:hover{border-color:var(--bad);color:var(--bad)}.mcdel .ic{width:16px;height:16px}.mtop{display:flex;gap:8px;flex-wrap:wrap}
+.eqhist{margin-top:8px}.btn.small{padding:5px 10px;font-size:13px}.drow{border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0}
 </style>
 
 <header class="top"><div class="wrap">
@@ -635,7 +636,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.42',APP_DATE='2026-10-15';
+const APP_VERSION='2.50',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1593,5 +1594,5 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 </script>
 <script src="shell.js?v=240"></script>
 <script src="mpl.js?v=241"></script>
-<script src="eqp.js?v=242"></script>
+<script src="eqp.js?v=250"></script>
 </body></html>
