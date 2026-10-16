@@ -17,7 +17,7 @@ function setMod(id){AME.cur=id;const m=AME.mod(id);const sub=document.querySelec
   document.body.dataset.mod=id;try{sessionStorage.setItem('ameMod',id)}catch(e){}}
 function renderHome(){const el=document.getElementById('tab-home');if(!el)return;const mods=AME.modules.filter(m=>AME.allowed(m));
   el.innerHTML=`<div class="homehead"><h2>Hi ${esc(curUser||'')}</h2><p class="muted">What are you working on?</p></div>
-  <div class="apps">${mods.map(m=>`<button class="apptile" data-app="${m.id}"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small></button>`).join('')}
+  <div class="apps">${mods.length?'':'<p class="muted">No apps are turned on for you yet. Ask Kyle to give you access.</p>'}${mods.map(m=>`<button class="apptile" data-app="${m.id}"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small></button>`).join('')}
 </div>`;
   el.querySelectorAll('[data-app]').forEach(b=>b.onclick=()=>AME.open(b.dataset.app))}
 const _st=window.showTab;window.showTab=function(t){
