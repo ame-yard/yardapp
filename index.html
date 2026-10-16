@@ -485,6 +485,7 @@ body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{disp
 .mplhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 12px}.mplhead h2{margin:0;flex:1}.mplhead2{display:flex;justify-content:space-between;align-items:center}
 .mplcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}.mplcard{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;color:inherit;font:inherit;cursor:pointer}.mplcard b{font-size:18px}
 .mplsteps{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.mplsteps button{flex:none;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--muted);font:600 13px inherit}.mplsteps button span{width:20px;height:20px;border-radius:50%;background:var(--chip);display:inline-flex;align-items:center;justify-content:center;font-size:11px}.mplsteps .on{border-color:var(--accent,#f47b20);color:var(--ink)}.mplsteps .on span{background:var(--accent,#f47b20);color:#fff}.mplsteps .done{color:var(--ink)}
+.mplseg{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:4px 0 14px}.mplseg button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;text-align:left;cursor:pointer}.mplseg button b{font-size:16px}.mplseg button small{font-size:12px;opacity:.75}.mplseg button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:var(--hi-ink)}@media(max-width:600px){.mplseg{grid-template-columns:1fr 1fr}.mplseg button[data-seg=all]{grid-column:1/-1;flex-direction:row;justify-content:center;gap:6px;padding:8px}}
 .mplchips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}.mplchips button{min-height:52px;padding:10px 16px;border-radius:12px;border:2px solid var(--line);background:var(--chip);color:inherit;font:600 15px inherit;cursor:pointer}.mplchips button[aria-pressed="true"]{border-color:var(--accent,#f47b20);background:rgba(244,123,32,.2)}
 .mplbar{display:flex;gap:10px;justify-content:flex-end;margin:12px 0 90px;flex-wrap:wrap}
 .mpllines{display:flex;flex-direction:column}.mline{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.mname{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.mname small{color:var(--muted)}
@@ -644,7 +645,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.88',APP_DATE='2026-10-15';
+const APP_VERSION='2.89',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1612,7 +1613,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=240"></script>
-<script src="mpl.js?v=276"></script>
+<script src="mpl.js?v=289"></script>
 <script src="eqp.js?v=270"></script>
 <script>
 /* auto-detect a newer app version */

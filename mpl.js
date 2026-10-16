@@ -80,7 +80,7 @@ function renderList(){const box=el();const l=[...MPLS].sort((a,b)=>String(b.upda
   document.getElementById('mplNew').onclick=()=>{W={step:0,job:'',pm:'',fm:'',crew:6,st:[],lines:null,prep:curUser};openId='';view='wiz';render()};
   box.querySelectorAll('[data-del]').forEach(x=>x.onclick=e=>{e.stopPropagation();delMpl(x.dataset.del)});
   box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=MPLS.find(x=>x._id===b.dataset.m);if(!m)return;openId=m._id;
-    if(m.status==='draft'){W={...JSON.parse(JSON.stringify(m)),step:4};view='wiz'}else view='view';render()})}
+    if(m.status==='draft'){W={...JSON.parse(JSON.stringify(m)),step:4,_seg:'yard'};view='wiz'}else view='view';render()})}
 function crumbs(){return `<div class="mplsteps">${STEPS.map(([k,l],n)=>`<button data-st="${n}" class="${n===W.step?'on':n<W.step?'done':''}" ${n>W.step+0&&!W.lines?'disabled':''}><span>${n+1}</span>${l}</button>`).join('')}</div>`}
 function chips(list,sel,attr){return `<div class="mplchips">${list.map(([id,name])=>`<button data-${attr}="${id}" aria-pressed="${sel.includes(id)}">${esc(name)}</button>`).join('')}</div>`}
 function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
@@ -108,10 +108,13 @@ function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" st
    <label class="f">PM<select id="mPm"><option value="">—</option>${pms.map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpPm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label>
    <label class="f">FM / SFM<select id="mFm"><option value="">—</option>${(mpU||[]).map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpFm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label></div>
    <p class="muted" style="font-size:12.5px">Connected as ${esc((()=>{try{return localStorage.getItem('mpEmail')}catch(e){return ''}})()||'')} · <a href="#" id="mpOut">disconnect</a></p>`}
-function listHtml(){const g={};W.lines.forEach((l,k)=>{(g[l.cat||'Custom']=g[l.cat||'Custom']||[]).push([l,k])});
+function listHtml(){const seg=W._seg||'all';const inY=l=>!!yardFor(l);const nY=W.lines.filter(inY).length,nB=W.lines.length-nY;
+  const g={};W.lines.forEach((l,k)=>{if(seg==='yard'&&!inY(l))return;if(seg==='buy'&&inY(l))return;(g[l.cat||'Custom']=g[l.cat||'Custom']||[]).push([l,k])});
   const cats=Object.keys(g).sort((a,b)=>(ORDER.indexOf(a)+99)%99-(ORDER.indexOf(b)+99)%99);
-  return `<div class="mplhead2"><h3>Item list · ${W.lines.length}</h3><button class="btn" id="mAdd">+ Add item</button></div>
-   <p class="muted">Remove what this job doesn't need and set quantities. “In yard” items will be taken out of the yard inventory when you check out.</p>
+  return `<div class="mplseg"><button data-seg="yard" aria-pressed="${seg==='yard'}"><b>From the yard</b><small>${nY} item${nY===1?'':'s'} to take out</small></button><button data-seg="buy" aria-pressed="${seg==='buy'}"><b>To buy / rent</b><small>${nB} item${nB===1?'':'s'} not in inventory</small></button><button data-seg="all" aria-pressed="${seg==='all'}"><b>All</b><small>${W.lines.length}</small></button></div>
+   <div class="mplhead2"><h3>${seg==='yard'?'From the yard':seg==='buy'?'To buy / rent':'Item list'} · ${seg==='yard'?nY:seg==='buy'?nB:W.lines.length}</h3><button class="btn" id="mAdd">+ Add ${seg==='yard'?'yard item':seg==='buy'?'item to buy':'item'}</button></div>
+   <p class="muted">${seg==='yard'?'These come out of the yard inventory when you check out. Remove what the job doesn’t need and set quantities.':seg==='buy'?'Not in the yard inventory — these need to be bought, rented or brought otherwise. Add or remove as needed.':'Remove what this job doesn\'t need and set quantities. “In yard” items will be taken out of the yard inventory when you check out.'}</p>
+   ${Object.keys(g).length?'':`<div class="panel muted">Nothing here yet — tap “+ Add”.</div>`}
    ${cats.map(c=>`<div class="qlabel">${esc(c)}</div><div class="mpllines">${g[c].map(([l,k])=>{const y=yardFor(l);const av=y?Number(y.qty)||0:0;
      return `<div class="mline"><div class="mname"><b>${esc(l.name)}</b><small>${esc(l.sub||'')}${l.from?' · '+esc(l.from):''}</small>
        <button class="ylink ${y?(av>=l.n?'ok':'low'):'none'}" data-yl="${k}">${y?`In yard: ${av} ${esc(y.unit||'')} · ${esc(y.loc)}${av<l.n?' (short)':''}`:'Not in yard inventory — tap to link'}</button></div>
@@ -138,7 +141,7 @@ function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f)
   q('[data-q]',b=>b.onclick=()=>{const l=W.lines[+b.dataset.q];l.n=Math.max(1,l.n+ +b.dataset.d);render()});
   q('[data-rm]',b=>b.onclick=()=>{W.lines.splice(+b.dataset.rm,1);render()});
   q('[data-yl]',b=>b.onclick=()=>linkYard(+b.dataset.yl));
-  const ad=document.getElementById('mAdd');if(ad)ad.onclick=addItem;
+  const ad=document.getElementById('mAdd');if(ad)ad.onclick=addItem;q('[data-seg]',b=>b.onclick=()=>{W._seg=b.dataset.seg;render()});
   wireExport();
   const sd=document.getElementById('mSend');if(sd)sd.onclick=sendToMobPrep;
   const sv=document.getElementById('mSave');if(sv)sv.onclick=()=>save('draft').then(()=>toast('Draft saved'));
@@ -153,7 +156,12 @@ function pickDlg(title,list,onPick){let qv='';const draw=()=>{const l=list.filte
   document.querySelectorAll('[data-pi]').forEach(b=>b.onclick=()=>{onPick(l[+b.dataset.pi]);closeDlg()})};draw()}
 function linkYard(k){const l=W.lines[k];pickDlg('Link “'+esc(l.name)+'” to a yard item',[{t:'— Not a yard item —',s:'buy / rent',none:1},...items.map(i=>({t:i.name,s:[i.size,i.mfgr,i.loc].filter(Boolean).join(' · '),i}))],async x=>{
   if(x.none){l.yid='';l.nolink=true}else{l.yid=x.i.id;l.nolink=false;if(l.rid){MAP={...MAP,[l.rid]:x.i.id};try{await db.doc('config/mplmap').set(MAP)}catch(e){}}}render()})}
-function addItem(){pickDlg('Add an item',[...REF.its.filter(r=>!W.lines.some(l=>l.rid===r[0])).map(r=>({t:r[1],s:r[2]+' · '+r[3],r})),...items.map(i=>({t:i.name,s:'Yard · '+[i.size,i.loc].filter(Boolean).join(' · '),i}))],x=>{
+function addItem(){const seg=W._seg||'all';const yl=items.filter(i=>!W.lines.some(l=>l.yid===i.id)).map(i=>({t:i.name,s:'Yard · '+[i.size,i.loc,(Number(i.qty)||0)+' '+(i.unit||'')].filter(Boolean).join(' · '),i}));
+  const rl=REF.its.filter(r=>!W.lines.some(l=>l.rid===r[0])).filter(r=>seg!=='buy'||!(MAP[r[0]]&&byId(MAP[r[0]]))).map(r=>({t:r[1],s:r[2]+' · '+r[3],r}));
+  const list=seg==='yard'?yl:seg==='buy'?[{t:'+ Type a new item…',s:'not on any list',custom:1},...rl]:[...rl,...yl];
+  pickDlg(seg==='yard'?'Add a yard item':seg==='buy'?'Add an item to buy / rent':'Add an item',list,x=>{
+  if(x.custom){setTimeout(()=>{const n=prompt('Item to buy / rent:');if(n&&n.trim()){W.lines.push({name:n.trim(),cat:'Custom',sub:'To buy',unit:'EA',n:1,from:'Added',nolink:true});render()}},50);return}
+  if(x.r&&seg==='buy'){W.lines.push({rid:x.r[0],name:x.r[1],cat:x.r[2],sub:x.r[3],unit:x.r[4],n:1,from:'Added',nolink:true});render();return}
   if(x.r)W.lines.push({rid:x.r[0],name:x.r[1],cat:x.r[2],sub:x.r[3],unit:x.r[4],n:1,from:'Added'});else W.lines.push({yid:x.i.id,name:x.i.name,cat:'Custom',sub:'From yard',unit:x.i.unit,n:1,from:'Added'});render()})}
 async function addJobIfMissing(job,now){const ex=jobs.find(j=>j.no===job);if(ex&&W.jobName&&ex.name!==W.jobName){try{await db.doc('jobs/'+ex._id).update({name:W.jobName})}catch(e){}}if(job&&!ex){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:W.jobName||'',pm:W.pm||'',fm:W.fm||'',address:'',status:'Active',notes:'Added from MPL by '+curUser,autoAdded:true,updatedAt:now})}catch(e){}}}
 async function checkout(){const g=goLines().filter(x=>x.y&&x.take>0);if(!g.length)return;if(!confirm(`Take ${g.length} items out of the yard to ${jobLabel(W.job)}?`))return;
