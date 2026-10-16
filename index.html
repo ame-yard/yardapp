@@ -443,7 +443,8 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 #ylist.listview .card .cam{display:none}
 #ylist.listview .card .badge{left:14px!important;right:auto!important;top:50%!important;bottom:auto!important;transform:translateY(-50%);margin:0;width:34px;height:34px;min-width:0;font-size:18px;line-height:34px;z-index:3}
 #ylist.listview .card .minus{display:none}
-.cartbar .cb-in{padding-bottom:max(14px,env(safe-area-inset-bottom,0px))!important;padding-left:max(22px,env(safe-area-inset-left,0px))!important;padding-right:max(22px,env(safe-area-inset-right,0px))!important}
+.cartbar .cb-in{padding-top:10px!important;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;padding-left:calc(26px + env(safe-area-inset-left,0px))!important;padding-right:calc(26px + env(safe-area-inset-right,0px))!important}
+body.hascart main{padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))}
 #ylist.listview .card .cbody{flex:1;min-width:0;padding:6px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-items:center}
 #ylist.listview .card .cname{grid-column:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #ylist.listview .card .csub{grid-column:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -643,7 +644,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.83',APP_DATE='2026-10-15';
+const APP_VERSION='2.84',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1102,7 +1103,7 @@ function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=i
       const u={qty:d.n,cond:d.c,verifiedAt:now,verifiedBy:curUser,issue:'',qtyNote:'',updatedAt:now,updatedBy:curUser};
       try{await writeItem(id,u);if(d.n!==before||d.c!==(it.cond||'Good'))await db.collection('logs').add({ts:now,action:'ADJUST',itemId:id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:d.n,before,after:d.n,job:'',by:curUser,note:'Yard audit'+(d.c!==(it.cond||'Good')?' — condition '+d.c:''),cond:d.c});
         delete audDraft[id];toast('Saved: '+it.name)}catch(err){toast('Could not save: '+(err.message||err.code));e.target.disabled=false}}})}
-function renderCartBar(){const n=cart.reduce((a,c)=>a+c.n,0);$('#cartbar').hidden=!cart.length||$('#tab-yard').hidden||act==='AUDIT';
+function renderCartBar(){const n=cart.reduce((a,c)=>a+c.n,0);$('#cartbar').hidden=!cart.length||$('#tab-yard').hidden||act==='AUDIT';document.body.classList.toggle('hascart',!$('#cartbar').hidden);
   $('#cbCount').textContent=cart.length;$('#cbLabel').textContent=(cart.length===1?'item':'items')+(act==='ADJUST'||innerWidth<600?'':` · ${n} pcs`);$('#cbMode').textContent=ACTNAME[act]}
 function renderCart(){renderCartBar()}
 $('#cbClear').onclick=()=>{cart=[];render()};
