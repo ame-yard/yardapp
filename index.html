@@ -461,8 +461,9 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 .pal{min-height:64px;text-align:left;border:2px solid var(--line);border-radius:8px;background:var(--chip);color:inherit;padding:6px;display:flex;flex-direction:column;gap:3px;cursor:pointer;font:inherit;overflow:hidden}
 .pal.has{background:rgba(200,116,44,.14)}.pal.on{border-color:var(--accent,#f47b20);box-shadow:0 0 0 2px var(--accent,#f47b20)}
 .pal .pn{font:700 11px var(--mono,monospace);color:var(--muted)}.pal .pi{font-size:12.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pal .pi .thumb{width:18px;height:18px;margin-right:4px;border-radius:3px}.pal .pm,.pal .pe{font-size:11px;color:var(--muted)}
-html,body,button,a,.card,.pal{touch-action:manipulation}@media (max-width:820px){input,select,textarea{font-size:16px!important}}
+*{touch-action:manipulation}@media (max-width:820px){input,select,textarea{font-size:16px!important}}
 .pick{width:100%;min-width:0;box-sizing:border-box}.pickwrap{display:flex;flex-direction:column;gap:6px}
+.lvl{display:flex;flex-direction:column;align-items:center;gap:4px}.lpc{display:flex;flex-direction:column;align-items:center;gap:2px}.lpc button{width:24px;height:22px;border-radius:6px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700;line-height:1;padding:0}.lpc b{font-size:11px}.lvrow{grid-template-columns:38px minmax(0,1fr)}
 </style>
 
 <header class="top"><div class="wrap">
@@ -600,7 +601,7 @@ html,body,button,a,.card,.pal{touch-action:manipulation}@media (max-width:820px)
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.99',APP_DATE='2026-10-15';
+const APP_VERSION='2.00',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -777,7 +778,7 @@ function renderYard(){
   if(isMap)renderMap();
   const q=$('#ysearch').value.trim();
   let l,subBar='';
-  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));const _rs=yLoc&&!yLoc.startsWith('zone:')&&!q;if(_rs){const el=items.filter(i=>locOf(i)===yLoc);drawElev(el);if(elevSel&&elevSel.loc===yLoc){const d=rackDef(yLoc);l=l.filter(i=>lvNum(i)===elevSel.lv&&(elevSel.unp?(!i.pallet||+i.pallet>d.p||+i.pallet<1):(!elevSel.p||String(i.pallet||'')===String(elevSel.p))))}}else{$('#rackElev').hidden=true;$('#elevBtn').hidden=true}
+  if(isMap){l=items.filter(i=>(!q||match(i,q))&&(!yLoc||(yLoc.startsWith('zone:')?i.zone===yLoc.slice(5):locOf(i)===yLoc)));const _rs=yLoc&&!yLoc.startsWith('zone:')&&!q;if(_rs){const el=items.filter(i=>locOf(i)===yLoc);drawElev(el);if(elevSel&&elevSel.loc===yLoc){const d=rackDef(yLoc);l=l.filter(i=>lvNum(i)===elevSel.lv&&(elevSel.unp?(!i.pallet||+i.pallet>d.pl(elevSel.lv)||+i.pallet<1):(!elevSel.p||String(i.pallet||'')===String(elevSel.p))))}}else{$('#rackElev').hidden=true;$('#elevBtn').hidden=true}
     if(!q&&!yLoc)l=[];
     $('#selhead').hidden=!yLoc;$('#selTitle').textContent=yLoc.startsWith('zone:')?'Zone '+yLoc.slice(5):yLoc?'Rack '+yLoc:'';
     l.sort((a,b)=>(a.level||'').localeCompare(b.level||'')||a.name.localeCompare(b.name));
@@ -926,21 +927,24 @@ async function applyDecision(i,mode,each,reason){const id=i.id,now=new Date().to
   await db.collection('logs').add({units:dsel.length?dsel:null,ts:now,action:act2,itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n,before,after:qty,job:'',by:curUser,note:lognote,cond:''})}
 let rackCfg={},elevSel=null,elevOpen=false;
 const lvNum=i=>{const m=String(i.level||'').toUpperCase().match(/L\s*(\d+)/);return m?+m[1]:0};
-function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};return{lv:c.levels||4,p:c.pallets||2}}
+function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};const lp=c.lp||{};return{lv:c.levels||4,p:c.pallets||2,lp,pl:l=>lp[l]||c.pallets||2}}
 function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=Math.max(d.lv,...list.map(lvNum));const eb=$('#elevBtn');eb.hidden=elevOpen;eb.innerHTML=`Side view · ${esc(yLoc)}`;eb.onclick=()=>{elevOpen=true;renderYard()};box.hidden=!elevOpen;if(!elevOpen)return;
   const rows=[];for(let lv=maxLv;lv>=1;lv--)rows.push(lv);if(list.some(i=>!lvNum(i)))rows.push(0);
   const cell=(lv,p,its)=>{const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p||'')===String(p||'');
     return `<button type="button" class="pal ${its.length?'has':''} ${on?'on':''}" data-lv="${lv}" data-p="${p||''}"><span class="pn">${p?'P'+p:lv?'Not placed':'Floor / GR'}</span>${its.slice(0,3).map(i=>`<span class="pi">${thumb(i)}${esc(i.name)}${i.size&&i.size!=='-'?' <small>'+esc(i.size)+'</small>':''}</span>`).join('')}${its.length>3?`<span class="pm">+${its.length-3} more</span>`:''}${!its.length?'<span class="pe">empty</span>':''}</button>`};
-  box.innerHTML=`<button type="button" class="elx" id="elX" aria-label="Close side view">✕</button><div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">Tap a pallet to see what's on it</small>${isAdmin?`<span class="elcfg">Levels <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button> Pallets <button data-c="p-">−</button><b>${d.p}</b><button data-c="p+">+</button></span>`:''}</div>
+  box.innerHTML=`<button type="button" class="elx" id="elX" aria-label="Close side view">✕</button><div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">Tap a pallet to see what's on it</small>${isAdmin?`<span class="elcfg">Levels <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button><small class="muted">· pallets per level: use − / + on each level</small></span>`:''}</div>
   <div class="rack">${rows.map(lv=>{const its=list.filter(i=>lvNum(i)===lv);if(!lv)return `<div class="lvrow"><span class="lvl">GR</span><div class="pals" style="grid-template-columns:1fr">${cell(0,'',its)}</div></div>`;
-    const unp=its.filter(i=>!i.pallet||+i.pallet>d.p||+i.pallet<1);
-    return `<div class="lvrow"><span class="lvl">L${lv}</span><div class="pals" style="grid-template-columns:repeat(${d.p},minmax(0,1fr))">${Array.from({length:d.p},(_,k)=>cell(lv,k+1,its.filter(i=>+i.pallet===k+1))).join('')}</div>${unp.length?`<button type="button" class="unp ${elevSel&&elevSel.lv===lv&&elevSel.p==='x'?'on':''}" data-lv="${lv}" data-p="x">${unp.length} not placed on a pallet</button>`:''}</div>`}).join('')}</div>
+    const np=d.pl(lv);const unp=its.filter(i=>!i.pallet||+i.pallet>np||+i.pallet<1);
+    return `<div class="lvrow"><span class="lvl">L${lv}${isAdmin?`<span class="lpc"><button data-lp="${lv}" data-d="-1">−</button><b>${np}</b><button data-lp="${lv}" data-d="1">+</button></span>`:''}</span><div class="pals" style="grid-template-columns:repeat(${np},minmax(0,1fr))">${Array.from({length:np},(_,k)=>cell(lv,k+1,its.filter(i=>+i.pallet===k+1))).join('')}</div>${unp.length?`<button type="button" class="unp ${elevSel&&elevSel.lv===lv&&elevSel.p==='x'?'on':''}" data-lv="${lv}" data-p="x">${unp.length} not placed on a pallet</button>`:''}</div>`}).join('')}</div>
   ${elevSel&&elevSel.loc===yLoc?`<button class="btn" id="elClr" style="margin-top:8px">Show whole rack</button>`:''}`;
   box.querySelectorAll('.pal,.unp').forEach(b=>b.onclick=()=>{const lv=+b.dataset.lv,p=b.dataset.p;const same=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p||'')===p;elevSel=same?null:{loc:yLoc,lv,p:p==='x'?'':p,unp:p==='x'};renderYard()});
   $('#elX').onclick=()=>{elevOpen=false;renderYard()};
   if($('#elClr'))$('#elClr').onclick=()=>{elevSel=null;renderYard()};
+  box.querySelectorAll('[data-lp]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const lv=b.dataset.lp;const cur=rackCfg[yLoc]||{levels:d.lv,pallets:d.p};const lp={...(cur.lp||{})};lp[lv]=Math.min(6,Math.max(1,d.pl(+lv)+Number(b.dataset.d)));
+    rackCfg={...rackCfg,[yLoc]:{...cur,levels:cur.levels||d.lv,lp}};renderYard();try{await db.doc('config/racks').set(rackCfg)}catch(e){toast('Could not save rack setup')}});
   box.querySelectorAll('[data-c]').forEach(b=>b.onclick=async()=>{const c={...rackDef(yLoc)};const k=b.dataset.c;if(k==='lv-')c.lv=Math.max(1,c.lv-1);if(k==='lv+')c.lv=Math.min(8,c.lv+1);if(k==='p-')c.p=Math.max(1,c.p-1);if(k==='p+')c.p=Math.min(6,c.p+1);
-    rackCfg={...rackCfg,[yLoc]:{levels:c.lv,pallets:c.p}};renderYard();try{await db.doc('config/racks').set(rackCfg)}catch(e){toast('Could not save rack setup')}})}
+    rackCfg={...rackCfg,[yLoc]:{...(rackCfg[yLoc]||{}),levels:c.lv,pallets:c.p}};renderYard();try{await db.doc('config/racks').set(rackCfg)}catch(e){toast('Could not save rack setup')}})}
+(()=>{let lt=0;document.addEventListener('touchend',e=>{const n=Date.now();if(n-lt<350&&!e.target.closest('input,textarea,select,label')){e.preventDefault();const t=e.target;if(t&&t.click)t.click()}lt=n},{passive:false});document.addEventListener('gesturestart',e=>e.preventDefault());})();
 function openDispose(id,mode){const i=byId(id);if(!i)return;const max=Math.max(1,(Number(i.qty)||0)+(i.repair||0));let n=1;let reason='';
   $('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" role="dialog" aria-modal="true">
    <h3>${i.repair>0?'Repair result':'Repair decision'}</h3>
