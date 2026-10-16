@@ -23,16 +23,25 @@ const jkey=j=>String(j).replace(/[^A-Za-z0-9]/g,'');
 const jcfg=j=>FJ[jkey(j)]||{};
 const phases=j=>jcfg(j).phases||DEF_PHASES;const sections=j=>jcfg(j).sections||[];
 /* ---------------- views ---------------- */
+let FS=[];(function w2(){if(typeof db!=='undefined'&&db&&db.collection){db.collection('fsites').onSnapshot(s=>{FS=s.docs.map(d=>({...d.data(),_id:d.id}));if(!FS.length&&!w2.seeded&&isAdmin){w2.seeded=1;db.doc('fsites/TEST').set({no:'#TEST',name:'Test job (sample)',at:new Date().toISOString()})}if(AME.cur==='field'&&view==='jobs')render()},()=>{})}else setTimeout(w2,400)})();
+function addSite(){const sp=(typeof SPJ!=='undefined'&&SPJ.jobs)||[];const d=document.createElement('dialog');d.className='dlg';
+ d.innerHTML=`<h3>Add job to Field Reports</h3><p class="muted" style="margin-top:0">Type to search Spectrum${SPJ?.at?' (updated '+fmtD(SPJ.at)+')':''}.</p><label class="f wide">Job #<input id="fsN" list="fsL" value="#" autocomplete="off"><datalist id="fsL">${sp.filter(x=>x.active!==false&&!FS.some(y=>y.no==='#'+x.no)).map(x=>`<option value="#${esc(x.no)}">${esc(x.name)}${x.city?' · '+esc(x.city):''}</option>`).join('')}</datalist></label><label class="f wide">Job name<input id="fsM"></label><div class="bar"><button class="btn" id="fsX">Cancel</button><button class="go" id="fsS" style="width:auto">Add</button></div>`;
+ document.body.appendChild(d);d.showModal();const n=d.querySelector('#fsN'),m=d.querySelector('#fsM');
+ n.oninput=()=>{const x=sp.find(x=>'#'+x.no===n.value.trim());if(x&&!m.value)m.value=x.name+(x.city?' · '+x.city:'')};
+ d.querySelector('#fsX').onclick=()=>{d.close();d.remove()};
+ d.querySelector('#fsS').onclick=async()=>{const no=n.value.trim();if(no.length<2){toast('Enter a job #');return}if(FS.some(y=>y.no===no)){toast('Already added');return}await db.doc('fsites/'+no.replace(/[^A-Za-z0-9]/g,'')).set({no,name:m.value.trim(),by:curUser,at:new Date().toISOString()});d.close();d.remove();toast('Job added')}}
+const fl=n=>{const x=FS.find(y=>y.no===n);return x?n+(x.name?" · "+x.name:""):jobLabel(n)};
 function render(){if(!sec)return;if(view==='edit'&&W)return renderEdit();if(view==='job'&&job)return renderJob();view='jobs';
-  const act=jobs.filter(j=>j.status!=='Closed').sort((a,b)=>String(b.no).localeCompare(String(a.no),undefined,{numeric:true}));
-  sec.innerHTML=`<div class="mplhead"><h2>Field Reports</h2></div><p class="muted" style="margin-top:0">Pick the job. Timesheets, T&amp;M, daily, safety, leak and accident reports are kept per job and can be downloaded as PDF.</p>
+  const act=FS.filter(j=>!j.closed).sort((a,b)=>String(b.no).localeCompare(String(a.no),undefined,{numeric:true}));
+  sec.innerHTML=`<div class="mplhead"><h2>Field Reports</h2>${isAdmin?'<span class="mtop"><button class="btn pri" id="frAdd">+ Add job</button></span>':''}</div><p class="muted" style="margin-top:0">Pick the job. Timesheets, T&amp;M, daily, safety, leak and accident reports are kept per job and can be downloaded as PDF.</p>
    <input id="frQ" class="search" placeholder="Search job # or name…"><div class="jlist" id="frJobs"></div>`;
   const draw=q=>{q=(q||'').toLowerCase();const l=act.filter(j=>!q||(j.no+' '+(j.name||'')).toLowerCase().includes(q));
-    document.getElementById('frJobs').innerHTML=l.map(j=>{const n=R.filter(r=>r.job===j.no).length;return `<button class="jrow" data-fj="${esc(j.no)}"><span class="jno">${esc(j.no)}</span><span class="jnm">${esc(j.name||'')}</span><span class="jct">${n?n+' report'+(n>1?'s':''):''}</span><span></span></button>`}).join('')||'<div class="muted" style="padding:12px">No active jobs. Add jobs in Yard Inventory → Jobs.</div>';
+    document.getElementById('frJobs').innerHTML=l.map(j=>{const n=R.filter(r=>r.job===j.no).length;return `<button class="jrow" data-fj="${esc(j.no)}"><span class="jno">${esc(j.no)}</span><span class="jnm">${esc(j.name||'')}</span><span class="jct">${n?n+' report'+(n>1?'s':''):''}</span><span></span></button>`}).join('')||'<div class="muted" style="padding:12px">No jobs yet. Tap + Add job.</div>';
     sec.querySelectorAll('[data-fj]').forEach(b=>b.onclick=()=>{job=b.dataset.fj;view='job';render();scrollTo({top:0})})};
+  const ad=document.getElementById('frAdd');if(ad)ad.onclick=addSite;
   draw('');document.getElementById('frQ').oninput=e=>draw(e.target.value)}
 function renderJob(){const L=R.filter(r=>r.job===job).sort((a,b)=>String(b.date||b.at).localeCompare(String(a.date||a.at)));
-  sec.innerHTML=`<div class="mplhead"><button class="btn" id="frBack">← All jobs</button><h2>${esc(jobLabel(job))}</h2><span class="mtop"><button class="btn" id="frSetup">Job setup</button></span></div>
+  sec.innerHTML=`<div class="mplhead"><button class="btn" id="frBack">← All jobs</button><h2>${esc(fl(job))}</h2><span class="mtop"><button class="btn" id="frSetup">Job setup</button></span></div>
    <div class="frtypes">${Object.entries(T).map(([k,t])=>{const n=L.filter(r=>r.type===k).length;return `<button class="frtype" data-nt="${k}" style="--c:${t.c}"><span class="fric">${svg(k)}</span><b>${t.n}</b><small>${t.d}</small><span class="frn">+ New${n?' · '+n+' saved':''}</span></button>`}).join('')}</div>
    <h3 style="margin-top:22px">Reports for this job</h3>
    <div class="viewseg" id="frFlt" style="margin-bottom:10px"><button data-ff="" aria-pressed="true">All</button>${Object.entries(T).map(([k,t])=>`<button data-ff="${k}">${t.n}</button>`).join('')}</div>
@@ -46,7 +55,7 @@ function sumOf(r){const d=r.data||{};switch(r.type){case'ts':{const h=(d.rows||[
   case'tm':return (d.labor||[]).filter(x=>x.name).length+' labor · '+(d.mat||[]).filter(x=>x.item).length+' material'+(d.labor?.[0]?.desc?' · '+d.labor[0].desc:'');
   case'daily':return (d.work||'').slice(0,60);case'obs':return [d.worker,d.cat].filter(Boolean).join(' · ');case'leak':return (d.items||[]).length+' location(s)';case'acc':return [d.injured,d.nature].filter(Boolean).join(' · ')}return''}
 function setup(){const c=jcfg(job);const ph=phases(job).join('\n'),se=sections(job).join('\n');
-  document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>Job setup · ${esc(jobLabel(job))}</h3><p class="muted">These lists show up as choices on the timesheet. One per line.</p>
+  document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>Job setup · ${esc(fl(job))}</h3><p class="muted">These lists show up as choices on the timesheet. One per line.</p>
    <div class="fields"><label class="f">Sections (LN letters A, B, C…)<textarea id="suS" rows="8" placeholder="Bldg I - Tile&#10;Bldg I - PVC">${esc(se)}</textarea></label><label class="f">Phases (LN 1, 2, 3…)<textarea id="suP" rows="8">${esc(ph)}</textarea></label>
    <label class="f">Contract No.<input id="suC" value="${esc(c.contract||'')}"></label><label class="f">Foreman<input id="suF" list="frFm" value="${esc(c.foreman||'')}"><datalist id="frFm">${crewNames(['FM','SFM']).map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label></div>
    <div class="bar"><button class="btn" id="suX">Cancel</button><button class="go" id="suOk" style="width:auto">Save</button></div></div></div>`;
@@ -101,7 +110,7 @@ function renderEdit(){const t=T[W.type];const d=W.data;let body='';
      ${fld('Taken for treatment to','data.treated',d.treated,{wide:1})}${fld('Contact person at site','data.contact',d.contact)}${fld('Witnesses','data.witness',d.witness)}${fld('Other agencies present','data.agencies',d.agencies,{wide:1})}
      ${fld('What happened','data.desc',d.desc,{ta:1,wide:1,rows:5})}${fld('Scene / equipment altered?','data.altered',d.altered,{sel:['No','Yes']})}${fld('Cal/OSHA report (date, office, ref #)','data.calosha',d.calosha)}
      ${fld('Reported by','data.reporter',d.reporter)}${fld('Reporter title','data.rtitle',d.rtitle)}</div><datalist id="frCrew">${crewNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist><h4>Photos</h4>${photoBlock('data.photos',d.photos)}`}
-  sec.innerHTML=`<div class="mplhead"><button class="btn" id="frEB">← ${esc(jobLabel(job))}</button><h2 style="color:${t.c}">${t.n}</h2><span class="mtop"><button class="btn" id="frPdf">PDF</button>${rid?'<button class="btn dng" id="frDel">Delete</button>':''}</span></div>
+  sec.innerHTML=`<div class="mplhead"><button class="btn" id="frEB">← ${esc(fl(job))}</button><h2 style="color:${t.c}">${t.n}</h2><span class="mtop"><button class="btn" id="frPdf">PDF</button>${rid?'<button class="btn dng" id="frDel">Delete</button>':''}</span></div>
    <div class="panel frform">${body}</div>
    <div class="mplbar"><span class="mplsv" id="frSv">${dirty?'Unsaved changes':rid?'Saved':''}</span><button class="btn" id="frSave">Save draft</button><button class="go" id="frFinal" style="width:auto">${W.status==='final'?'Save':'Finish &amp; save'}</button></div>`;
   wire()}
