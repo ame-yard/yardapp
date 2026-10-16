@@ -95,7 +95,8 @@ async function doWrite(c,fn){
       const meta=await gfetch(pathUrl('data/'+c+'.json')+'?$select=eTag');
       let etag=null,docs={};
       if(meta.ok){etag=(await meta.json()).eTag;
-        const r=await gfetch(pathUrl('data/'+c+'.json')+':/content');docs=await r.json()}
+        const r=await gfetch(pathUrl('data/'+c+'.json')+':/content');if(!r.ok)throw new Error('Read '+c+' failed ('+r.status+')');docs=await r.json()}
+      else if(meta.status!==404)throw new Error('Could not reach SharePoint ('+meta.status+') — try again.');
       fn(docs);
       const put=await gfetch(pathUrl('data/'+c+'.json')+':/content',{method:'PUT',
         headers:{'Content-Type':'application/json',...(etag?{'If-Match':etag}:{})},body:JSON.stringify(docs)});
