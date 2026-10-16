@@ -181,6 +181,7 @@ const downloads={save:async({filename,data})=>{
   setTimeout(()=>URL.revokeObjectURL(u),30000);
 }};
 
+const files={save:async(path,blob)=>{const r=await gfetch(pathUrl(path)+':/content',{method:'PUT',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});if(!r.ok)throw new Error('Save failed ('+r.status+')');const j=await r.json();return{url:j.webUrl,id:j.id}}};
 const user={canEdit:()=>true,name:()=>account?.name||'',email:()=>account?.username||''};
 
 readyP=(async()=>{
@@ -191,7 +192,7 @@ readyP=(async()=>{
 })();
 window.claude={use:async name=>{
   await readyP;
-  return {db,assets,downloads,user}[name]||null;
+  return {db,assets,downloads,user,files}[name]||null;
 }};
 window.msSignOut=()=>msal?.logoutRedirect({account});
 })();
