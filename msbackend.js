@@ -87,8 +87,9 @@ function write(c,fn){
   queue[c]=(queue[c]||Promise.resolve()).then(()=>doWrite(c,fn));
   return queue[c];
 }
+const sv=st=>{try{window.dispatchEvent(new CustomEvent('ame-save',{detail:st}))}catch(e){}};
 async function doWrite(c,fn){
-  pending++;
+  pending++;sv('saving');let ok=false;
   try{
     for(let attempt=0;attempt<6;attempt++){
       // fetch latest content + etag
@@ -102,10 +103,10 @@ async function doWrite(c,fn){
         headers:{'Content-Type':'application/json',...(etag?{'If-Match':etag}:{})},body:JSON.stringify(docs)});
       if(put.status===412||put.status===409){await new Promise(r=>setTimeout(r,300+Math.random()*700));continue}
       if(!put.ok)throw new Error('Save failed ('+put.status+')');
-      const j=await put.json();store[c]={etag:j.eTag,docs};knownEtags[c]=j.eTag;emit(c);return;
+      const j=await put.json();store[c]={etag:j.eTag,docs};knownEtags[c]=j.eTag;emit(c);ok=true;return;
     }
     throw new Error('Too many people saving at once — try again.');
-  }finally{pending--}
+  }finally{pending--;sv(ok?(pending?'saving':'saved'):'error')}
 }
 let knownEtags={};
 async function poll(){
