@@ -2,7 +2,7 @@
 (function(){
 let histOpen=new Set(),Q=[],VEN={},view='cmp',cat='',days=7,qf='',editId='';
 const el=()=>document.getElementById('tab-eqp');
-const money=v=>v==null||v===''?'—':(typeof v==='number'?'$'+v.toLocaleString(undefined,{maximumFractionDigits:2}):esc(String(v)));
+const money=v=>v==null||v===''?'—':(typeof v==='number'?'$'+v.toLocaleString('en-US',{maximumFractionDigits:2}):esc(String(v)));
 const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
 const fixType=s=>clean(s).replace(/^Telehander$/i,'Telehandler').replace(/Deisel/gi,'Diesel');
 const num=v=>{if(v==null||v==='')return null;const n=Number(String(v).replace(/[$,]/g,''));return isFinite(n)?n:null};

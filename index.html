@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png?v=2"><link rel="icon" href="icon-192.png?v=2"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"></head><body>
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=240"></script>
+<script src="msbackend.js?v=251"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -636,7 +636,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.50',APP_DATE='2026-10-15';
+const APP_VERSION='2.51',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -651,7 +651,7 @@ function condPill(c){const k={Good:'good',Mixed:'mixed','Needs Check':'needs',Ba
 function flags(i){let s=condPill(i.cond);if(sers(i).length)s+=`<span class="pill p-good">${sers(i).length} S/N</span>`;if(i.repair>0)s+=`<span class="pill p-needs">${i.repair} in repair</span>`;if(isLow(i))s+=`<span class="pill p-low">${i.qty===0?'Out of stock':'Low'}</span>`;if(i.issue)s+=`<span class="pill p-ver">Verify</span>`;return s}
 function isLow(i){return i.qty===0||(i.min!=null&&i.min!==''&&typeof i.qty==='number'&&i.qty<=Number(i.min))}
 function qtyTxt(i){return typeof i.qty==='number'?i.qty:(i.qtyNote||'?')}
-function fmtD(t){if(!t)return'';const d=new Date(String(t).length===10?t+'T12:00':t);return isNaN(d)?String(t):d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+(String(t).length>10?' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'')}
+function fmtD(t){if(!t)return'';const d=new Date(String(t).length===10?t+'T12:00':t);return isNaN(d)?String(t):d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+(String(t).length>10?' '+d.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'}):'')}
 function match(i,q){if(!q)return true;const h=[i.id,i.loc,i.level,i.type,i.cat,i.mfgr,i.name,i.size,i.remarks,i.unit].join(' ').toLowerCase();return q.toLowerCase().split(/\s+/).every(w=>h.includes(w))}
 
 /* tabs */
@@ -754,7 +754,7 @@ function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const role
   if(!$('#gFeats').dataset.init){$('#gFeats').innerHTML=FEATS.map(([k,l])=>`<button type="button" data-gf="${k}" aria-pressed="false"><b>${k==='EDIT'?'Office tools':l}</b></button>`).join('');$('#gFeats').dataset.init=1;
     $$('#gFeats [data-gf]').forEach(b=>b.onclick=()=>b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')!=='true'))}
   const now=Date.now();const G=(perms.grants||[]).filter(g=>!g.until||g.until>now);
-  $('#gList').innerHTML=G.length?G.map((g,k)=>`<div class="cntsum"><span><b>${esc(g.name)}</b> · ${g.feats.map(f=>FEATS.find(x=>x[0]===f)?.[1].split(' (')[0]||f).join(', ')} · ${g.until?'until '+new Date(g.until).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'no end date'} · by ${esc(g.by||'')}</span><button class="btn dng" data-gr="${g.id}">Remove</button></div>`).join(''):'<div class="muted" style="font-size:13px">No temporary access right now.</div>';
+  $('#gList').innerHTML=G.length?G.map((g,k)=>`<div class="cntsum"><span><b>${esc(g.name)}</b> · ${g.feats.map(f=>FEATS.find(x=>x[0]===f)?.[1].split(' (')[0]||f).join(', ')} · ${g.until?'until '+new Date(g.until).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'no end date'} · by ${esc(g.by||'')}</span><button class="btn dng" data-gr="${g.id}">Remove</button></div>`).join(''):'<div class="muted" style="font-size:13px">No temporary access right now.</div>';
   $$('#gList [data-gr]').forEach(b=>b.onclick=()=>savePerms({...perms,grants:(perms.grants||[]).filter(g=>g.id!==b.dataset.gr)}))}
 async function savePerms(p){try{await db.doc('config/perms').set(p);toast('Permissions saved')}catch(e){toast('Could not save: '+(e.message||e.code))}}
 function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none'}if($('#pinState'))$('#pinState').textContent=[ownerPinH?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',officePin?'Editor PIN is set.':'No editor PIN yet.'].join(' ');
@@ -838,7 +838,7 @@ function renderYard(){
       ${q?`<div class="qlabel">${hits.length?'Matches — tap to add to this delivery':'No match in the yard list. Add it as a new item.'}</div>
         <div class="rcvlist">${hits.map(i=>{const c=cart.find(c=>c.id===i.id);return `<button class="rcvrow ${c?'in':''}" data-id="${esc(i.id)}"><span class="loc">${esc(i.loc)} ${esc(i.level||'')}</span><span class="nm">${esc(i.name)}<small>${esc([i.size&&i.size!=='-'?i.size:'',i.mfgr].filter(Boolean).join(' · '))}</small></span><span class="q">${esc(qtyTxt(i))}<small>${esc(i.unit)}</small></span>${c?`<span class="badge" style="position:static">+${c.n}</span>`:'<span class="muted">+ Add</span>'}</button>`}).join('')}</div>`:''}
       <div class="qlabel">Received today (${rec.length})</div>
-      <div class="rcvlist">${rec.length?rec.map(g=>`<div class="rcvrow done"><span class="loc">${esc(g.loc)}</span><span class="nm">${esc(g.name)}<small>${esc(g.size||'')} · by ${esc(g.by)}${g.note?' · '+esc(g.note):''}</small></span><span class="q">+${g.n}<small>${esc(g.unit)}</small></span><span class="muted">${new Date(g.ts).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</span></div>`).join(''):'<div class="empty">Nothing received yet today.</div>'}</div></div>`;
+      <div class="rcvlist">${rec.length?rec.map(g=>`<div class="rcvrow done"><span class="loc">${esc(g.loc)}</span><span class="nm">${esc(g.name)}<small>${esc(g.size||'')} · by ${esc(g.by)}${g.note?' · '+esc(g.note):''}</small></span><span class="q">+${g.n}<small>${esc(g.unit)}</small></span><span class="muted">${new Date(g.ts).toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'})}</span></div>`).join(''):'<div class="empty">Nothing received yet today.</div>'}</div></div>`;
     $('#rcvNew').onclick=()=>openItem('','');
     $$('#ylist .rcvrow[data-id]').forEach(r=>r.onclick=()=>addCart(r.dataset.id));
     return}
@@ -1524,15 +1524,14 @@ function showLogin(){if(curUser)return;
 }
 
 $('#verTxt').textContent=innerWidth<600?APP_VERSION:`App ${APP_VERSION} · ${APP_DATE}`;
-let lastSync=null;function markSync(){lastSync=new Date();$('#syncTxt').textContent=(innerWidth<600?'':'Synced ')+lastSync.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}
+let lastSync=null;function markSync(){lastSync=new Date();$('#syncTxt').textContent=(innerWidth<600?'':'Synced ')+lastSync.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'})}
 (function(){let y0=null,dy=0,busy=false;const P=$('#ptr'),T=$('#ptrTxt');
   const top=()=>(window.scrollY||document.documentElement.scrollTop||0)<=0;
   document.addEventListener('touchstart',e=>{if(busy||$('#dlgRoot').firstChild||$('#loginRoot').firstChild||!top()){y0=null;return}y0=e.touches[0].clientY;dy=0},{passive:true});
   document.addEventListener('touchmove',e=>{if(y0===null)return;dy=e.touches[0].clientY-y0;if(dy<=0||!top()){P.style.transform='translate(-50%,0)';return}
     const d=Math.min(dy*0.5,110);P.style.transform=`translate(-50%,${d}px)`;T.textContent=dy>140?'Release to sync':'Pull to sync';P.querySelector('.ptrspin').style.transform=`rotate(${dy*2}deg)`},{passive:true});
   document.addEventListener('touchend',()=>{if(y0===null)return;y0=null;
-    if(dy>140){busy=true;P.classList.add('go');P.style.transform='translate(-50%,90px)';T.textContent='Syncing…';setTimeout(()=>{try{location.reload()}catch(e){}},350);
-      setTimeout(()=>{busy=false;P.classList.remove('go');P.style.transform='translate(-50%,0)'},5000)}
+    if(dy>140){busy=true;P.classList.add('go');P.style.transform='translate(-50%,90px)';T.textContent='Syncing…';const done=()=>{busy=false;P.classList.remove('go');P.style.transform='translate(-50%,0)'};ameSync().finally(done)}
     else P.style.transform='translate(-50%,0)'})})();
 $('#lSelBtn').onclick=()=>{lSel=!lSel;lPick.clear();renderLog()};
 $('#lSelAll').onclick=()=>{$$('#lbody tr[data-lid]').forEach(r=>lPick.add(r.dataset.lid));renderLog()};
@@ -1546,7 +1545,8 @@ $('#bellBtn').onclick=e=>{e.stopPropagation();let p=$('#bellPop');if(p){p.remove
   p.innerHTML=`<div class="bph"><b>Recent updates</b><small class="muted">${logs.filter(g=>g.ts>seen&&isOther(g)).length} new</small></div>`+(l.length?l.map(g=>`<div class="bpi ${isOther(g)&&g.ts>seen?'new':''}">${thumb(byId(g.itemId))}<div><b>${esc(g.by||'')}</b> <span class="a-${g.action}">${ACTNAME[g.action]||g.action}</span> · ${esc(g.name||'')}${g.n?` <span class="muted">(${g.n} ${esc(g.unit||'')})</span>`:''}${g.job?` <span class="muted">${esc(g.job)}</span>`:''}<small class="muted">${fmtD(g.ts)}${g.note?' · '+esc(g.note):''}</small></div></div>`).join(''):'<div class="muted" style="padding:12px">No activity yet.</div>');
   document.body.appendChild(p);const r=$('#bellBtn').getBoundingClientRect();p.style.top=(r.bottom+8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';markSeen()};
 document.addEventListener('click',e=>{const p=$('#bellPop');if(p&&!p.contains(e.target))p.remove()});
-$('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;try{location.reload()}catch(e){}setTimeout(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false},4000)};
+$('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;ameSync().finally(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false})};
+async function ameSync(){try{const d=await window.claude.use('db');await d.refresh();try{markSync()}catch(e){}}catch(e){toast&&toast('Sync failed — check connection')}}
 
 matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#tab-yard').hidden&&!isAdmin)showTab('yard')});
 (async()=>{
@@ -1593,6 +1593,6 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=240"></script>
-<script src="mpl.js?v=241"></script>
-<script src="eqp.js?v=250"></script>
+<script src="mpl.js?v=251"></script>
+<script src="eqp.js?v=251"></script>
 </body></html>
