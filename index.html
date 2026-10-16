@@ -89,7 +89,7 @@ h3{font-family:var(--display);font-weight:600;font-size:21px;margin:0 0 8px;text
 .rm{border:0;background:none;color:var(--bad);font-size:13px;padding:0}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:500}
 label.f input,label.f select,label.f textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:16px;color:var(--ink)}
-.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
 .fields .wide{grid-column:1/-1}
 .go{width:100%;padding:16px;border:0;border-radius:10px;background:var(--hi);color:var(--hi-ink);font-family:var(--display);font-size:24px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
 .go:disabled{opacity:.45;cursor:not-allowed}
@@ -232,7 +232,9 @@ body.nophoto .cam,body.nophoto #e_photoLbl{display:none!important}
   .logo{height:38px;padding:2px 6px}.logo img{height:32px}
   .brand small{display:none}
   .userchip{padding:4px 6px 4px 10px;font-size:13px;margin-left:auto}.userchip small{display:none}.ucsw{font-size:11px}
-  header .wrap nav.tabs{display:none!important}
+  body.ro header .wrap nav.tabs{display:none!important}
+  body:not(.ro) header .wrap nav.tabs{display:flex!important;order:10;width:100%;flex-wrap:nowrap;overflow-x:auto;gap:2px}
+  .fields{grid-template-columns:1fr!important}label.f input,label.f select,label.f textarea{width:100%;min-width:0;box-sizing:border-box}.dlg{max-width:100%;box-sizing:border-box;overflow-x:hidden}.qpl .qpi{flex-wrap:wrap}.qpi span{white-space:normal}.unitgen input{min-width:0}
   nav.tabs::-webkit-scrollbar{display:none}
   nav.tabs button{padding:7px 12px;font-size:14px;flex:none}
   main{padding-block:10px 120px}
@@ -446,13 +448,14 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 @media (max-width:600px){#ylist.listview .card .loc{display:none}#ylist.listview .card .pwrap,#ylist.listview .card .pic{width:52px}#ylist.listview .card .oosband{font-size:10px;padding:2px 6px;margin-right:6px;max-width:72px;white-space:normal;text-align:center}#ylist.listview .card .cbody{padding:6px 8px}}
 #repBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:#3a332e;border:1px solid #f47b20;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#f3ede6;max-width:calc(100% - 24px)}#repBar[hidden]{display:none!important}#repBar select{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:10px;padding:8px}
 #bellPop{position:fixed;z-index:300;width:min(380px,calc(100vw - 16px));max-height:min(70vh,520px);overflow:auto;background:var(--panel,#3a332e);border:1px solid var(--line,#5a514a);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--ink,#f3ede6)}.bph{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line,#5a514a);position:sticky;top:0;background:inherit}.bpi{display:flex;gap:8px;padding:10px 14px;border-bottom:1px dashed var(--line,#5a514a);font-size:14px;line-height:1.35}.bpi small{display:block;margin-top:2px}.bpi.new{background:rgba(244,123,32,.14);box-shadow:inset 3px 0 #f47b20}.bpi .thumb{width:32px;height:32px;margin:0}
+.sht{display:none}@media (max-width:600px){.lgt{display:none}.sht{display:inline}}
 </style>
 
 <header class="top"><div class="wrap">
   <button class="brand" id="brand" type="button"><span class="logo" id="logoBox"><img id="logoImg" alt="AME Builders, Inc." src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJgAAAB2CAYAAAA0jFrTAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAydpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDYuMC1jMDAzIDExNi5kZGM3YmM0LCAyMDIxLzA4LzE3LTEzOjE4OjM3ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjEuMiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo5QkVGNDExNDIyN0YxMUVGOEUwRkZFQUU3NDc5QTRBQyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBRDJFRjY1QzIyODExMUVGOEUwRkZFQUU3NDc5QTRBQyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjlCRUY0MTEyMjI3RjExRUY4RTBGRkVBRTc0NzlBNEFDIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjlCRUY0MTEzMjI3RjExRUY4RTBGRkVBRTc0NzlBNEFDIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+PCJcHgAACMRJREFUeNrs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"><i id="logoStripe" aria-hidden="true" hidden></i></span><span id="logoText" hidden>AME Builders</span> <small>Yard Inventory</small></button><input type="file" id="logoIn" accept="image/*" hidden>
   <button class="bell" id="bellBtn" type="button" hidden title="Updates from other devices"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span id="bellN" hidden></span></button><button class="userchip" id="userChip" type="button" hidden><span id="ucName"></span><small id="ucRole"></small><span class="ucsw">Switch</span></button>
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="yard" aria-selected="true">Yard Check-In/Out</button>
+    <button role="tab" data-tab="yard" aria-selected="true"><span class="lgt">Yard Check-In/Out</span><span class="sht">Yard</span></button>
     <button role="tab" data-tab="inv" aria-selected="false">Inventory</button>
     <button role="tab" data-tab="jobs" aria-selected="false">Jobs</button>
     <button role="tab" data-tab="log" aria-selected="false">Activity</button>
@@ -583,7 +586,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.95',APP_DATE='2026-10-15';
+const APP_VERSION='1.96',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1450,7 +1453,7 @@ $('#bellBtn').onclick=e=>{e.stopPropagation();let p=$('#bellPop');if(p){p.remove
 document.addEventListener('click',e=>{const p=$('#bellPop');if(p&&!p.contains(e.target))p.remove()});
 $('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;try{location.reload()}catch(e){}setTimeout(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false},4000)};
 
-matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#tab-yard').hidden)showTab('yard')});
+matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#tab-yard').hidden&&!isAdmin)showTab('yard')});
 (async()=>{
   db=await window.claude?.use?.('db');if(db){const oc=db.collection.bind(db);db.collection=n=>{const c=oc(n);if(n==='logs'){const oa=c.add.bind(c);c.add=d=>oa({...d,dev:devId})}return c}}
   if(!db){$('#status').textContent='Not connected. Sign in with your company Microsoft account.';return}
