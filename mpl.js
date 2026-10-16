@@ -103,7 +103,10 @@ function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" st
   if(!mpJ&&!mpErr)return '<h3>Which job?</h3><p class="muted">Loading jobs from Spectrum / Mob Prep…</p>';
   if(mpErr)return `<h3>Which job?</h3><p class="bad">${esc(mpErr)}</p><button class="btn" id="mpRetry">Try again</button> <button class="btn" id="mpConn">Reconnect</button>`;
   const q=jq.toLowerCase();const l=mpJ.filter(j=>j.active!==false&&(!q||j.no.includes(q)||j.name.toLowerCase().includes(q))).slice(0,60);
-  const pms=(mpU||[]).filter(u=>['pm','admin','president','office'].includes(String(u.role||'').toLowerCase())||true);
+  const real=(mpU||[]).filter(u=>!/example\.com$/i.test(u.email||'')).map(u=>({...u,name:String(u.name||'').trim()}));
+  const crewRole=u=>{const p=u.name.split(/\s+/);const k=p[0]+' '+(p[1]||'').charAt(0)+'.';return (crew.find(c=>c.name.toLowerCase()===k.toLowerCase())||{}).role||''};
+  const pms=real.filter(u=>['PM','President'].includes(crewRole(u))||String(u.role).toLowerCase()==='pm').sort((a,b)=>a.name.localeCompare(b.name));
+  const fms=real.filter(u=>['FM','SFM'].includes(crewRole(u))||String(u.role).toLowerCase()==='fm').sort((a,b)=>a.name.localeCompare(b.name));
   return `<h3>Which job? <small class="muted">from Spectrum · Mob Prep</small></h3><input id="mJq" class="search" placeholder="Search job # or name…" value="${esc(jq)}">
    ${(()=>{const row=j=>`<button class="jrow" data-mj="${esc(j.no)}" aria-pressed="${W.job==='#'+j.no}"><span class="jno">#${esc(j.no)}</span><span class="jnm">${esc((jobs.find(x=>x.no==='#'+j.no)||{}).name||j.name||'')}</span><span class="jct">${esc(j.city||'')}</span>${j.mp?'<span class="jmp">Mob Prep</span>':'<span></span>'}</button>`;
      const num=l.filter(j=>/^\d+$/.test(j.no)),oth=l.filter(j=>!/^\d+$/.test(j.no));
@@ -112,7 +115,7 @@ function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" st
    <div class="fields"><label class="f">Prepared by<input value="${esc(W.prep||curUser)}" disabled></label>
    <label class="f">Crew size<div class="step"><button data-cr="-1">−</button><b>${W.crew}</b><button data-cr="1">+</button></div></label>
    <label class="f">PM<select id="mPm"><option value="">—</option>${pms.map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpPm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label>
-   <label class="f">FM / SFM<select id="mFm"><option value="">—</option>${(mpU||[]).map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpFm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label></div>
+   <label class="f">FM / SFM<select id="mFm"><option value="">—</option>${fms.map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpFm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label></div>
    <p class="muted" style="font-size:12.5px">Connected as ${esc((()=>{try{return localStorage.getItem('mpEmail')}catch(e){return ''}})()||'')} · <a href="#" id="mpOut">disconnect</a></p>`}
 function listHtml(){const seg=W._seg||'all';const inY=l=>!!yardFor(l);const nY=W.lines.filter(inY).length,nB=W.lines.length-nY;
   const g={};W.lines.forEach((l,k)=>{if(seg==='yard'&&!inY(l))return;if(seg==='buy'&&inY(l))return;(g[l.cat||'Custom']=g[l.cat||'Custom']||[]).push([l,k])});
