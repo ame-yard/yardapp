@@ -387,7 +387,7 @@ table.sheet td.saved{background:color-mix(in srgb,var(--ok) 25%,transparent)}
 .done b{display:block;font-family:var(--display);font-size:40px;text-transform:uppercase;color:var(--ok)}
 @media (max-width:820px),(orientation:portrait) and (max-width:1100px){
   .kiosk.map{grid-template-columns:1fr}
-  .mapwrap{position:relative}
+  .mapwrap{position:relative;top:auto}
   .mapwrap svg{max-height:44vh}
   .kiosk.map .menu{scroll-margin-top:calc(70px + env(safe-area-inset-top,0px))}}
 @media (max-width:700px){.kiosk{grid-template-columns:1fr}.rail{flex-direction:row;position:static;overflow-x:auto;max-height:none}.cat{min-width:96px}.seg{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -638,7 +638,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.78',APP_DATE='2026-10-15';
+const APP_VERSION='2.79',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
