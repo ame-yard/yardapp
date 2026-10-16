@@ -516,7 +516,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <button role="tab" data-tab="log" aria-selected="false">Activity</button>
     <button role="tab" data-tab="sheet" aria-selected="false">Sheet</button>
     <button role="tab" data-tab="mpl" aria-selected="false" hidden>MPL</button>
-    <button role="tab" data-tab="eqp" aria-selected="false" hidden>Prices</button>
+    <button role="tab" data-tab="eqp" aria-selected="false" hidden>Prices</button><button role="tab" data-tab="admin" aria-selected="false" hidden>Admin</button>
   </nav>
 </div></header>
 
@@ -638,6 +638,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
   </section>
   <section id="tab-mpl" hidden></section>
   <section id="tab-eqp" hidden></section>
+  <section id="tab-admin" hidden></section>
 </main>
 
 <div class="ptr" id="ptr" aria-hidden="true"><span class="ptrspin"></span><span id="ptrTxt">Pull to sync</span></div>
@@ -645,7 +646,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.93',APP_DATE='2026-10-15';
+const APP_VERSION='2.94',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -758,7 +759,7 @@ function pic(i){if(i.photo)return `<img src="${esc(i.photo)}" alt="" loading="la
 let crew=[];const ROLES=['President','PM','Office','Intern','Yard','FM','SFM','Crew'];
 const FIELD=['FM','SFM','Crew'];const groupOf=r=>FIELD.includes(r)?'Field':'HQ';
 const OWNER='Kyle K.';const isOwner=n=>n===OWNER;
-const isEditor=n=>isOwner(n)||!!crew.find(c=>c.name===n&&c.editor);
+const isEditor=n=>isOwner(n)||!!crew.find(c=>c.name===n&&c.editor)||!!(typeof perms!=='undefined'&&(perms.admins||[]).includes(n));
 const allNames=()=>[...new Set([...crew.map(c=>c.name),...people])].sort((a,b)=>a.localeCompare(b));
 const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.name);if(cur&&!opts.includes(cur))opts.unshift(cur);
   return `<select id="${id}"><option value="">— select ${role} —</option>${opts.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}</select>`};
@@ -1612,9 +1613,10 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=240"></script>
+<script src="shell.js?v=294"></script>
 <script src="mpl.js?v=293"></script>
 <script src="eqp.js?v=293"></script>
+<script src="admin.js?v=294"></script>
 <script>
 /* auto-detect a newer app version */
 (function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}

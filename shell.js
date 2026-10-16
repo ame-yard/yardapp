@@ -7,7 +7,7 @@ const SVG={
 const AME=window.AME={modules:[],cur:'',
   register(m){if(!this.modules.find(x=>x.id===m.id))this.modules.push(m);if(this.cur==='home')renderHome()},
   mod(id){return this.modules.find(m=>m.id===id)},
-  allowed(m){return !m.perm||can(m.perm)},
+  allowed(m){return m.allow?m.allow():(!m.perm||can(m.perm))},
   home(){const ok=this.modules.filter(m=>this.allowed(m));if(ok.length===1){this.open(ok[0].id);return}setMod('home');showTab('home')},
   open(id){const m=this.mod(id);if(!m||!this.allowed(m))return;setMod(id);m.open()}};
 AME.register({id:'yard',name:'Yard Inventory',desc:'Take out · return · receive · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>showTab('yard')});
