@@ -648,7 +648,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.15',APP_DATE='2026-10-15';
+const APP_VERSION='3.16',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -983,13 +983,13 @@ async function applyDecision(i,mode,each,reason){const id=i.id,now=new Date().to
 let rackCfg={},elevSel=null,elevOpen=false;
 const lvNum=i=>{const m=String(i.level||'').toUpperCase().match(/L\s*(\d+)/);return m?+m[1]:0};
 function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};const lp=c.lp||{};const type=(rackCfg[loc]||{}).type||(/^D-0[1-4]$/.test(loc)?'cant':'pallet');return{type,lv:c.levels||4,p:c.pallets||2,lp,pl:l=>type==='cant'?1:(lp[l]||c.pallets||2)}}
-function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=Math.max(d.lv,...list.map(lvNum));const eb=$('#elevBtn');eb.hidden=elevOpen;eb.innerHTML=`Side view · ${esc(yLoc)}`;eb.onclick=()=>{elevOpen=true;renderYard()};box.hidden=!elevOpen;if(!elevOpen)return;
+function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=d.lv;const eb=$('#elevBtn');eb.hidden=elevOpen;eb.innerHTML=`Side view · ${esc(yLoc)}`;eb.onclick=()=>{elevOpen=true;renderYard()};box.hidden=!elevOpen;if(!elevOpen)return;
   const canMove=isAdmin||can('UNITS');const cant=d.type==='cant';const placed=i=>{const lv=lvNum(i);return lv>=1&&lv<=maxLv&&(cant||(+i.pallet>=1&&+i.pallet<=d.pl(lv)))};
   const unpl=list.filter(i=>!placed(i));
   const chip=i=>`<span class="pchip ${elPick===i.id?'sel':''}" data-iid="${esc(i.id)}">${thumb(i)}<span>${esc(i.name)}${i.size&&i.size!=='-'?' <small>'+esc(i.size)+'</small>':''}</span><b>${esc(qtyTxt(i))}</b></span>`;
   const rows=[];for(let lv=maxLv;lv>=1;lv--)rows.push(lv);
   box.innerHTML=`<button type="button" class="elx" id="elX" aria-label="Close side view">✕</button><div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">${canMove?(cant?'Drag an item onto an arm (or tap the item, then tap the arm). Tap an arm label to filter the list.':'Drag an item onto a pallet (or tap the item, then tap the pallet). Tap a pallet header to filter the list.'):'Tap a pallet to see what\'s on it'}</small>${isAdmin?`<span class="elcfg">${cant?'Arms':'Levels'} <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button>${cant?'':'<small class="muted">· pallets per level: − / + on each level</small>'}<button type="button" id="elType" style="width:auto;padding:0 10px">${cant?'Cantilever rack':'Pallet rack'} ⇄</button></span>`:''}</div>
-  ${unpl.length?`<div class="tray pal" data-lv="0" data-p=""><span class="pn">Not placed yet · ${unpl.length}</span><div class="pchips">${unpl.map(chip).join('')}</div></div>`:''}
+  ${unpl.length?`<div class="tray pal" data-lv="0" data-p=""><span class="pn">Not placed yet · ${unpl.length}${unpl.some(i=>lvNum(i)>maxLv)?' <small>(some are marked on a level above '+maxLv+' — add '+(d.type==='cant'?'arms':'levels')+' or move them)</small>':''}</span><div class="pchips">${unpl.map(chip).join('')}</div></div>`:''}
   ${cant?`<div class="cant"><div class="cpost"></div><div class="carms">${rows.map(lv=>{const its=list.filter(i=>placed(i)&&lvNum(i)===lv);const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv;
       return `<div class="pal carm ${its.length?'has':''} ${on?'on':''}" data-lv="${lv}" data-p="1"><button type="button" class="pn ph" data-flt="1">Arm L${lv}${its.length?' · '+its.length:''}</button><div class="pchips">${its.map(chip).join('')||'<span class="pe">empty</span>'}</div><div class="cbeam"></div></div>`}).join('')}</div></div><div class="cfoot"></div>`:''}
   <div class="rack"${cant?' hidden':''}>${rows.map(lv=>{const np=d.pl(lv);return `<div class="lvrow"><span class="lvl">L${lv}${isAdmin?`<span class="lpc"><button data-lp="${lv}" data-d="-1">−</button><b>${np}</b><button data-lp="${lv}" data-d="1">+</button></span>`:''}</span><div class="pals" style="grid-template-columns:repeat(${np},minmax(0,1fr))">${Array.from({length:np},(_,k)=>{const p=k+1;const its=list.filter(i=>placed(i)&&lvNum(i)===lv&&+i.pallet===p);const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p)===String(p);
