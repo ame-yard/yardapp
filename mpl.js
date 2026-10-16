@@ -105,7 +105,9 @@ function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" st
   const q=jq.toLowerCase();const l=mpJ.filter(j=>j.active!==false&&(!q||j.no.includes(q)||j.name.toLowerCase().includes(q))).slice(0,60);
   const pms=(mpU||[]).filter(u=>['pm','admin','president','office'].includes(String(u.role||'').toLowerCase())||true);
   return `<h3>Which job? <small class="muted">from Spectrum · Mob Prep</small></h3><input id="mJq" class="search" placeholder="Search job # or name…" value="${esc(jq)}">
-   <div class="names jobs mpjobs">${l.map(j=>`<button data-mj="${esc(j.no)}" aria-pressed="${W.job==='#'+j.no}"><span class="mono">#${esc(j.no)}</span><small>${esc((jobs.find(x=>x.no==='#'+j.no)||{}).name||j.name)}</small><small>${j.mp?'In Mob Prep':''}${j.city?(j.mp?' · ':'')+esc(j.city):''}</small></button>`).join('')||'<div class="muted">No match.</div>'}</div>
+   ${(()=>{const row=j=>`<button class="jrow" data-mj="${esc(j.no)}" aria-pressed="${W.job==='#'+j.no}"><span class="jno">#${esc(j.no)}</span><span class="jnm">${esc((jobs.find(x=>x.no==='#'+j.no)||{}).name||j.name||'')}</span><span class="jct">${esc(j.city||'')}</span>${j.mp?'<span class="jmp">Mob Prep</span>':'<span></span>'}</button>`;
+     const num=l.filter(j=>/^\d+$/.test(j.no)),oth=l.filter(j=>!/^\d+$/.test(j.no));
+     return l.length?`<div class="jlist">${num.map(row).join('')}</div>${oth.length?`<div class="qlabel" style="margin-top:12px">Other</div><div class="jlist">${oth.map(row).join('')}</div>`:''}`:'<div class="muted">No match.</div>'})()}
    ${W.job?`<div class="fields"><label class="f wide">Job name (as we call it)<input id="mJn" value="${esc(W.jobName||'')}" placeholder="e.g. Fullerton"></label></div>`:''}
    <div class="fields"><label class="f">Prepared by<input value="${esc(W.prep||curUser)}" disabled></label>
    <label class="f">Crew size<div class="step"><button data-cr="-1">−</button><b>${W.crew}</b><button data-cr="1">+</button></div></label>
