@@ -10,7 +10,7 @@ const AME=window.AME={modules:[],cur:'',
   allowed(m){return m.allow?m.allow():(!m.perm||can(m.perm))},
   home(){const ok=this.modules.filter(m=>this.allowed(m));if(ok.length===1){this.open(ok[0].id);return}setMod('home');showTab('home')},
   open(id){const m=this.mod(id);if(!m||!this.allowed(m))return;setMod(id);m.open()}};
-AME.register({id:'yard',name:'Yard Inventory',desc:'Take out · return · receive · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>showTab('yard')});
+AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · receive · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>showTab('yard')});
 document.querySelector('main').insertAdjacentHTML('afterbegin','<section id="tab-home" hidden></section>');
 function setMod(id){AME.cur=id;const m=AME.mod(id);const sub=document.querySelector('#brand small');if(sub)sub.textContent=m?m.name:'Apps';
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('offmod',!m||!(m.tabs||[]).includes(b.dataset.tab)));

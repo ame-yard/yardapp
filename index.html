@@ -647,7 +647,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.01',APP_DATE='2026-10-15';
+const APP_VERSION='3.02',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -766,7 +766,7 @@ const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.
   return `<select id="${id}"><option value="">— select ${role} —</option>${opts.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}</select>`};
 async function saveCrew(list){if(!list.some(c=>isOwner(c.name))){const o=crew.find(c=>isOwner(c.name));if(o)list=[...list,{...o,editor:true}]}list=list.map(c=>isOwner(c.name)?{...c,editor:true}:c);try{await db.doc('config/crew').set({members:list})}catch(e){toast('Could not save crew: '+(e.message||e.code))}}
 function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const roles=ROLES.concat('Guest');
-  T.innerHTML=`<thead><tr><th>Role</th>${FEATS.map(([k,l])=>`<th title="${l}">${k==='EDIT'?'Office tools':l}</th>`).join('')}</tr></thead><tbody>${roles.map(r=>`<tr><td><b>${r}</b> <small class="muted">${groupOf(r)==='Field'||r==='Guest'?'Field':'HQ'}</small></td>${FEATS.map(([k])=>{const v=perms.roles?.[r]&&k in perms.roles[r]?perms.roles[r][k]:(DEF_ON.includes(k)||(k==='AUDIT'&&r==='Intern'));return `<td class="c"><input type="checkbox" data-pr="${r}" data-pf="${k}" ${v?'checked':''} aria-label="${r} ${k}"></td>`}).join('')}</tr>`).join('')}</tbody>`;
+  T.innerHTML=`<thead><tr><th>Role</th>${FEATS.map(([k,l])=>`<th title="${l}">${k==='EDIT'?'Office tools':l}</th>`).join('')}</tr></thead><tbody>${roles.map(r=>`<tr><td><b>${r}</b> <small class="muted">${groupOf(r)==='Field'||r==='Guest'?'Field':'HQ'}</small></td>${FEATS.map(([k])=>{const v=perms.roles?.[r]&&k in perms.roles[r]?perms.roles[r][k]:(DEF_ON.includes(k)||(k==='AUDIT'&&r==='Intern')||(['MPL','EQP'].includes(k)&&['President','PM','Office'].includes(r)));return `<td class="c"><input type="checkbox" data-pr="${r}" data-pf="${k}" ${v?'checked':''} aria-label="${r} ${k}"></td>`}).join('')}</tr>`).join('')}</tbody>`;
   $$('#permRoles input').forEach(x=>x.onchange=async()=>{const p=JSON.parse(JSON.stringify(perms));p.roles=p.roles||{};p.roles[x.dataset.pr]={...(p.roles[x.dataset.pr]||{}),[x.dataset.pf]:x.checked};await savePerms(p)});
   const names=crew.map(c=>c.name).filter(n=>!isEditor(n));const cur=$('#gName').value;
   $('#gName').innerHTML=names.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
@@ -797,8 +797,8 @@ function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.
 async function writeItem(id,upd){const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
-const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['MPL','Mobilization prep list'],['EQP','Equipment prices'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
-const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UNITS'];
+const FEATS=[['YARD','App: Yard Inventory'],['MPL','App: Mobilization Prep List'],['EQP','App: Equipment Prices'],['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
+const DEF_ON=['YARD','OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UNITS'];
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
@@ -1631,10 +1631,10 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=294"></script>
+<script src="shell.js?v=302"></script>
 <script src="mpl.js?v=301"></script>
 <script src="eqp.js?v=293"></script>
-<script src="admin.js?v=300"></script>
+<script src="admin.js?v=302"></script>
 <script>
 /* auto-detect a newer app version */
 (function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}
