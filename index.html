@@ -583,7 +583,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.91',APP_DATE='2026-10-15';
+const APP_VERSION='1.92',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -687,11 +687,12 @@ function pic(i){if(i.photo)return `<img src="${esc(i.photo)}" alt="" loading="la
   return `<span class="ph" style="--h:${HUE[g]??90}"><span class="ptop"><span>${esc(sub(i)||gl?.[1]||'')}</span>${IC[gl?.[2]||'box']}</span><span><span class="pbig">${esc(bigTxt(i))}</span><span class="pbrand">${esc(i.mfgr||i.cat||'')}</span></span></span>`}
 let crew=[];const ROLES=['President','PM','Office','Intern','Yard','FM','SFM','Crew'];
 const FIELD=['FM','SFM','Crew'];const groupOf=r=>FIELD.includes(r)?'Field':'HQ';
-const isEditor=n=>!!crew.find(c=>c.name===n&&c.editor);
+const OWNER='Kyle K.';const isOwner=n=>n===OWNER;
+const isEditor=n=>isOwner(n)||!!crew.find(c=>c.name===n&&c.editor);
 const allNames=()=>[...new Set([...crew.map(c=>c.name),...people])].sort((a,b)=>a.localeCompare(b));
 const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.name);if(cur&&!opts.includes(cur))opts.unshift(cur);
   return `<select id="${id}"><option value="">— select ${role} —</option>${opts.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}</select>`};
-async function saveCrew(list){try{await db.doc('config/crew').set({members:list})}catch(e){toast('Could not save crew: '+(e.message||e.code))}}
+async function saveCrew(list){if(!list.some(c=>isOwner(c.name))){const o=crew.find(c=>isOwner(c.name));if(o)list=[...list,{...o,editor:true}]}list=list.map(c=>isOwner(c.name)?{...c,editor:true}:c);try{await db.doc('config/crew').set({members:list})}catch(e){toast('Could not save crew: '+(e.message||e.code))}}
 function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const roles=ROLES.concat('Guest');
   T.innerHTML=`<thead><tr><th>Role</th>${FEATS.map(([k,l])=>`<th title="${l}">${k==='EDIT'?'Office tools':l}</th>`).join('')}</tr></thead><tbody>${roles.map(r=>`<tr><td><b>${r}</b> <small class="muted">${groupOf(r)==='Field'||r==='Guest'?'Field':'HQ'}</small></td>${FEATS.map(([k])=>{const v=perms.roles?.[r]&&k in perms.roles[r]?perms.roles[r][k]:(DEF_ON.includes(k)||(k==='AUDIT'&&r==='Intern'));return `<td class="c"><input type="checkbox" data-pr="${r}" data-pf="${k}" ${v?'checked':''} aria-label="${r} ${k}"></td>`}).join('')}</tr>`).join('')}</tbody>`;
   $$('#permRoles input').forEach(x=>x.onchange=async()=>{const p=JSON.parse(JSON.stringify(perms));p.roles=p.roles||{};p.roles[x.dataset.pr]={...(p.roles[x.dataset.pr]||{}),[x.dataset.pf]:x.checked};await savePerms(p)});
@@ -703,8 +704,8 @@ function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const role
   $('#gList').innerHTML=G.length?G.map((g,k)=>`<div class="cntsum"><span><b>${esc(g.name)}</b> · ${g.feats.map(f=>FEATS.find(x=>x[0]===f)?.[1].split(' (')[0]||f).join(', ')} · ${g.until?'until '+new Date(g.until).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'no end date'} · by ${esc(g.by||'')}</span><button class="btn dng" data-gr="${g.id}">Remove</button></div>`).join(''):'<div class="muted" style="font-size:13px">No temporary access right now.</div>';
   $$('#gList [data-gr]').forEach(b=>b.onclick=()=>savePerms({...perms,grants:(perms.grants||[]).filter(g=>g.id!==b.dataset.gr)}))}
 async function savePerms(p){try{await db.doc('config/perms').set(p);toast('Permissions saved')}catch(e){toast('Could not save: '+(e.message||e.code))}}
-function renderCrew(){const el=$('#crewList');if(!el)return;if($('#pinState'))$('#pinState').textContent=officePin?'Editor PIN is set.':'No editor PIN yet — anyone tapping an editor name gets office tools.';
-  el.innerHTML=crew.length?['HQ','Field'].filter(g=>crew.some(c=>groupOf(c.role)===g)).map(g=>`<div class="crewgrp"><b>${g}</b><div class="crewchips">${crew.map((c,k)=>({...c,k})).filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<span class="crewchip" data-ce="${c.k}">${esc(c.name)}<small>${esc(c.role)}</small>${c.editor?'<span class="edtag">Editor</span>':''}<button class="admin-only" data-ed="${c.k}" title="${c.editor?'Remove editor access':'Make editor'}">${c.editor?'−Ed':'+Ed'}</button><button class="admin-only" data-ck="${c.k}" aria-label="Remove ${esc(c.name)}" title="Remove">✕</button></span>`).join('')}</div></div>`).join('')
+function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none'}if($('#pinState'))$('#pinState').textContent=officePin?'Editor PIN is set.':'No editor PIN yet — anyone tapping an editor name gets office tools.';
+  el.innerHTML=crew.length?['HQ','Field'].filter(g=>crew.some(c=>groupOf(c.role)===g)).map(g=>`<div class="crewgrp"><b>${g}</b><div class="crewchips">${crew.map((c,k)=>({...c,k})).filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<span class="crewchip" data-ce="${c.k}">${esc(c.name)}<small>${esc(c.role)}</small>${isOwner(c.name)?'<span class="edtag">Owner</span>':c.editor?'<span class="edtag">Editor</span>':''}${isOwner(c.name)?'':`<button class="admin-only" data-ed="${c.k}" title="${c.editor?'Remove editor access':'Make editor'}">${c.editor?'−Ed':'+Ed'}</button><button class="admin-only" data-ck="${c.k}" aria-label="Remove ${esc(c.name)}" title="Remove">✕</button>`}</span>`).join('')}</div></div>`).join('')
    :'<div class="muted" style="padding:8px 0">No crew yet. Add PMs, FMs and SFMs above.</div>';
   if(isAdmin)$$('#crewList [data-ce]').forEach(ch=>{ch.title='Press and hold to edit';lp(ch,()=>editCrew(Number(ch.dataset.ce)))});
   $$('#crewList [data-ed]').forEach(b=>b.onclick=()=>{const k=Number(b.dataset.ed);const c=crew[k];if(c.editor&&crew.filter(x=>x.editor).length===1){toast('Keep at least one editor.');return}saveCrew(crew.map((x,i)=>i===k?{...x,editor:!x.editor}:x))});
@@ -865,13 +866,13 @@ function editLog(lid){if(!isAdmin){toast('Only editors can change records.');ret
     try{await db.doc('logs/'+lid).update(u);toast('Record updated');closeDlg()}catch(e){toast('Could not save: '+(e.message||e.code))}};
   $('#l_del').onclick=()=>{$('#l_conf').innerHTML=`<div class="banner" style="margin-top:10px">Delete this record for good? <button class="btn dng" id="l_del2">Yes, delete</button></div>`;
     $('#l_del2').onclick=async()=>{try{await db.doc('logs/'+lid).delete();toast('Record deleted');closeDlg()}catch(e){toast('Could not delete: '+(e.message||e.code))}}}}
-function editCrew(k){if(!isAdmin)return;const c=crew[k];if(!c)return;
+function editCrew(k){if(!isAdmin)return;const c=crew[k];if(!c)return;if(isOwner(c.name)&&!isOwner(curUser)){toast('The owner account can only be changed by Kyle.');return}
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>Edit person</h3><div class="fields">
    <label class="f">Name<input id="p_n" value="${esc(c.name)}"></label><label class="f">Role<select id="p_r">${ROLES.map(r=>`<option ${r===c.role?'selected':''}>${r}</option>`).join('')}</select></label>
    <label class="f wide" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="p_e" ${c.editor?'checked':''}> Editor (office tools, needs PIN)</label></div>
    <div class="bar"><button class="btn" id="p_c">Cancel</button><button class="btn pri" id="p_s">Save</button></div></div></div>`;
   $('#p_c').onclick=closeDlg;
-  $('#p_s').onclick=async()=>{const n=$('#p_n').value.trim();if(!n)return;const ed=$('#p_e').checked;if(!ed&&c.editor&&crew.filter(x=>x.editor).length===1){toast('Keep at least one editor.');return}
+  $('#p_s').onclick=async()=>{const n=isOwner(c.name)?c.name:$('#p_n').value.trim();if(!n)return;const ed=$('#p_e').checked;if(!ed&&c.editor&&crew.filter(x=>x.editor).length===1){toast('Keep at least one editor.');return}
     await saveCrew(crew.map((x,i)=>i===k?{...x,name:n,role:$('#p_r').value,editor:ed}:x));
     if(n!==c.name)for(const j of jobs){const u={};['pm','fm','sfm'].forEach(f=>{if(j[f]===c.name)u[f]=n});if(Object.keys(u).length)db.doc('jobs/'+j._id).update(u).catch(()=>{})}
     toast('Saved');closeDlg()}}
@@ -1212,7 +1213,7 @@ $('#addItem').onclick=()=>openItem('');
 
 /* jobs */
 $('#jstat').onchange=()=>renderJobs();
-$('#savePin').onclick=async()=>{const p=$('#newPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').set({officePin:p});$('#newPin').value='';toast('Office PIN saved')}catch(e){toast('Could not save: '+(e.message||e.code))}};
+$('#savePin').onclick=async()=>{if(!isOwner(curUser)){toast('Only Kyle can change the editor PIN.');return}const p=$('#newPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').set({officePin:p});$('#newPin').value='';toast('Office PIN saved')}catch(e){toast('Could not save: '+(e.message||e.code))}};
 $('#gAdd').onclick=()=>{const name=$('#gName').value;const feats=$$('#gFeats [data-gf][aria-pressed="true"]').map(b=>b.dataset.gf);if(!name||!feats.length){toast('Pick a person and at least one permission.');return}
   const d=$('#gDur').value;let until=null;if(d==='today'){const t=new Date();t.setHours(23,59,59,0);until=+t}else if(d!=='0')until=Date.now()+Number(d)*3600e3;
   const now=Date.now();savePerms({...perms,grants:[...(perms.grants||[]).filter(g=>!g.until||g.until>now),{id:'g'+now.toString(36),name,feats,until,by:curUser,at:new Date().toISOString()}]});$$('#gFeats [data-gf]').forEach(b=>b.setAttribute('aria-pressed','false'))};
