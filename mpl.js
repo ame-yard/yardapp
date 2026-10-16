@@ -10,6 +10,38 @@ const rItem=id=>REF&&REF.its.find(x=>x[0]===id);
 const stName=id=>(REF.st.find(s=>s[0]===id)||[,'?'])[1];
 const kids=p=>REF.st.filter(s=>s[2]===p);
 
+/* ---------- Mob Prep (amebuilders.org) API ---------- */
+const MPAPI='https://api.amebuilders.org/v1';
+const MP={tok(){try{return localStorage.getItem('mpTok')||''}catch(e){return ''}},
+  async login(email,pw){const r=await fetch(MPAPI+'/users/login',{method:'POST',headers:{'Content-Type':'application/json',accept:'application/json'},body:JSON.stringify({email,password:pw})});if(!r.ok)throw new Error('Mob Prep sign-in failed — check email/password');const j=await r.json();localStorage.setItem('mpTok',j.access_token);localStorage.setItem('mpEmail',email);MP.cache={};return j},
+  logout(){try{localStorage.removeItem('mpTok')}catch(e){}MP.cache={}},
+  async call(p,opt={}){const r=await fetch(MPAPI+p,{...opt,headers:{accept:'application/json','Content-Type':'application/json',Authorization:'Bearer '+MP.tok(),...(opt.headers||{})}});
+    if(r.status===401||r.status===403){MP.logout();throw new Error('Mob Prep session expired — connect again')}if(r.status===404)return null;if(!r.ok)throw new Error('Mob Prep error '+r.status+': '+(await r.text()).slice(0,160));return r.status===204?{}:r.json()},
+  cache:{},async get(p){if(!MP.cache[p])MP.cache[p]=MP.call(p).catch(e=>{delete MP.cache[p];throw e});return MP.cache[p]}};
+window.MP=MP;
+async function mpJobs(){const [sj,pr]=await Promise.all([MP.get('/spectrum/jobs'),MP.get('/projects')]);const m=new Map();
+  (sj?.jobs||[]).forEach(j=>m.set(String(j.Job_Number).trim(),{no:String(j.Job_Number).trim(),name:(j.Job_Description||'').trim(),city:j.City||'',active:j.Status_Code==='A',spectrum:true}));
+  (pr?.projects||[]).forEach(p=>{const k=String(p.metadata.custom_id).trim();const o=m.get(k)||{no:k,name:p.metadata.project_name,active:p.metadata.status!=='completed'};o.pid=p.metadata.id;o.mp=true;m.set(k,o)});
+  return [...m.values()].sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}))}
+async function mpUsers(){const u=await MP.get('/users');return (u?.users||[]).filter(x=>x.is_active!==false)}
+async function sendToMobPrep(){if(!MP.tok()){connectDlg(sendToMobPrep);return}const num=String(W.job||'').replace(/^#/,'');if(!num){toast('Pick the job first.');return}
+  if(!confirm('Create this prep list in Mob Prep (amebuilders.org) under job '+num+'?'))return;
+  try{toast('Sending to Mob Prep…');let p=await MP.call('/projects/custom/'+encodeURIComponent(num));let pid=p?.metadata?.id;
+    if(!pid){const c=await MP.call('/projects',{method:'POST',body:JSON.stringify({custom_id:num,project_name:W.jobName||jobLabel(W.job).replace(/^#\S+\s·\s/,'')||num,project_location:'',integrated_with_spectrum:true})});pid=c?.metadata?.id}
+    if(!pid)throw new Error('Could not create the project');
+    const me=await MP.get('/users/me');const body={pm_id:W.mpPm||null,fm_id:W.mpFm||null,mob_prep_preparer_id:me?.id||null,crew_size:W.crew,notes:'From AME Yard app',surface_type_ids:W.st};
+    const ct=await MP.call('/projects/'+pid+'/contents',{method:'POST',body:JSON.stringify(body)});const cid=ct?.id;if(!cid)throw new Error('Could not create the prep list');
+    let n=0;for(const l of W.lines||[]){if(!l.rid)continue;try{await MP.call('/projects/'+pid+'/contents/'+cid+'/items',{method:'POST',body:JSON.stringify({item_id:l.rid,quantity:l.n})});n++}catch(e){console.warn(e)}}
+    try{await MP.call('/projects/'+pid+'/contents/'+cid,{method:'PUT',body:JSON.stringify({status:'mob_prep'})})}catch(e){}
+    W.mp={pid,cid,num,at:new Date().toISOString(),items:n};await save(W.status||'draft',{mp:W.mp});MP.cache={};toast('Sent to Mob Prep: job '+num+' · '+n+' items');render()}
+  catch(e){toast(e.message||String(e))}}
+function connectDlg(after){const r=document.getElementById('dlgRoot');let em='';try{em=localStorage.getItem('mpEmail')||''}catch(e){}
+  r.innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>Connect Mob Prep</h3><p class="muted">Sign in with your amebuilders.org account. Job numbers come from Spectrum through Mob Prep. Your password is sent only to amebuilders.org and is not saved; this device stays connected.</p>
+   <div class="fields"><label class="f">Email<input id="mpE" type="email" autocomplete="username" value="${esc(em)}"></label><label class="f">Password<input id="mpP" type="password" autocomplete="current-password"></label></div>
+   <div class="bar"><button class="btn" id="mpC">Cancel</button><button class="go" id="mpGo" style="width:auto">Connect</button></div></div></div>`;
+  document.getElementById('mpC').onclick=closeDlg;document.getElementById('mpGo').onclick=async()=>{const b=document.getElementById('mpGo');b.disabled=true;b.textContent='Connecting…';
+    try{await MP.login(document.getElementById('mpE').value.trim(),document.getElementById('mpP').value);closeDlg();toast('Mob Prep connected');if(after)after();else render()}catch(e){toast(e.message);b.disabled=false;b.textContent='Connect'}}}
+
 /* ---------- matching ref items to yard inventory ---------- */
 function bestYard(name){const a=norm(name);if(!a.length)return null;let best=null,bs=0;
   for(const it of items){const b=norm(it.name+' '+(it.size||''));if(!b.length)continue;const hit=a.filter(w=>b.includes(w)).length;const sc=hit/Math.max(a.length,Math.min(b.length,a.length+2));
@@ -45,21 +77,28 @@ function renderList(){const box=el();const l=[...MPLS].sort((a,b)=>String(b.upda
 function crumbs(){return `<div class="mplsteps">${STEPS.map(([k,l],n)=>`<button data-st="${n}" class="${n===W.step?'on':n<W.step?'done':''}" ${n>W.step+0&&!W.lines?'disabled':''}><span>${n+1}</span>${l}</button>`).join('')}</div>`}
 function chips(list,sel,attr){return `<div class="mplchips">${list.map(([id,name])=>`<button data-${attr}="${id}" aria-pressed="${sel.includes(id)}">${esc(name)}</button>`).join('')}</div>`}
 function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
-  if(s===0){const pms=crew.filter(c=>['PM','President','Office'].includes(c.role)),fms=crew.filter(c=>['FM','SFM'].includes(c.role));
-    body=`<h3>Which job?</h3><div class="names jobs" id="mJobs">${jobs.filter(j=>j.status!=='Closed').sort((a,b)=>a.no.localeCompare(b.no,undefined,{numeric:true})).map(j=>`<button data-j="${esc(j.no)}" aria-pressed="${W.job===j.no}"><span class="mono">${esc(j.no)}</span><small>${esc(j.name||'')}</small></button>`).join('')}</div>
-      <input id="mJob" class="search" style="margin-top:8px" placeholder="Or type a job # (e.g. 512)" value="${esc(jobs.some(j=>j.no===W.job)?'':W.job)}">
-      <div class="fields"><label class="f">Prepared by<input value="${esc(W.prep||curUser)}" disabled></label>
-      <label class="f">Crew size<div class="step"><button data-cr="-1">−</button><b>${W.crew}</b><button data-cr="1">+</button></div></label>
-      <label class="f">PM<select id="mPm"><option value="">—</option>${pms.map(c=>`<option ${c.name===W.pm?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
-      <label class="f">FM / SFM<select id="mFm"><option value="">—</option>${fms.map(c=>`<option ${c.name===W.fm?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label></div>`}
+  if(s===0){body=jobStep()}
   else if(s===1){body=`<h3>Roof system</h3><p class="muted">Pick every system on this job.</p>${chips(kids(8).map(x=>[x[0],x[1]]),W.st,'s')}`}
   else if(s===2){body=`<h3>Deck type</h3>${chips(kids(1).map(x=>[x[0],x[1]]),W.st,'s')}`}
   else if(s===3){body=`<h3>Other scope</h3><p class="muted">Tap what applies. Each choice adds its tools and supplies.</p>`+SCOPE_PARENTS.map(p=>{const k=kids(p);if(!k.length)return'';return `<div class="qlabel">${esc(stName(p))}</div>${chips(k.map(x=>[x[0],x[1]]),W.st,'s')}`}).join('');next='Build the list'}
   else if(s===4){if(!W.lines)W.lines=generate(W.st);body=listHtml();next='Review check-out'}
   else if(s===5){body=goHtml();next=''}
   box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2></div>${crumbs()}<div class="panel mplbody">${body}</div>
-   <div class="mplbar">${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
+   <div class="mplbar">${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
   wire()}
+let mpJ=null,mpU=null,mpErr='',jq='';
+function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" style="margin:0"><p>Job numbers come from <b>Spectrum through Mob Prep</b>. Connect once on this device.</p><button class="go" id="mpConn" style="width:auto">Connect Mob Prep</button></div>`;
+  if(!mpJ&&!mpErr){mpJobs().then(j=>{mpJ=j;return mpUsers()}).then(u=>{mpU=u;render()}).catch(e=>{mpErr=e.message;render()});return '<h3>Which job?</h3><p class="muted">Loading jobs from Spectrum / Mob Prep…</p>'}
+  if(mpErr)return `<h3>Which job?</h3><p class="bad">${esc(mpErr)}</p><button class="btn" id="mpRetry">Try again</button> <button class="btn" id="mpConn">Reconnect</button>`;
+  const q=jq.toLowerCase();const l=mpJ.filter(j=>j.active!==false&&(!q||j.no.includes(q)||j.name.toLowerCase().includes(q))).slice(0,60);
+  const pms=(mpU||[]).filter(u=>['pm','admin','president','office'].includes(String(u.role||'').toLowerCase())||true);
+  return `<h3>Which job? <small class="muted">from Spectrum · Mob Prep</small></h3><input id="mJq" class="search" placeholder="Search job # or name…" value="${esc(jq)}">
+   <div class="names jobs mpjobs">${l.map(j=>`<button data-mj="${esc(j.no)}" aria-pressed="${W.job==='#'+j.no}"><span class="mono">#${esc(j.no)}</span><small>${esc(j.name)}</small><small>${j.mp?'In Mob Prep':''}${j.city?(j.mp?' · ':'')+esc(j.city):''}</small></button>`).join('')||'<div class="muted">No match.</div>'}</div>
+   <div class="fields"><label class="f">Prepared by<input value="${esc(W.prep||curUser)}" disabled></label>
+   <label class="f">Crew size<div class="step"><button data-cr="-1">−</button><b>${W.crew}</b><button data-cr="1">+</button></div></label>
+   <label class="f">PM<select id="mPm"><option value="">—</option>${pms.map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpPm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label>
+   <label class="f">FM / SFM<select id="mFm"><option value="">—</option>${(mpU||[]).map(u=>`<option value="${esc(u.id)}" ${u.id===W.mpFm?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label></div>
+   <p class="muted" style="font-size:12.5px">Connected as ${esc((()=>{try{return localStorage.getItem('mpEmail')}catch(e){return ''}})()||'')} · <a href="#" id="mpOut">disconnect</a></p>`}
 function listHtml(){const g={};W.lines.forEach((l,k)=>{(g[l.cat||'Custom']=g[l.cat||'Custom']||[]).push([l,k])});
   const cats=Object.keys(g).sort((a,b)=>(ORDER.indexOf(a)+99)%99-(ORDER.indexOf(b)+99)%99);
   return `<div class="mplhead2"><h3>Item list · ${W.lines.length}</h3><button class="btn" id="mAdd">+ Add item</button></div>
@@ -77,20 +116,25 @@ function goHtml(){const g=goLines();const yard=g.filter(x=>x.y),other=g.filter(x
 function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f);
   document.getElementById('mBack').onclick=()=>{if(W.step===0){view='list';render()}else{W.step--;render()}};
   q('[data-st]',b=>b.onclick=()=>{const n=+b.dataset.st;if(n<=W.step||W.lines){if(n===5&&!W.lines)return;W.step=n;render()}});
-  q('[data-j]',b=>b.onclick=()=>{W.job=b.dataset.j;render()});
+  q('[data-mj]',b=>b.onclick=()=>{const j=mpJ.find(x=>x.no===b.dataset.mj);W.job='#'+j.no;W.jobName=j.name;W.mpPid=j.pid||null;render()});
+  const jqi=document.getElementById('mJq');if(jqi)jqi.oninput=()=>{jq=jqi.value;const p=jqi.selectionStart;render();const n=document.getElementById('mJq');n.focus();n.setSelectionRange(p,p)};
+  const cn=document.getElementById('mpConn');if(cn)cn.onclick=()=>connectDlg(()=>{mpJ=null;mpErr='';render()});
+  const rt=document.getElementById('mpRetry');if(rt)rt.onclick=()=>{mpErr='';mpJ=null;MP.cache={};render()};
+  const mo=document.getElementById('mpOut');if(mo)mo.onclick=e=>{e.preventDefault();MP.logout();mpJ=null;render()};
   const mj=document.getElementById('mJob');if(mj)mj.onchange=()=>{W.job=normJob(mj.value)};
   q('[data-cr]',b=>b.onclick=()=>{W.crew=Math.max(1,W.crew+ +b.dataset.cr);render()});
-  const pm=document.getElementById('mPm');if(pm)pm.onchange=()=>W.pm=pm.value;const fm=document.getElementById('mFm');if(fm)fm.onchange=()=>W.fm=fm.value;
+  const pm=document.getElementById('mPm');if(pm)pm.onchange=()=>{W.mpPm=pm.value;W.pm=pm.selectedOptions[0]?.text||''};const fm=document.getElementById('mFm');if(fm)fm.onchange=()=>{W.mpFm=fm.value;W.fm=fm.selectedOptions[0]?.text||''};
   q('[data-s]',b=>b.onclick=()=>{const id=+b.dataset.s;W.st=W.st.includes(id)?W.st.filter(x=>x!==id):[...W.st,id];if(W.lines&&W.step<4)W.lines=null;render()});
   q('[data-q]',b=>b.onclick=()=>{const l=W.lines[+b.dataset.q];l.n=Math.max(1,l.n+ +b.dataset.d);render()});
   q('[data-rm]',b=>b.onclick=()=>{W.lines.splice(+b.dataset.rm,1);render()});
   q('[data-yl]',b=>b.onclick=()=>linkYard(+b.dataset.yl));
   const ad=document.getElementById('mAdd');if(ad)ad.onclick=addItem;
+  const sd=document.getElementById('mSend');if(sd)sd.onclick=sendToMobPrep;
   const sv=document.getElementById('mSave');if(sv)sv.onclick=()=>save('draft').then(()=>toast('Draft saved'));
-  const nx=document.getElementById('mNext');if(nx)nx.onclick=()=>{if(W.step===0){if(mj&&mj.value.trim())W.job=normJob(mj.value);if(!W.job){toast('Pick or type the job first.');return}}
+  const nx=document.getElementById('mNext');if(nx)nx.onclick=()=>{if(W.step===0){if(!W.job){toast('Pick the job first.');return}}
     if(W.step===3&&!W.st.length){toast('Pick at least one scope.');return}if(W.step===3)W.lines=generate(W.st);W.step++;render();scrollTo({top:0})};
   const go=document.getElementById('mGo');if(go)go.onclick=checkout}
-async function save(status,extra){const now=new Date().toISOString();const d={job:W.job,pm:W.pm||'',fm:W.fm||'',crew:W.crew,prep:W.prep||curUser,st:W.st,lines:W.lines||[],status,updated:now,created:W.created||now,...(extra||{})};
+async function save(status,extra){const now=new Date().toISOString();const d={job:W.job,jobName:W.jobName||'',mpPm:W.mpPm||'',mpFm:W.mpFm||'',mp:W.mp||null,pm:W.pm||'',fm:W.fm||'',crew:W.crew,prep:W.prep||curUser,st:W.st,lines:W.lines||[],status,updated:now,created:W.created||now,...(extra||{})};
   if(!openId)openId='m'+Date.now().toString(36);W.created=d.created;await db.doc('mpl/'+openId).set(d);return d}
 function pickDlg(title,list,onPick){let qv='';const draw=()=>{const l=list.filter(x=>!qv||x.t.toLowerCase().includes(qv)).slice(0,120);
   document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>${title}</h3><input id="pdq" class="search" placeholder="Search…" value="${esc(qv)}"><div class="qpl" style="max-height:55vh">${l.map((x,n)=>`<button class="qpi" data-pi="${n}"><b>${esc(x.t)}</b><span>${esc(x.s||'')}</span></button>`).join('')||'<div class="muted" style="padding:10px">No match</div>'}</div><div class="bar"><button class="btn" id="pdc">Cancel</button></div></div></div>`;
@@ -100,7 +144,7 @@ function linkYard(k){const l=W.lines[k];pickDlg('Link “'+esc(l.name)+'” to a
   if(x.none){l.yid='';l.nolink=true}else{l.yid=x.i.id;l.nolink=false;if(l.rid){MAP={...MAP,[l.rid]:x.i.id};try{await db.doc('config/mplmap').set(MAP)}catch(e){}}}render()})}
 function addItem(){pickDlg('Add an item',[...REF.its.filter(r=>!W.lines.some(l=>l.rid===r[0])).map(r=>({t:r[1],s:r[2]+' · '+r[3],r})),...items.map(i=>({t:i.name,s:'Yard · '+[i.size,i.loc].filter(Boolean).join(' · '),i}))],x=>{
   if(x.r)W.lines.push({rid:x.r[0],name:x.r[1],cat:x.r[2],sub:x.r[3],unit:x.r[4],n:1,from:'Added'});else W.lines.push({yid:x.i.id,name:x.i.name,cat:'Custom',sub:'From yard',unit:x.i.unit,n:1,from:'Added'});render()})}
-async function addJobIfMissing(job,now){if(job&&!jobs.some(j=>j.no===job)){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:'',pm:W.pm||'',fm:W.fm||'',address:'',status:'Active',notes:'Added from MPL by '+curUser,autoAdded:true,updatedAt:now})}catch(e){}}}
+async function addJobIfMissing(job,now){if(job&&!jobs.some(j=>j.no===job)){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:W.jobName||'',pm:W.pm||'',fm:W.fm||'',address:'',status:'Active',notes:'Added from MPL by '+curUser,autoAdded:true,updatedAt:now})}catch(e){}}}
 async function checkout(){const g=goLines().filter(x=>x.y&&x.take>0);if(!g.length)return;if(!confirm(`Take ${g.length} items out of the yard to ${jobLabel(W.job)}?`))return;
   const b=document.getElementById('mGo');b.disabled=true;b.textContent='Checking out…';const now=new Date().toISOString();await addJobIfMissing(W.job,now);let ok=0;
   for(const x of g){const it=byId(x.y.id);if(!it)continue;const before=Number(it.qty)||0,n=Math.min(x.take,before);if(n<=0)continue;
