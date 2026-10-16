@@ -644,7 +644,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.86',APP_DATE='2026-10-15';
+const APP_VERSION='2.87',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1543,7 +1543,7 @@ function showLogin(){if(curUser)return;
 }
 
 $('#verTxt').textContent=innerWidth<600?APP_VERSION:`App ${APP_VERSION} · ${APP_DATE}`;
-let lastSync=null;function markSync(){lastSync=new Date();$('#syncTxt').textContent=(innerWidth<600?'':'Synced ')+lastSync.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'})}
+let lastSync=null;function markSync(){lastSync=new Date();if(Date.now()<(window.__svUntil||0))return;$('#syncTxt').textContent=(innerWidth<600?'':'Synced ')+lastSync.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'})}
 (function(){let y0=null,dy=0,busy=false;const P=$('#ptr'),T=$('#ptrTxt');
   const top=()=>(window.scrollY||document.documentElement.scrollTop||0)<=0;
   document.addEventListener('touchstart',e=>{if(busy||$('#dlgRoot').firstChild||$('#loginRoot').firstChild||!top()){y0=null;return}y0=e.touches[0].clientY;dy=0},{passive:true});
@@ -1618,7 +1618,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 (function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}
   setTimeout(chk,8000);setInterval(chk,120000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
 
-window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st;t.textContent=st==='saving'?'Saving…':st==='saved'?'Saved to SharePoint ✓':'Save failed — tap Sync';t.style.color=st==='error'?'#ff8a7a':st==='saved'?'#7fd18b':'';if(st==='saved'){clearTimeout(window.__svT);window.__svT=setTimeout(()=>{t.style.color='';try{markSync()}catch(_){}},4000)}});
+window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st;t.textContent=st==='saving'?'Saving…':st==='saved'?'Saved to SharePoint ✓':'Save failed — tap Sync';t.style.color=st==='error'?'#ff8a7a':st==='saved'?'#7fd18b':'';if(st!=='saved')window.__svUntil=Date.now()+60000;if(st==='saved'){window.__svUntil=Date.now()+4000;clearTimeout(window.__svT);window.__svT=setTimeout(()=>{t.style.color='';window.__svUntil=0;try{markSync()}catch(_){}},4100)}});
 window.addEventListener('beforeunload',e=>{if(document.getElementById('syncTxt')?.dataset.s==='saving'){e.preventDefault();e.returnValue=''}});
 </script>
 </body></html>
