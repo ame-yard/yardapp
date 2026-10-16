@@ -583,7 +583,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.94',APP_DATE='2026-10-15';
+const APP_VERSION='1.95',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -964,10 +964,10 @@ function openUnitPicker(id){const it=byId(id);if(!it)return;const c=cart.find(c=
     <div class="muted" style="font-size:13px">${esc(it.name)} · ${esc(it.size||'')} · ${esc(it.loc)} · ${cand.length} ${act==='OUT'?'in yard':'out'}</div>
     ${unitChips(it,cand,sel,'data-pk')}
     <div class="muted" style="font-size:12.5px;margin-top:8px">“out N×” = how many times that unit has gone out.</div>
-    <div class="bar" style="align-items:stretch"><button class="btn" id="upC">Cancel</button>${cand.length>1?'<button class="btn" id="upAll">Select all</button>':''}<button class="go" id="upOk" style="width:auto;flex:1" ${sel.length?'':'disabled'}>${sel.length?`Add ${sel.length}`:'Pick a number'}</button></div></div></div>`;
+    <div class="bar" style="align-items:stretch"><button class="btn" id="upC">Cancel</button>${cand.length>1?'<button class="btn" id="upAll">Select all</button>':''}<button class="go" id="upOk" style="width:auto;flex:1" ${sel.length?'':'disabled'}>${sel.length?`Add ${sel.length} to cart`:'Pick a number'}</button></div></div></div>`;
     $$('#dlgRoot [data-pk]').forEach(b=>b.onclick=()=>{const sn=b.dataset.pk;sel=sel.includes(sn)?sel.filter(x=>x!==sn):[...sel,sn];draw()});
     $('#upC').onclick=()=>{closeDlg();render()};if($('#upAll'))$('#upAll').onclick=()=>{sel=sel.length===cand.length?[]:[...cand];draw()};
-    $('#upOk').onclick=()=>{const e=cart.find(x=>x.id===id);if(e){e.units=sel;e.n=sel.length}else cart.push({id,n:sel.length,units:sel});closeDlg();renderCartBar();renderYard();toast(`Added ${sel.length} × ${it.name}: ${sel.join(', ')}`)}};
+    $('#upOk').onclick=()=>{const e=cart.find(x=>x.id===id);if(e){e.units=sel;e.n=sel.length}else cart.push({id,n:sel.length,units:sel});closeDlg();renderCartBar();renderYard();toast(`In cart (not checked out yet): ${it.name} ${sel.join(', ')}`)}};
   if(!cand.length){toast(act==='OUT'?'No units of this item are in the yard.':'None of these units are out.');return}draw()}
 function addCart(id){const it=byId(id);if(!it)return;const c=cart.find(c=>c.id===id);
   if(act==='OUT'){if(Array.isArray(it.serials)&&it.serials.length){openUnitPicker(id);return}}
@@ -1007,7 +1007,7 @@ $('#cbGo').onclick=openCheckout;
 let selWho='',selCond='Good';
 function renderPeople(){}
 function openCheckout(){
-  const needJob=act==='OUT'||act==='RETURN';const recent=[...new Set(logs.map(g=>g.job).filter(Boolean))].slice(0,6);
+  const needJob=act==='OUT';const recent=[...new Set(logs.map(g=>g.job).filter(Boolean))].slice(0,6);
   $('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" role="dialog" aria-modal="true">
    <h3>${ACTNAME[act]} · ${cart.length} item${cart.length===1?'':'s'}</h3>
    <div id="cart"></div>
@@ -1035,7 +1035,7 @@ function openCheckout(){
 }
 function drawCartLines(){
   $('#cart').innerHTML=cart.map((c,k)=>{const i=byId(c.id)||{};const warn=act==='OUT'&&typeof i.qty==='number'&&c.n>i.qty;
-    return `<div class="citem"><div class="nm">${thumb(i)}${esc(i.name)}<small>${esc(i.loc)} ${esc(i.level||'')} · ${esc(i.size||'')} · in yard ${esc(qtyTxt(i))} ${esc(i.unit)}${warn?' · <b style="color:var(--bad)">more than listed</b>':''}</small>
+    return `<div class="citem"><div class="nm">${thumb(i)}${esc(i.name)}<small>${esc(i.loc)} ${esc(i.level||'')} · ${esc(i.size||'')} · in yard ${esc(qtyTxt(i))} ${esc(i.unit)}${act==='RETURN'&&retJob(i,c)?' · from <b>'+esc(jobLabel(retJob(i,c)))+'</b>':''}${warn?' · <b style="color:var(--bad)">more than listed</b>':''}</small>
     ${act==='OUT'&&i.report?`<small style="color:var(--warn)">${IC2.alert} Needs service${i.report?': '+esc(i.report):''} — check it before taking</small>`:''}
     ${act==='RETURN'?`<div class="lcond" data-k="${k}">${[['Good','Good'],['Needs','Needs repair'],['Lost','Lost on job']].map(([v,l])=>`<button data-lc="${v}" aria-pressed="${(c.cond||'Good')===v}">${l}</button>`).join('')}</div>`:''}
     ${sers(i).length&&(act==='OUT'||act==='RETURN')?`<div class="qlabel" style="margin-top:8px">Units</div>`+unitChips(i,sers(i).filter(sn=>act==='OUT'?ust(i,sn).st==='yard':ust(i,sn).st==='out'),c.units||[],`data-uk="${k}" data-sn`):''}
@@ -1048,14 +1048,17 @@ function drawCartLines(){
   $$('#cart .rm').forEach(b=>b.onclick=()=>{cart.splice(b.dataset.k,1);drawCartLines();renderCartBar();if(!cart.length){closeDlg();render()}});
   validate();
 }
-function validate(){const s=$('#submit');if(!s)return;const needJob=act==='OUT'||act==='RETURN';
+function validate(){const s=$('#submit');if(!s)return;const needJob=act==='OUT';
   s.disabled=!(cart.length&&selWho&&(act!=='DISPOSE'||selReason)&&!!curUser&&(!needJob||selJob)&&cart.every(c=>c.n>0||act==='ADJUST'))}
+function retJob(it,c){if(c.units&&c.units.length){const j=ust(it,c.units[0]).job;if(j)return j}
+  const m={};for(const g of logs){if(g.itemId!==it.id||!g.job)continue;if(g.action==='OUT')m[g.job]=(m[g.job]||0)+g.n;else if(g.action==='RETURN'||g.action==='LOST')m[g.job]=(m[g.job]||0)-g.n}
+  const rj=typeof yGroup==='string'&&yGroup.startsWith('rj:')&&yGroup!=='rj:all'?yGroup.slice(3):'';if(rj&&m[rj]>0)return rj;const best=Object.entries(m).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];return best?best[0]:(it.lastJob||'')}
 async function submit(){
   if(!db){toast('Not connected — changes cannot be saved.');return}
-  $('#submit').disabled=true;const toRepair=act==='OUT'&&selJob==='__repair';const by=selWho, job=(act==='OUT'||act==='RETURN')&&!toRepair?normJob(selJob):'', note=$('#note').value.trim(), rc=selCond, now=new Date().toISOString();
+  $('#submit').disabled=true;const toRepair=act==='OUT'&&selJob==='__repair';const by=selWho, job=act==='OUT'&&!toRepair?normJob(selJob):'', note=$('#note').value.trim(), rc=selCond, now=new Date().toISOString();
   let ok=0;const n=cart.length;
   if(job&&!jobs.some(j=>j.no===job)){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:'',pm:'',fm:'',address:'',status:'Active',notes:'Added from yard by '+by+' — fill in details',autoAdded:true,updatedAt:now})}catch(e){}}
-  for(const c of cart){const it=byId(c.id);if(!it)continue;
+  for(const c of cart){const it=byId(c.id);if(!it)continue;const cj=act==='RETURN'?retJob(it,c):job;
     const before=typeof it.qty==='number'?it.qty:0;let after=before,out=it.out||0,rep=it.repair||0,logAct=act,extra={};
     if(toRepair){after=before-c.n;rep+=c.n;extra.repair=rep;logAct='REPAIR_OUT'}
     else if(act==='OUT'){after=before-c.n;out+=c.n}else if(act==='RETURN'){const lc=c.cond||'Good';out=Math.max(0,out-c.n);if(lc==='Lost'){logAct='LOST'}else{after=before+c.n;if(lc==='Needs'){extra.cond='Needs Check';extra.report=note||('Needs repair — returned from '+(job||'job'))}else if(lc==='Broken'){extra.cond='Bad';extra.report=note||('Broken — dispose? Returned from '+(job||'job'))}}}else if(act==='RECEIVE'){after=before+c.n}else if(act==='DISPOSE'){if(rep>0){rep=Math.max(0,rep-c.n)}else after=Math.max(0,before-c.n);extra.repair=rep;if(!rep&&after>=0)extra.report=''}
@@ -1063,10 +1066,10 @@ async function submit(){
     else{after=c.n}
     const upd={qty:after,out,updatedAt:now,updatedBy:by,...extra};if(act==='ADJUST'){upd.issue='';upd.qtyNote=''}
     if(c.units&&c.units.length){const um={};sers(it).forEach(sn=>um[sn]=ust(it,sn));Object.assign(um,it.units||{});const lc=c.cond||'Good';if(!(Array.isArray(it.serials)&&it.serials.length))upd.serials=sers(it);
-      for(const sn of c.units)um[sn]=toRepair?{st:'repair'}:act==='OUT'?{st:'out',job}:act==='RETURN'?(lc==='Lost'?{st:'lost',job}:{st:'yard',flag:lc==='Needs'?'needs repair':''}):um[sn];upd.units=um}
+      for(const sn of c.units)um[sn]=toRepair?{st:'repair'}:act==='OUT'?{st:'out',job}:act==='RETURN'?(lc==='Lost'?{st:'lost',job:cj}:{st:'yard',flag:lc==='Needs'?'needs repair':''}):um[sn];upd.units=um}
     if(job&&act==='OUT')upd.lastJob=job;
     try{await writeItem(it.id,upd);
-      await db.collection('logs').add({units:c.units&&c.units.length?c.units:null,ts:now,action:logAct,itemId:it.id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:c.n,before,after,job:act==='OUT'||act==='RETURN'?job:'',by,note:toRepair?['Taken to repair shop',note].filter(Boolean).join(' — '):act==='DISPOSE'?[selReason,note].filter(Boolean).join(' — '):(act==='REPAIR'&&selRep==='scrap')?['Could not repair',note].filter(Boolean).join(' — '):note,cond:act==='RETURN'?({Good:'Good',Needs:'Needs Check',Broken:'Bad',Lost:'Lost'}[c.cond||'Good']):''});ok++}
+      await db.collection('logs').add({units:c.units&&c.units.length?c.units:null,ts:now,action:logAct,itemId:it.id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:c.n,before,after,job:act==='OUT'?job:act==='RETURN'?cj:'',by,note:toRepair?['Taken to repair shop',note].filter(Boolean).join(' — '):act==='DISPOSE'?[selReason,note].filter(Boolean).join(' — '):(act==='REPAIR'&&selRep==='scrap')?['Could not repair',note].filter(Boolean).join(' — '):note,cond:act==='RETURN'?({Good:'Good',Needs:'Needs Check',Broken:'Bad',Lost:'Lost'}[c.cond||'Good']):''});ok++}
     catch(e){toast('Could not save '+it.name+': '+(e.message||e.code))}}
   if(ok){cart=[];selCond='Good';selJob='';selReason='';selRep=yGroup==='ip'?'done':'send';
     $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg done"><b>Done</b><p style="font-size:18px">${ACTNAME[act]}: ${ok} of ${n} item${n>1?'s':''} saved${job?' · '+esc(jobLabel(job)):''}<br><span class="muted">by ${esc(by)}</span></p><button class="go" id="dOk">OK</button></div></div>`;
