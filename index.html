@@ -638,11 +638,11 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.71',APP_DATE='2026-10-15';
+const APP_VERSION='2.72',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-let db=null, items=[], logs=[], people=[], act='OUT', cart=[], yZone='', sortK='loc', sortDir=1;
+let db=null, items=[], logs=[], people=[], act='OUT', cart=[], yZone='', mZone='', sortK='loc', sortDir=1;
 const IC2={"trash": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h16\"/><path d=\"M10 11v6M14 11v6\"/><path d=\"M6 7l1 13h10l1-13\"/><path d=\"M9 7V4h6v3\"/></svg>", "bell": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 16V11a6 6 0 0 1 12 0v5l2 2H4z\"/><path d=\"M10 20a2 2 0 0 0 4 0\"/></svg>", "cam": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h4l2-3h4l2 3h4v13H4z\"/><circle cx=\"12\" cy=\"13\" r=\"4\"/></svg>", "img": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><circle cx=\"9\" cy=\"10\" r=\"2\"/><path d=\"M21 16l-5-5-9 9\"/></svg>", "wrench": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5\"/><path d=\"M14.5 6.5L17 4\"/></svg>", "alert": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3l10 18H2z\"/><path d=\"M12 10v5M12 18h.01\"/></svg>", "box": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"3\"/></svg>", "boxc": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"3\"/><path d=\"M8 12l3 3 5-6\"/></svg>"};
 const ACTNAME={AUDIT:'Audit',LOST:'Lost on job',CLEARED:'Kept (flag cleared)',OUT:'Take Out',RETURN:'Return',RECEIVE:'Receive',ADJUST:'Count',DISPOSE:'Remove',REPAIR:'Repair',REPAIR_OUT:'Sent to repair',REPAIR_DONE:'Repaired',REPORT:'Problem reported',EDIT:'Item edited',JOB:'Job changed'};
 const REPOPTS=[['send','Send to repair'],['done','Repair done — back to yard'],['scrap','Can\'t fix — dispose']];let selRep='send';
@@ -715,7 +715,6 @@ $('#rackAdd').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
 $('#rackSel').onclick=()=>{selMode=!selMode;picked.clear();renderYard()};
 $('#rackEdit').onclick=()=>{editMode=!editMode;renderYard()};
 function scrollToList(){if(!yLoc)return;const m=$('#kiosk .menu');if(m&&getComputedStyle($('#kiosk')).gridTemplateColumns.split(' ').length===1)m.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}
-let yZone='';
 function renderMap(){
   const q=$('#ysearch').value.trim();const cnt={},hit={},inc={};
   items.forEach(i=>{const l=locOf(i);cnt[l]=(cnt[l]||0)+1;if(q&&match(i,q))hit[l]=1;if(cart.some(c=>c.id===i.id))inc[l]=1});
@@ -726,15 +725,15 @@ function renderMap(){
     return `<g class="${c}" data-loc="${l}"><rect x="${x-23}" y="${y-20}" width="46" height="40" rx="5"/><text x="${x}" y="${y-3}">${l}</text><text class="bc" x="${x}" y="${y+14}">${n?n:'—'}</text></g>`}).join('');
   $('#ymap').innerHTML=h;
   {const ZN={A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',Y:'Outdoor'};const zc=z=>Object.keys(BAYS).filter(l=>l.startsWith(z+'-')).reduce((a,l)=>a+(cnt[l]||0),0);
-   $('#zbar').innerHTML=`<button type="button" data-zb="" aria-pressed="${!yZone}">Map</button>`+ZONES.map(([z])=>`<button type="button" data-zb="${z}" aria-pressed="${yZone===z}">${ZN[z]}<small>${zc(z)||''}</small></button>`).join('');
-   $$('#zbar [data-zb]').forEach(b=>b.onclick=()=>{yZone=b.dataset.zb;renderMap()});
-   const zp=$('#zpanel');zp.hidden=!yZone;$('#ymap').style.display=yZone?'none':'';if($('#maphint'))$('#maphint').textContent=yZone?'Tap a rack to see its items.':'Tap a rack, or pick a zone above for big buttons.';
-   if(yZone){const L=Object.keys(BAYS).filter(l=>l.startsWith(yZone+'-')).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+   $('#zbar').innerHTML=`<button type="button" data-zb="" aria-pressed="${!mZone}">Map</button>`+ZONES.map(([z])=>`<button type="button" data-zb="${z}" aria-pressed="${mZone===z}">${ZN[z]}<small>${zc(z)||''}</small></button>`).join('');
+   $$('#zbar [data-zb]').forEach(b=>b.onclick=()=>{mZone=b.dataset.zb;renderMap()});
+   const zp=$('#zpanel');zp.hidden=!mZone;$('#ymap').style.display=mZone?'none':'';if($('#maphint'))$('#maphint').textContent=mZone?'Tap a rack to see its items.':'Tap a rack, or pick a zone above for big buttons.';
+   if(mZone){const L=Object.keys(BAYS).filter(l=>l.startsWith(mZone+'-')).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
      zp.innerHTML=L.map(l=>{const n=cnt[l]||0;const its=items.filter(i=>locOf(i)===l).map(i=>i.name).filter(Boolean);const c=['ztile',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
        return `<button type="button" class="${c}" data-zl="${l}"><b>${l}</b><span class="zc">${n?n+' item'+(n>1?'s':''):'Empty'}</span>${its.length?`<span class="zi">${esc([...new Set(its)].slice(0,3).join(' · '))}</span>`:''}</button>`}).join('')||'<p class="muted">No racks in this zone.</p>';
      $$('#zpanel [data-zl]').forEach(g=>g.onclick=()=>{yLoc=yLoc===g.dataset.zl?'':g.dataset.zl;$('#ysearch').value='';renderYard();scrollToList()})}}
   $$('#ymap [data-loc]').forEach(g=>g.onclick=e=>{e.stopPropagation();yLoc=yLoc===g.dataset.loc?'':g.dataset.loc;$('#ysearch').value='';renderYard();scrollToList()});
-  $$('#ymap [data-zone]').forEach(r=>r.onclick=()=>{yZone=r.dataset.zone;const z='zone:'+r.dataset.zone;yLoc=z;$('#ysearch').value='';renderYard();scrollToList()});
+  $$('#ymap [data-zone]').forEach(r=>r.onclick=()=>{mZone=r.dataset.zone;const z='zone:'+r.dataset.zone;yLoc=z;$('#ysearch').value='';renderYard();scrollToList()});
 }
 const jobLabel=no=>{const j=jobs.find(x=>x.no===no)||jobs.find(x=>x.no==='#'+no);return j?(j.name?`${j.no} · ${j.name}`:j.no):no};
 $$('#actions .act').forEach(b=>b.onclick=()=>{act=b.dataset.act;$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x===b));
