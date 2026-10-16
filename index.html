@@ -646,7 +646,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.94',APP_DATE='2026-10-15';
+const APP_VERSION='2.96',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1388,10 +1388,26 @@ let presence=[],devId='';try{devId=localStorage.getItem('ameDev')||('d'+Math.ran
 const TABN={yard:'Yard',inv:'Inventory',jobs:'Jobs',log:'Activity',sheet:'Sheet'};
 function devName(){const u=navigator.userAgent;return /iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'iPad':/iPhone/.test(u)?'iPhone':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows PC':/Mac/.test(u)?'Mac':'Browser'}
 let msAcct='';
+/* ---- device lock: a name can only be used from the devices it was first used on (Kyle can use any) ---- */
+function hashStr(t){let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return (h>>>0).toString(36)}
+let DEVB={},msEmail='',myIp='',devbOk=false,secReadyRes;const secReady=new Promise(r=>secReadyRes=r);
+function devKey(){return (msEmail||'?')+'|'+devName()}
+async function secInit(){try{const u=await window.claude.use('user');msEmail=(u?.email?.()||'').toLowerCase();msAcct=u?.name?.()||msAcct}catch(e){}
+  try{db.doc('config/devbind').onSnapshot(x=>{DEVB=x.data()||{};if(!devbOk){devbOk=true;secReadyRes()}},()=>{secReadyRes()})}catch(e){secReadyRes()}
+  try{myIp=(await (await fetch('https://api.ipify.org?format=json')).json()).ip||''}catch(e){}}
+function logLogin(n,blocked){try{db.collection('logins').add({ts:new Date().toISOString(),name:n,acct:msAcct,email:msEmail,dev:devName(),key:devKey(),ip:myIp,ua:navigator.userAgent.slice(0,160),blocked:!!blocked})}catch(e){}}
+function canUseName(n){if(!n||n===curUser||!devbOk||!msEmail)return true;const own=(DEVB.__owners||[]);if(isOwner(n)){return true}
+  if(msEmail&&own.includes(msEmail))return true;const b=DEVB[n]||[];return !b.length||b.some(x=>x.key===devKey())}
+async function bindName(n){await secReady;if(!msEmail)return;const k=devKey();const own=new Set(DEVB.__owners||[]);let ch=false;if(isOwner(n)&&msEmail&&!own.has(msEmail)){own.add(msEmail);ch=true}
+  const b=[...(DEVB[n]||[])];const i=b.findIndex(x=>x.key===k);const now=new Date().toISOString();
+  if(i<0&&!(msEmail&&own.has(msEmail)&&!isOwner(n))){b.push({key:k,acct:msAcct,dev:devName(),first:now,last:now});ch=true}else if(i>=0){if(Date.now()-new Date(b[i].last||0)>36e5){b[i]={...b[i],last:now};ch=true}}
+  if(ch){DEVB={...DEVB,[n]:b,__owners:[...own]};try{await db.doc('config/devbind').update({[n]:b,__owners:[...own]})}catch(e){}}}
+
 async function beat(){if(document.hidden||!db)return;const t=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab||'yard';
   const sig=(curUser||'')+'|'+t+'|'+act;if(sig===beat._s&&Date.now()-(beat._t||0)<55000)return;if(Date.now()-(beat._t||0)<8000){clearTimeout(beat._q);beat._q=setTimeout(beat,8000);return}beat._s=sig;beat._t=Date.now();
   try{if(!msAcct){const u=await window.claude.use('user');msAcct=u?.name?.()||''}
-    await db.doc('presence/'+devId).set({name:curUser||'',acct:msAcct,device:devName(),tab:TABN[t]||t,mode:t==='yard'?(ACTNAME[act]||act):'',ts:new Date().toISOString()})}catch(e){}}
+    const pid='p'+hashStr((curUser||'')+'|'+msAcct+'|'+devName());const dup=presence.filter(x=>x._id!==pid&&(x._id===devId||(x.name===(curUser||'')&&x.acct===msAcct&&x.device===devName()))).map(x=>x._id);if(dup.length&&db.deleteMany)db.deleteMany('presence',dup).catch(()=>{});
+    await db.doc('presence/'+pid).set({name:curUser||'',acct:msAcct,device:devName(),tab:TABN[t]||t,mode:t==='yard'?(ACTNAME[act]||act):'',ts:new Date().toISOString()})}catch(e){}}
 function startPresence(){beat();setInterval(beat,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()})}
 function ago(ts){const s=Math.round((Date.now()-new Date(ts))/1000);return s<60?'just now':s<3600?Math.round(s/60)+' min ago':Math.round(s/3600)+' h ago'}
 function renderOnline(){const el=$('#onlineList');if(!el)return;const now=Date.now();
@@ -1518,7 +1534,7 @@ try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now
 try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p)curUser=p}catch(e){}
 
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
-function setUser(n){setTimeout(()=>{try{beat()}catch(e){}},300);if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}));if(isOwner(n))localStorage.setItem('ameOwnerStay',n);else localStorage.removeItem('ameOwnerStay')}catch(e){}lastAct=Date.now();
+function setUser(n){if(n&&n!==curUser){if(!canUseName(n)){logLogin(n,true);toast('“'+n+'” is registered to another device. Ask Kyle to allow this device.');return}logLogin(n,false);bindName(n)}setTimeout(()=>{try{beat()}catch(e){}},300);if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}));if(isOwner(n))localStorage.setItem('ameOwnerStay',n);else localStorage.removeItem('ameOwnerStay')}catch(e){}lastAct=Date.now();
   $('#loginRoot').innerHTML='';const r=curRole();$('#userChip').hidden=!n;$('#ucName').textContent=n;$('#ucRole').textContent=r;
   isAdmin=accountAdmin&&(isEditor(n)||can('EDIT'));applyRole();renderPerms()}
 function logout(){curUser='';selWho='';cart=[];try{sessionStorage.removeItem('ameUser');localStorage.removeItem('ameOwnerStay')}catch(e){}$('#userChip').hidden=true;isAdmin=false;applyRole();closeDlg();showLogin()}
@@ -1571,7 +1587,7 @@ async function ameSync(){try{const d=await window.claude.use('db');await d.refre
 
 matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#tab-yard').hidden&&!isAdmin)showTab('yard')});
 (async()=>{
-  db=await window.claude?.use?.('db');if(db){db.doc('config/spectrum').onSnapshot(x=>{SPJ=x.data()||{jobs:[]}},()=>{});const oc=db.collection.bind(db);db.collection=n=>{const c=oc(n);if(n==='logs'){const oa=c.add.bind(c);c.add=d=>oa({...d,dev:devId})}return c}}
+  db=await window.claude?.use?.('db');if(db){secInit();db.doc('config/spectrum').onSnapshot(x=>{SPJ=x.data()||{jobs:[]}},()=>{});const oc=db.collection.bind(db);db.collection=n=>{const c=oc(n);if(n==='logs'){const oa=c.add.bind(c);c.add=d=>oa({...d,dev:devId})}return c}}
   if(!db){$('#status').textContent='Not connected. Sign in with your company Microsoft account.';return}
   $('#status').textContent='Live · changes from the yard and the office show up here automatically.';
   db.collection('items').onSnapshot(s=>{rawItems=s.docs.map(d=>({...d.data(),id:d.id}));mergeItems();markSync();render()},e=>$('#status').textContent='Could not load items: '+e.message);
@@ -1616,13 +1632,13 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="shell.js?v=294"></script>
 <script src="mpl.js?v=293"></script>
 <script src="eqp.js?v=293"></script>
-<script src="admin.js?v=294"></script>
+<script src="admin.js?v=295"></script>
 <script>
 /* auto-detect a newer app version */
 (function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}
   setTimeout(chk,8000);setInterval(chk,120000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
 
-window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st;t.textContent=st==='saving'?'Saving…':st==='saved'?'Saved to SharePoint ✓':'Save failed — tap Sync';t.style.color=st==='error'?'#ff8a7a':st==='saved'?'#7fd18b':'';if(st!=='saved')window.__svUntil=Date.now()+60000;if(st==='saved'){window.__svUntil=Date.now()+4000;clearTimeout(window.__svT);window.__svT=setTimeout(()=>{t.style.color='';window.__svUntil=0;try{markSync()}catch(_){}},4100)}});
+window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st;t.textContent=st==='saving'?'Saving…':st==='saved'?'Saved':'Save failed — tap Sync';t.style.color=st==='error'?'#ff8a7a':st==='saved'?'#7fd18b':'';if(st!=='saved')window.__svUntil=Date.now()+60000;if(st==='saved'){window.__svUntil=Date.now()+4000;clearTimeout(window.__svT);window.__svT=setTimeout(()=>{t.style.color='';window.__svUntil=0;try{markSync()}catch(_){}},4100)}});
 window.addEventListener('beforeunload',e=>{if(document.getElementById('syncTxt')?.dataset.s==='saving'){e.preventDefault();e.returnValue=''}});
 
 /* install as an app */
@@ -1642,7 +1658,7 @@ window.addEventListener('beforeunload',e=>{if(document.getElementById('syncTxt')
 })();
 
 document.getElementById('saveBtn').onclick=async()=>{const b=document.getElementById('saveBtn');b.disabled=true;const t=b.innerHTML;b.lastChild.textContent=' Saving…';
-  try{for(const h of (window.ameSaveHooks||[]))await h();const ok=db&&db.idle?await db.idle():true;toast(ok?'All changes are saved to SharePoint ✓':'Still saving — try again in a moment')}catch(e){toast('Could not save: '+(e.message||e))}b.innerHTML=t;b.disabled=false};
+  try{for(const h of (window.ameSaveHooks||[]))await h();const ok=db&&db.idle?await db.idle():true;toast(ok?'Saved':'Still saving — try again in a moment')}catch(e){toast('Could not save: '+(e.message||e))}b.innerHTML=t;b.disabled=false};
 window.addEventListener('ame-save',e=>{const b=document.getElementById('saveBtn');if(b)b.classList.toggle('pri',e.detail==='saving'||e.detail==='error')});
 </script>
 </body></html>
