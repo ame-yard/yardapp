@@ -125,7 +125,7 @@ function docRef(path){
   return{
     set:d=>write(c,docs=>{docs[id]=clean(d)}),
     update:d=>write(c,docs=>{const cur=docs[id]||{};for(const k in d){const v=d[k];if(v&&typeof v==='object'&&v.__delete__)delete cur[k];else cur[k]=v}docs[id]=cur}),
-    delete:()=>write(c,docs=>{delete docs[id]}),
+    delete:()=>{let rm=[];return write(c,docs=>{if(docs[id]!==undefined)rm=[[id,docs[id]]];delete docs[id]}).then(r=>{toTrash(c,rm);return r})},
     get:async()=>{const s=await ensure(c);const d=s.docs[id];return{exists:!!d,id,data:()=>d}},
     onSnapshot:(cb,err)=>{subs.push({coll:c,id,cb});ensure(c).then(()=>emit(c)).catch(e=>err&&err(e));return()=>{}}
   };
@@ -138,7 +138,10 @@ function collRef(c){
     get:async()=>{const s=await ensure(c);return{docs:Object.keys(s.docs).map(id=>({id,data:()=>s.docs[id]}))}}
   };
 }
-const db={idle:async()=>{for(const c of Object.keys(queue)){try{await queue[c]}catch(e){}}return pending===0},collection:collRef,doc:docRef,deleteMany:(c,ids)=>write(c,docs=>{ids.forEach(id=>delete docs[id])}),setMany:(c,map)=>write(c,docs=>{Object.assign(docs,map)}),
+const NOTRASH=['presence','trash','logins'];
+function toTrash(c,removed){if(NOTRASH.includes(c)||!removed.length)return;let by='';try{by=typeof curUser!=='undefined'?curUser:''}catch(e){}const at=new Date().toISOString();
+  write('trash',t=>{removed.forEach(([id,d],k)=>{t['t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+k]={coll:c,id,data:d,at,by}})}).catch(()=>{})}
+const db={idle:async()=>{for(const c of Object.keys(queue)){try{await queue[c]}catch(e){}}return pending===0},collection:collRef,doc:docRef,deleteMany:(c,ids)=>{let rm=[];return write(c,docs=>{rm=[];ids.forEach(id=>{if(docs[id]!==undefined)rm.push([id,docs[id]]);delete docs[id]})}).then(r=>{toTrash(c,rm);return r})},setMany:(c,map)=>write(c,docs=>{Object.assign(docs,map)}),
   refresh:async()=>{for(const c of Object.keys(store)){try{await readColl(c);emit(c)}catch(e){console.warn(e)}}try{knownEtags=await listEtags()}catch(e){}}};
 
 /* first run: create data files from seed.json */
