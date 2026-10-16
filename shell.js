@@ -7,18 +7,21 @@ const SVG={
 const AME=window.AME={modules:[],cur:'',
   register(m){if(!this.modules.find(x=>x.id===m.id))this.modules.push(m);if(this.cur==='home')renderHome()},
   mod(id){return this.modules.find(m=>m.id===id)},
-  allowed(m){return m.allow?m.allow():(!m.perm||can(m.perm))},
+  base(m){return m.allow?m.allow():(!m.perm||can(m.perm))},
+  betaOk(m){if(!m.beta)return true;if(typeof isOwner==='function'&&isOwner(curUser))return true;try{return ((perms.beta||{})[m.id]||[]).includes(curUser)}catch(e){return false}},
+  allowed(m){return this.base(m)&&this.betaOk(m)},
   home(){const ok=this.modules.filter(m=>this.allowed(m));if(ok.length===1){this.open(ok[0].id);return}setMod('home');showTab('home')},
   open(id){const m=this.mod(id);if(!m||!this.allowed(m))return;setMod(id);m.open()}};
-AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · receive · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>showTab('yard')});
+AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>showTab('yard')});
 document.querySelector('main').insertAdjacentHTML('afterbegin','<section id="tab-home" hidden></section>');
 function setMod(id){AME.cur=id;const m=AME.mod(id);const sub=document.querySelector('#brand small');if(sub)sub.textContent=m?m.name:'Apps';
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('offmod',!m||!(m.tabs||[]).includes(b.dataset.tab)));
   document.body.dataset.mod=id;try{sessionStorage.setItem('ameMod',id)}catch(e){}}
-function renderHome(){const el=document.getElementById('tab-home');if(!el)return;const mods=AME.modules.filter(m=>AME.allowed(m));
+function renderHome(){const el=document.getElementById('tab-home');if(!el)return;const mods=AME.modules.filter(m=>AME.allowed(m));const soon=AME.modules.filter(m=>m.beta&&!AME.betaOk(m));
   el.innerHTML=`<div class="homehead"><h2>Hi ${esc(curUser||'')}</h2><p class="muted">What are you working on?</p></div>
-  <div class="apps">${mods.length?'':'<p class="muted">No apps are turned on for you yet. Ask Kyle to give you access.</p>'}${mods.map(m=>`<button class="apptile" data-app="${m.id}"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small></button>`).join('')}
+  <div class="apps">${mods.length?'':'<p class="muted">No apps are turned on for you yet. Ask Kyle to give you access.</p>'}${mods.map(m=>`<button class="apptile" data-app="${m.id}"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small>${m.beta?'<em class="betatag">Early access</em>':''}</button>`).join('')}${soon.map(m=>`<div class="apptile soon" aria-disabled="true"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small><em class="betatag">Upcoming — in preparation</em></div>`).join('')}
 </div>`;
+  if(!document.getElementById('betaCss'))document.head.insertAdjacentHTML('beforeend','<style id="betaCss">.apptile{position:relative}.apptile.soon{opacity:.5;cursor:not-allowed;filter:grayscale(.6)}.betatag{display:inline-block;align-self:flex-start;margin-top:8px;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:10px;border:1px solid currentColor;opacity:.85}</style>');
   el.querySelectorAll('[data-app]').forEach(b=>b.onclick=()=>AME.open(b.dataset.app))}
 const _st=window.showTab;window.showTab=function(t){
   const secs=AME.modules.filter(m=>m.section).map(m=>m.section);const hideSecs=()=>secs.forEach(x=>{const e=document.getElementById(x);if(e)e.hidden=true});

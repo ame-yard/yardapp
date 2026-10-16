@@ -264,9 +264,9 @@ async function importFile(f){try{const wb=XLSX.read(await f.arrayBuffer(),{type:
 const _bc=bestCost;bestCost=function(q,D){if(num(q.flat)!=null)return {cost:num(q.flat),how:q.note||'flat'};return _bc(q,D)};
 
 AME.eqParse=parseWB;AME.eqDocs=handleDocs;AME.eqRetry=async()=>{let r=[0,0,0];for(const x of INBOX){const lines=(x.text||'').split('\n');let P=parseDoc(lines);if(!P.vendor)P.vendor=vendorGuess(lines);const n=await saveParsed(P,x.doc);if(n!==0){await db.doc('eqinbox/'+x._id).delete();r[n>0?0:1]+=n>0?n:1}else{r[2]++;await db.doc('eqinbox/'+x._id).update({P})}}return r};AME.eqParseDoc=parseDoc;
-AME.register({id:'eqp',name:'Equipment Prices',desc:'Rental prices by vendor · compare · upload quotes & invoices',perm:'EQP',tabs:['eqp'],section:'tab-eqp',
+AME.register({id:'eqp',beta:true,name:'Equipment Prices',desc:'Rental prices by vendor · compare · upload quotes & invoices',perm:'EQP',tabs:['eqp'],section:'tab-eqp',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h13l3-6h-4l-2-4H7"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="18" r="2"/><path d="M10 7l2 4"/></svg>',
   open:()=>{view='cmp';cat='';showTab('eqp')},onShow:render});
-const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="eqp"]');if(b)b.hidden=!can('EQP')};
+const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="eqp"]');if(b)b.hidden=!AME.allowed(AME.mod('eqp'))};
 (function wait(){if(typeof db!=='undefined'&&db&&typeof db.collection==='function')load();else setTimeout(wait,300)})();
 })();
