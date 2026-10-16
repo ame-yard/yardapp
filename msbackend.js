@@ -182,7 +182,7 @@ const downloads={save:async({filename,data})=>{
   setTimeout(()=>URL.revokeObjectURL(u),30000);
 }};
 
-const files={save:async(path,blob)=>{const r=await gfetch(pathUrl(path)+':/content',{method:'PUT',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});if(!r.ok)throw new Error('Save failed ('+r.status+')');const j=await r.json();return{url:j.webUrl,id:j.id}},get:async path=>{const r=await gfetch(pathUrl(path)+':/content');if(!r.ok)throw new Error('Open failed ('+r.status+')');return r.blob()}};
+const files={save:async(path,blob)=>{const r=await gfetch(pathUrl(path)+':/content',{method:'PUT',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});if(!r.ok)throw new Error('Save failed ('+r.status+')');const j=await r.json();return{url:j.webUrl,id:j.id}},list:async folder=>{const r=await gfetch(pathUrl(folder)+':/children?$select=name&$top=999');if(!r.ok)return[];return (await r.json()).value.map(x=>x.name)},get:async path=>{const r=await gfetch(pathUrl(path)+':/content');if(!r.ok)throw new Error('Open failed ('+r.status+')');return r.blob()}};
 const user={canEdit:()=>true,name:()=>account?.name||'',email:()=>account?.username||''};
 
 readyP=(async()=>{
