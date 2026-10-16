@@ -473,6 +473,17 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 .pchip.sel{border-color:var(--accent,#f47b20);box-shadow:0 0 0 2px var(--accent,#f47b20)}.pchip.dragging{opacity:.35}
 .pchip.ghost{position:fixed;z-index:999;pointer-events:none;transform:translate(-50%,-120%);box-shadow:0 8px 20px rgba(0,0,0,.5);border-color:var(--accent,#f47b20)}
 body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{display:none!important}
+
+.mplhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 12px}.mplhead h2{margin:0;flex:1}.mplhead2{display:flex;justify-content:space-between;align-items:center}
+.mplcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}.mplcard{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;color:inherit;font:inherit;cursor:pointer}.mplcard b{font-size:18px}
+.mplsteps{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.mplsteps button{flex:none;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--muted);font:600 13px inherit}.mplsteps button span{width:20px;height:20px;border-radius:50%;background:var(--chip);display:inline-flex;align-items:center;justify-content:center;font-size:11px}.mplsteps .on{border-color:var(--accent,#f47b20);color:var(--ink)}.mplsteps .on span{background:var(--accent,#f47b20);color:#fff}.mplsteps .done{color:var(--ink)}
+.mplchips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}.mplchips button{min-height:52px;padding:10px 16px;border-radius:12px;border:2px solid var(--line);background:var(--chip);color:inherit;font:600 15px inherit;cursor:pointer}.mplchips button[aria-pressed="true"]{border-color:var(--accent,#f47b20);background:rgba(244,123,32,.2)}
+.mplbar{display:flex;gap:10px;justify-content:flex-end;margin:12px 0 90px;flex-wrap:wrap}
+.mpllines{display:flex;flex-direction:column}.mline{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.mname{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.mname small{color:var(--muted)}
+.mline .step{display:flex;align-items:center;gap:8px}.mline .step button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:inherit;font-weight:700}.mx{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px}
+.ylink{align-self:flex-start;background:none;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted);cursor:pointer}.ylink.ok{border-color:#3fb950;color:#3fb950}.ylink.low{border-color:var(--warn);color:var(--warn)}
+.modepick{max-width:520px}.modebtn{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;margin-top:10px;padding:18px;border-radius:14px;border:2px solid var(--line);background:var(--chip);color:inherit;font:inherit;cursor:pointer}.modebtn b{font-size:20px}.modebtn span{color:var(--muted);font-size:14px}.modebtn:hover{border-color:var(--accent,#f47b20)}
+td.bad{color:var(--bad)}
 </style>
 
 <header class="top"><div class="wrap">
@@ -484,6 +495,7 @@ body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{disp
     <button role="tab" data-tab="jobs" aria-selected="false">Jobs</button>
     <button role="tab" data-tab="log" aria-selected="false">Activity</button>
     <button role="tab" data-tab="sheet" aria-selected="false">Sheet</button>
+    <button role="tab" data-tab="mpl" aria-selected="false" hidden>MPL</button>
   </nav>
 </div></header>
 
@@ -603,6 +615,7 @@ body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{disp
     <p class="muted" style="font-size:13px;margin:0 0 8px" id="sheetHint">Inventory cells are editable: tap a cell, type, then tap outside or press Enter. Changes save for everyone.</p>
     <div class="tblwrap sheetwrap"><table class="sheet"><thead id="shead"></thead><tbody id="sbody"></tbody></table></div>
   </section>
+  <section id="tab-mpl" hidden></section>
 </main>
 
 <div class="ptr" id="ptr" aria-hidden="true"><span class="ptrspin"></span><span id="ptrTxt">Pull to sync</span></div>
@@ -610,7 +623,7 @@ body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{disp
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.02',APP_DATE='2026-10-15';
+const APP_VERSION='2.10',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -752,13 +765,13 @@ function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.
 async function writeItem(id,upd){const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
-const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
+const FEATS=[['OUT','Take Out'],['RETURN','Return'],['RECEIVE','Receive'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['MPL','Mobilization prep list'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
 const DEF_ON=['OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UNITS'];
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
   if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
-  const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')}
+  const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')||(f==='MPL'&&['President','PM','Office'].includes(curRole()))}
 function applyRole(){try{updBell()}catch(e){}document.body.classList.toggle('owner',isOwner(curUser));$$('nav.tabs button[data-tab]').forEach(b=>{if(['jobs','log','sheet'].includes(b.dataset.tab))b.hidden=!isAdmin});{const cur=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true');if(cur&&cur.hidden)showTab('yard')}$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
   document.body.classList.toggle('nophoto',!can('PHOTO'));{if($('#addJob'))$('#addJob').hidden=!can('JOBS');const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
   if(!can(act)){act=['OUT','RETURN','RECEIVE','REPAIR','DISPOSE'].find(can)||'OUT';$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act))}
@@ -1565,4 +1578,5 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
+<script src="mpl.js"></script>
 </body></html>
