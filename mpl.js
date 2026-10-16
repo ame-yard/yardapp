@@ -88,7 +88,7 @@ function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
   else if(s===1){body=`<h3>Roof system</h3><p class="muted">Pick every system on this job.</p>${chips(kids(8).map(x=>[x[0],x[1]]),W.st,'s')}`}
   else if(s===2){body=`<h3>Deck type</h3>${chips(kids(1).map(x=>[x[0],x[1]]),W.st,'s')}`}
   else if(s===3){body=`<h3>Other scope</h3><p class="muted">Tap what applies. Each choice adds its tools and supplies.</p>`+SCOPE_PARENTS.map(p=>{const k=kids(p);if(!k.length)return'';return `<div class="qlabel">${esc(stName(p))}</div>${chips(k.map(x=>[x[0],x[1]]),W.st,'s')}`}).join('');next='Build the list'}
-  else if(s===4){if(!W.lines)W.lines=generate(W.st);body=listHtml();next='Review check-out'}
+  else if(s===4){if(!W.lines)W.lines=generate(W.st);if(!W._seg)W._seg='yard';body=listHtml();next='Review check-out'}
   else if(s===5){body=goHtml();next=''}
   box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2>${W.step>=4?topBtns(W,openId):''}</div>${crumbs()}<div class="panel mplbody">${body}</div>
    <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
