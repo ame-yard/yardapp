@@ -583,7 +583,7 @@ button.kpi{text-align:left;color:inherit;font:inherit;cursor:pointer;transition:
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='1.93',APP_DATE='2026-10-15';
+const APP_VERSION='1.94',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -967,13 +967,14 @@ function openUnitPicker(id){const it=byId(id);if(!it)return;const c=cart.find(c=
     <div class="bar" style="align-items:stretch"><button class="btn" id="upC">Cancel</button>${cand.length>1?'<button class="btn" id="upAll">Select all</button>':''}<button class="go" id="upOk" style="width:auto;flex:1" ${sel.length?'':'disabled'}>${sel.length?`Add ${sel.length}`:'Pick a number'}</button></div></div></div>`;
     $$('#dlgRoot [data-pk]').forEach(b=>b.onclick=()=>{const sn=b.dataset.pk;sel=sel.includes(sn)?sel.filter(x=>x!==sn):[...sel,sn];draw()});
     $('#upC').onclick=()=>{closeDlg();render()};if($('#upAll'))$('#upAll').onclick=()=>{sel=sel.length===cand.length?[]:[...cand];draw()};
-    $('#upOk').onclick=()=>{const e=cart.find(x=>x.id===id);if(e){e.units=sel;e.n=sel.length}else cart.push({id,n:sel.length,units:sel});closeDlg();renderCartBar();renderYard();toast(`Added ${sel.length} × ${it.name}: #${sel.join(', #')}`)}};
+    $('#upOk').onclick=()=>{const e=cart.find(x=>x.id===id);if(e){e.units=sel;e.n=sel.length}else cart.push({id,n:sel.length,units:sel});closeDlg();renderCartBar();renderYard();toast(`Added ${sel.length} × ${it.name}: ${sel.join(', ')}`)}};
   if(!cand.length){toast(act==='OUT'?'No units of this item are in the yard.':'None of these units are out.');return}draw()}
 function addCart(id){const it=byId(id);if(!it)return;const c=cart.find(c=>c.id===id);
-  if(act==='OUT'||act==='RETURN'||act==='RECEIVE'){sers(it).length&&act!=='RECEIVE'?openUnitPicker(id):openQtyPicker(id);return}
+  if(act==='OUT'){if(Array.isArray(it.serials)&&it.serials.length){openUnitPicker(id);return}}
+  else if(act==='RETURN'||act==='RECEIVE'){const uo=Object.values(it.units||{}).some(u=>u&&u.st==='out');act==='RETURN'&&uo?openUnitPicker(id):openQtyPicker(id);return}
   if(act==='OUT'&&c&&Number(it.qty)>0&&c.n>=it.qty){toast(`Only ${it.qty} ${it.unit} in the yard.`);return}
   if(c){if(act!=='ADJUST')c.n++}else cart.push({id,n:act==='ADJUST'?(typeof it.qty==='number'?it.qty:0):1});
-  renderCartBar();renderYard();toast(`Added: ${it.name} — tap the cart below when done`)}
+  renderCartBar();renderYard();toast(`Added 1 ${it.unit||''} · ${it.name} (${(cart.find(x=>x.id===id)||{}).n} in cart) — tap again to add more`)}
 let audOnly=LS.get('audOnly',false);const audDraft={};
 function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=items.length;
   const L=list.filter(i=>!audOnly||!i.verifiedAt).slice(0,200);
