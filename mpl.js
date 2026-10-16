@@ -68,10 +68,14 @@ function render(){const box=el();if(!box)return;
     <p class="muted">Kyle: open amebuilders.org signed in, then Claude runs the one-time import. ${isOwner(curUser)?'':''}</p></div>`;return}
   if(view==='list')return renderList();if(view==='wiz')return renderWiz();if(view==='view')return renderView()}
 function stat(m){return m.status==='closed'?'<span class="pill p-good">Closed</span>':m.status==='out'?'<span class="pill p-needs">Out on job</span>':'<span class="pill p-ver">Draft</span>'}
+async function delMpl(id){const m=MPLS.find(x=>x._id===id);if(!m)return;if(!confirm('Delete the MPL for '+jobLabel(m.job)+'?'+(m.status==='out'?'\n\nIts items are still checked out — they stay out on the job (return them with Return).':'')+'\n\nYard records stay in Activity.'))return;
+  try{await db.doc('mpl/'+id).delete();toast('MPL deleted');if(openId===id){openId='';view='list'}render()}catch(e){toast('Could not delete: '+(e.message||e.code))}}
+function topBtns(m,id){return `<span class="mtop">${exportBtns('t')}${m&&(isAdmin||m.prep===curUser)&&id?`<button class="btn dng" data-tdel="${esc(id)}">Delete</button>`:''}</span>`}
 function renderList(){const box=el();const l=[...MPLS].sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
   box.innerHTML=`<div class="mplhead"><h2>Mobilization Prep Lists</h2><button class="btn pri" id="mplNew">+ New MPL</button></div>
-  ${l.length?`<div class="mplcards">${l.map(m=>`<button class="mplcard" data-m="${esc(m._id)}"><b>${esc(jobLabel(m.job))}</b>${stat(m)}<small>Prepared by ${esc(m.prep||'')} · crew ${m.crew||'-'} · ${(m.lines||[]).length} items</small><small class="muted">${esc((m.st||[]).map(stName).join(', '))}</small><small class="muted">Updated ${fmtD(m.updated)}</small></button>`).join('')}</div>`:'<div class="panel muted">No MPLs yet. Tap “+ New MPL” to prepare a job.</div>'}`;
+  ${l.length?`<div class="mplcards">${l.map(m=>`<button class="mplcard" data-m="${esc(m._id)}"><b>${esc(jobLabel(m.job))}</b>${stat(m)}<small>Prepared by ${esc(m.prep||'')} · crew ${m.crew||'-'} · ${(m.lines||[]).length} items</small><small class="muted">${esc((m.st||[]).map(stName).join(', '))}</small><small class="muted">Updated ${fmtD(m.updated)}</small>${(isAdmin||m.prep===curUser)?`<span class="mcdel" data-del="${esc(m._id)}" role="button" aria-label="Delete MPL" title="Delete">${IC2.trash}</span>`:''}</button>`).join('')}</div>`:'<div class="panel muted">No MPLs yet. Tap “+ New MPL” to prepare a job.</div>'}`;
   document.getElementById('mplNew').onclick=()=>{W={step:0,job:'',pm:'',fm:'',crew:6,st:[],lines:null,prep:curUser};openId='';view='wiz';render()};
+  box.querySelectorAll('[data-del]').forEach(x=>x.onclick=e=>{e.stopPropagation();delMpl(x.dataset.del)});
   box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=MPLS.find(x=>x._id===b.dataset.m);if(!m)return;openId=m._id;
     if(m.status==='draft'){W={...JSON.parse(JSON.stringify(m)),step:4};view='wiz'}else view='view';render()})}
 function crumbs(){return `<div class="mplsteps">${STEPS.map(([k,l],n)=>`<button data-st="${n}" class="${n===W.step?'on':n<W.step?'done':''}" ${n>W.step+0&&!W.lines?'disabled':''}><span>${n+1}</span>${l}</button>`).join('')}</div>`}
@@ -83,7 +87,7 @@ function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
   else if(s===3){body=`<h3>Other scope</h3><p class="muted">Tap what applies. Each choice adds its tools and supplies.</p>`+SCOPE_PARENTS.map(p=>{const k=kids(p);if(!k.length)return'';return `<div class="qlabel">${esc(stName(p))}</div>${chips(k.map(x=>[x[0],x[1]]),W.st,'s')}`}).join('');next='Build the list'}
   else if(s===4){if(!W.lines)W.lines=generate(W.st);body=listHtml();next='Review check-out'}
   else if(s===5){body=goHtml();next=''}
-  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2></div>${crumbs()}<div class="panel mplbody">${body}</div>
+  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2>${W.step>=4?topBtns(W,openId):''}</div>${crumbs()}<div class="panel mplbody">${body}</div>
    <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
   wire()}
 let mpJ=null,mpU=null,mpErr='',jq='';
@@ -157,7 +161,7 @@ async function checkout(){const g=goLines().filter(x=>x.y&&x.take>0);if(!g.lengt
   await save('out',{outAt:now,outBy:curUser});toast(ok+' items checked out to '+jobLabel(W.job));view='view';render()}
 function renderView(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m){view='list';return render()}
   const taken=(m.lines||[]).filter(l=>l.taken>0);
-  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${esc(jobLabel(m.job))}</h2>${stat(m)}</div>
+  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${esc(jobLabel(m.job))}</h2>${stat(m)}${topBtns(m,m._id)}</div>
    <div class="panel"><p class="muted">Prepared by ${esc(m.prep||'')} · PM ${esc(m.pm||'—')} · FM ${esc(m.fm||'—')} · crew ${m.crew||'-'}<br>${esc((m.st||[]).map(stName).join(', '))}</p>
    ${m.status==='out'?`<h3>Close out — what came back?</h3><p class="muted">Set how many of each came back to the yard. Anything not returned is logged as lost / used on the job.</p>`:'<h3>Items</h3>'}
    <div class="mpllines">${(m.lines||[]).map((l,k)=>`<div class="mline"><div class="mname"><b>${esc(l.name)}</b><small>${l.taken?`Taken from yard: ${l.taken}`:'Not from yard'}${l.back!=null?` · Returned ${l.back}`:''}</small></div>
@@ -185,18 +189,19 @@ function exportHead(m){return [['AME Builders — Mobilization Prep List'],['Job
 async function saveBlob(name,blob){const dl=await window.claude?.use?.('downloads');if(dl){await dl.save({filename:name,data:blob});return}const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove()}
 function curDoc(){if(view==='wiz')return {...W,status:W.status||'draft'};return MPLS.find(x=>x._id===openId)}
 async function exportXlsx(){const m=curDoc();if(!m)return;if(!window.XLSX){toast('Excel library did not load.');return}const {ready,prep}=exportRows(m);const wb=XLSX.utils.book_new();
-  const s1=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['READY — from the yard ('+ready.length+')'],['Category','MPL item','Need','Unit','Yard item','Yard location','Taking'],...ready]);s1['!cols']=[16,40,7,7,40,14,8].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s1,'Ready (yard)');
-  const s2=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['TO PREPARE — buy / rent / bring ('+prep.length+')'],['Category','Item','Qty','Unit','Why'],...prep]);s2['!cols']=[16,44,7,7,34].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s2,'To prepare');
+  const s1=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['READY — from the yard ('+ready.length+')'],['Category','MPL item','Need','Unit','Yard item','Yard location','Taking','Loaded ✓'],...ready.map(r=>[...r,''])]);s1['!cols']=[16,40,7,7,40,14,8].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s1,'Ready (yard)');
+  const s2=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['TO PREPARE — buy / rent / bring ('+prep.length+')'],['Category','Item','Qty','Unit','Ready ✓'],...prep.map(r=>[r[0],r[1],r[2],r[3],''])]);s2['!cols']=[16,44,7,7,34].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s2,'To prepare');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});await saveBlob(`MPL_${String(m.job).replace('#','')}_${new Date().toISOString().slice(0,10)}.xlsx`,new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 async function exportPdf(){const m=curDoc();if(!m)return;try{if(!window.jspdf){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js')}}catch(e){toast('PDF library did not load.');return}
   const {jsPDF}=window.jspdf;const d=new jsPDF({unit:'pt',format:'letter'});const {ready,prep}=exportRows(m);const H=exportHead(m);
   d.setFontSize(16);d.text('AME Builders — Mobilization Prep List',40,44);d.setFontSize(10);let y=64;H.slice(1).forEach(([k,v])=>{d.text(k+': '+String(v),40,y);y+=14});
-  d.autoTable({startY:y+8,head:[['READY — from the yard ('+ready.length+')','','','Yard location','Taking']],body:ready.map(r=>[r[1],r[0],r[2]+' '+r[3],r[5],String(r[6])]),styles:{fontSize:8.5},headStyles:{fillColor:[63,150,80]},columnStyles:{0:{cellWidth:210}}});
-  d.autoTable({startY:d.lastAutoTable.finalY+18,head:[['TO PREPARE — buy / rent / bring ('+prep.length+')','','Qty','Why']],body:prep.map(r=>[r[1],r[0],r[2]+' '+r[3],r[4]]),styles:{fontSize:8.5},headStyles:{fillColor:[200,116,44]},columnStyles:{0:{cellWidth:210}}});
+  const mono={theme:'grid',styles:{fontSize:8.5,textColor:20,lineColor:120,lineWidth:.4},headStyles:{fillColor:255,textColor:0,fontStyle:'bold',lineWidth:.6}};
+  d.autoTable({...mono,startY:y+8,head:[['READY — from the yard ('+ready.length+')','Category','Qty','Yard location','Taking','Loaded']],body:ready.map(r=>[r[1],r[0],r[2]+' '+r[3],r[5],String(r[6]),'']),columnStyles:{0:{cellWidth:190},5:{cellWidth:44}}});
+  d.autoTable({...mono,startY:d.lastAutoTable.finalY+18,head:[['TO PREPARE — buy / rent / bring ('+prep.length+')','Category','Qty','Ready']],body:prep.map(r=>[r[1],r[0],r[2]+' '+r[3],'']),columnStyles:{0:{cellWidth:250},3:{cellWidth:60}}});
   await saveBlob(`MPL_${String(m.job).replace('#','')}_${new Date().toISOString().slice(0,10)}.pdf`,d.output('blob'))}
-function exportBtns(){return '<button class="btn" id="mXls">Excel</button><button class="btn" id="mPdf">PDF</button>'}
-function wireExport(){const a=document.getElementById('mXls');if(a)a.onclick=exportXlsx;const b=document.getElementById('mPdf');if(b)b.onclick=exportPdf}
+function exportBtns(t=''){return `<button class="btn" data-xl="1">Excel</button><button class="btn" data-pdf="1">PDF</button>`}
+function wireExport(){document.querySelectorAll('#tab-mpl [data-xl]').forEach(a=>a.onclick=exportXlsx);document.querySelectorAll('#tab-mpl [data-pdf]').forEach(b=>b.onclick=exportPdf);document.querySelectorAll('#tab-mpl [data-tdel]').forEach(b=>b.onclick=()=>delMpl(b.dataset.tdel))}
 
 /* ---------- module registration ---------- */
 AME.register({id:'mpl',name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',tabs:['mpl'],section:'tab-mpl',
