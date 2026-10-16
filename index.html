@@ -1,6 +1,6 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png"><meta name="apple-mobile-web-app-title" content="AME Yard"><meta name="theme-color" content="#2b2724"></head><body>
-<title>AME Yard Inventory</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"></head><body>
+<title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
 <script src="msbackend.js"></script>
@@ -484,6 +484,13 @@ body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{disp
 .ylink{align-self:flex-start;background:none;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted);cursor:pointer}.ylink.ok{border-color:#3fb950;color:#3fb950}.ylink.low{border-color:var(--warn);color:var(--warn)}
 .modepick{max-width:520px}.modebtn{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;margin-top:10px;padding:18px;border-radius:14px;border:2px solid var(--line);background:var(--chip);color:inherit;font:inherit;cursor:pointer}.modebtn b{font-size:20px}.modebtn span{color:var(--muted);font-size:14px}.modebtn:hover{border-color:var(--accent,#f47b20)}
 td.bad{color:var(--bad)}
+
+#tab-home{padding-top:6px}.homehead h2{margin:4px 0 0}.apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin:16px 0 90px}
+.apptile{display:flex;flex-direction:column;gap:6px;text-align:left;padding:22px;border-radius:18px;border:1px solid var(--line);background:var(--panel);color:inherit;font:inherit;cursor:pointer;min-height:170px}
+.apptile:hover{border-color:var(--accent,#f47b20)}.apptile b{font-size:21px}.apptile small{color:var(--muted);font-size:14px}
+.appic{width:56px;height:56px;border-radius:14px;background:var(--accent,#f47b20);color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:6px}.appic svg{width:32px;height:32px}
+.apptile.soon{border-style:dashed;cursor:default;opacity:.7}.apptile.soon .appic{background:var(--chip);color:var(--muted)}
+nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{visibility:hidden}
 </style>
 
 <header class="top"><div class="wrap">
@@ -623,7 +630,7 @@ td.bad{color:var(--bad)}
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.11',APP_DATE='2026-10-15';
+const APP_VERSION='2.20',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1578,5 +1585,6 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
+<script src="shell.js"></script>
 <script src="mpl.js"></script>
 </body></html>

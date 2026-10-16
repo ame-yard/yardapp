@@ -172,15 +172,10 @@ function renderView(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m)
         l.back=r}catch(e){toast('Could not return '+it.name+': '+(e.message||e.code))}}
     await db.doc('mpl/'+m._id).update({lines,status:'closed',closedAt:now,closedBy:curUser,updated:now});toast('MPL closed');render()}}
 
-/* ---------- mode chooser + wiring ---------- */
-function chooser(){if(!can('MPL'))return;const r=document.getElementById('dlgRoot');
-  r.innerHTML=`<div class="scrim"><div class="dlg modepick"><h3>Hi ${esc(curUser)} — what are you doing?</h3>
-   <button class="modebtn" data-mode="yard"><b>Yard Inventory</b><span>Take out, return, receive, repair, audit</span></button>
-   <button class="modebtn" data-mode="mpl"><b>Mobilization Prep List</b><span>Prepare a job: system → deck → scope → list → check out</span></button></div></div>`;
-  r.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{closeDlg();showTab(b.dataset.mode==='mpl'?'mpl':'yard')})}
-const _su=window.setUser;window.setUser=function(n){const ch=n!==curUser;_su(n);if(ch&&n)setTimeout(chooser,50)};
-const _st=window.showTab;window.showTab=function(t){if(t==='mpl'){_st('yard');document.getElementById('tab-yard').hidden=true;el().hidden=false;$$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab==='mpl'));view=view==='wiz'&&W?view:'list';render();return}
-  el().hidden=true;_st(t)};
-const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="mpl"]');if(b)b.hidden=!can('MPL');document.body.classList.toggle('mplok',can('MPL'))};
+/* ---------- module registration ---------- */
+AME.register({id:'mpl',name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',tabs:['mpl'],section:'tab-mpl',
+  icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M8.5 11l1.5 1.5 3-3M8.5 16.5l1.5 1.5 3-3"/></svg>',
+  open:()=>showTab('mpl'),onShow:()=>{view=view==='wiz'&&W?view:'list';render()}});
+const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="mpl"]');if(b)b.hidden=!can('MPL')};
 (function wait(){if(typeof db!=='undefined'&&db&&typeof db.collection==='function'){load()}else setTimeout(wait,300)})();
 })();
