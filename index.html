@@ -647,7 +647,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.07',APP_DATE='2026-10-15';
+const APP_VERSION='3.08',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1305,9 +1305,10 @@ function openItem(id,newLoc){
       toast('Saved');closeDlg()}catch(e){toast('Could not save: '+(e.message||e.code))}};
 }
 let camFor='';
-document.body.insertAdjacentHTML('beforeend','<input type="file" id="camIn" accept="image/*" capture="environment" hidden><input type="file" id="libIn" accept="image/*" hidden><div id="phSheet" hidden><div class="phbox"><b>Item photo</b><button class="btn pri" id="phCam"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg> Take photo</button><button class="btn pri" id="phLib"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg> Upload from photos / files</button><button class="btn" id="phX">Cancel</button></div></div>');
+document.body.insertAdjacentHTML('beforeend','<input type="file" id="camIn" accept="image/*" capture="environment" hidden><input type="file" id="libIn" accept="image/*" hidden><div id="phSheet" hidden><div class="phbox"><b>Item photo</b><button class="btn pri" id="phCam"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg> Take photo</button><button class="btn pri" id="phLib"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg> Upload from photos / files</button><button class="btn dng" id="phDel" hidden>Remove photo</button><button class="btn" id="phX">Cancel</button></div></div>');
 let photoAfter=null;
-function pickPhoto(id,after){camFor=id;photoAfter=after||null;$('#phSheet').hidden=false}
+function pickPhoto(id,after){camFor=id;photoAfter=after||null;const it=byId(id);$('#phDel').hidden=!(it&&it.photo);$('#phSheet').hidden=false}
+$('#phDel').onclick=async()=>{const id=camFor;$('#phSheet').hidden=true;if(!id||!confirm('Remove this photo?'))return;try{await writeItem(id,{photo:'',photoId:'',photoBy:curUser||''});toast('Photo removed');if(photoAfter){const a=photoAfter;photoAfter=null;a()}}catch(e){toast('Could not remove: '+(e.message||e))}};
 $('#phX').onclick=()=>{$('#phSheet').hidden=true};$('#phSheet').onclick=e=>{if(e.target.id==='phSheet')$('#phSheet').hidden=true};
 $('#phCam').onclick=()=>{$('#phSheet').hidden=true;$('#camIn').value='';$('#camIn').click()};
 $('#phLib').onclick=()=>{$('#phSheet').hidden=true;$('#libIn').value='';$('#libIn').click()};
@@ -1635,7 +1636,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="mpl.js?v=306"></script>
 <script src="eqp.js?v=293"></script>
 <script src="admin.js?v=304"></script>
-<script src="scan.js?v=307"></script>
+<script src="scan.js?v=308"></script>
 <script>
 /* auto-detect a newer app version */
 (function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}
