@@ -94,7 +94,7 @@ function renderWiz(){if(W&&W._saved===undefined)W._saved=openId?snap():'';W._dir
   else if(s===3){body=`<h3>Other scope</h3><p class="muted">Tap what applies. Each choice adds its tools and supplies.</p>`+SCOPE_PARENTS.map(p=>{const k=kids(p);if(!k.length)return'';return `<div class="qlabel">${esc(stName(p))}</div>${chips(k.map(x=>[x[0],x[1]]),W.st,'s')}`}).join('');next='Build the list'}
   else if(s===4){if(!W.lines)W.lines=generate(W.st);if(!W._seg)W._seg='yard';body=listHtml();next='Review check-out'}
   else if(s===5){body=goHtml();next=''}
-  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2>${W.step>=4?topBtns(W,openId):''}</div>${crumbs()}<div class="panel mplbody">${body}</div>
+  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2>${W.step>=4?topBtns(W,openId):''}</div>${crumbs()}<div class="panel mplbody">${body}</div>
    <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${W.job?`<span class="mplsv" id="mSv">${W._dirty?'Unsaved changes':'All changes saved'}</span><button class="btn ${W._dirty?'pri':''}" id="mSave">Save</button>`:''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
   wire()}
 let mpJ=null,mpU=null,mpErr='',jq='',mpLive=false,mpBusy=false,SPC=null;
@@ -130,7 +130,7 @@ function goHtml(){const g=goLines();const yard=g.filter(x=>x.y),other=g.filter(x
    ${other.length?`<div class="qlabel">Not from the yard (buy / rent / bring otherwise) · ${other.length}</div><div class="muted" style="font-size:13px">${other.map(x=>esc(x.l.name)+' ×'+x.l.n).join(' · ')}</div>`:''}
    <div class="mplbar"><button class="go" id="mGo" ${yard.some(x=>x.take>0)&&W.job?'':'disabled'}>Check out ${yard.filter(x=>x.take>0).length} items from the yard</button></div>`}
 function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f);
-  document.getElementById('mBack').onclick=()=>{if(W.step===0){view='list';render()}else{W.step--;render()}};
+  document.getElementById('mBack').onclick=()=>{view='list';render();scrollTo({top:0})};
   q('[data-st]',b=>b.onclick=()=>{const n=+b.dataset.st;if(n<=W.step||W.lines){if(n===5&&!W.lines)return;W.step=n;render()}});
   q('[data-mj]',b=>b.onclick=()=>{const j=mpJ.find(x=>x.no===b.dataset.mj);W.job='#'+j.no;const reg=jobs.find(x=>x.no==='#'+j.no);W.jobName=(reg&&reg.name)||j.name;W.city=j.city||'';W.mpPid=j.pid||null;render()});
   const jn=document.getElementById('mJn');if(jn)jn.onchange=()=>{W.jobName=jn.value.trim()};
