@@ -11,6 +11,7 @@ function spec(q){return [q.lbs?q.lbs+'K lbs':'',q.size?q.size+"'":'',q.kw?q.kw+'
 function key(q){return [q.cat,q.lbs||'',q.size||'',q.kw||'',(q.option||'').toLowerCase()].join('|')}
 function load(){db.collection('eqp').onSnapshot(s=>{Q=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn())render()},()=>{});
   db.doc('config/eqvendors').onSnapshot(s=>{VEN=s.data()||{};if(isOn())render()},()=>{});
+  db.collection('eqinbox').onSnapshot(s=>{INBOX=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn()&&!arranging)render()},()=>{});
   db.doc('config/eqorder').onSnapshot(s=>{ORD=(s.data()||{}).order||[];if(isOn()&&!arranging)render()},()=>{})}
 let ORD=[],arranging=false;
 const isOn=()=>el()&&!el().hidden;
@@ -30,6 +31,8 @@ function render(){const box=el();if(!box)return;
   box.querySelectorAll('[data-ev]').forEach(b=>b.onclick=()=>{if(b.dataset.ev==='cmp')cat='';arranging=false;view=b.dataset.ev;render()});
   const a=document.getElementById('eqAdd');if(a)a.onclick=()=>openQuote('');const up=document.getElementById('eqUp');if(up)up.onclick=pickDoc;
   if(!Q.length){document.getElementById('eqBody').innerHTML=`<div class="panel"><p>No prices yet.</p>${canEdit()?'<p><button class="btn pri" id="eqImp">Import from Excel</button> <span class="muted">— pick your “Equipment Price Tracking” workbook</span></p>':''}</div>`;wireImp();return}
+  if(INBOX.length&&canEdit()){document.getElementById('eqBody').insertAdjacentHTML('beforebegin',`<div class="panel eqinbox"><b>${INBOX.length} document(s) couldn't be read fully</b> <span class="muted">— tap to finish</span><div class="chips">${INBOX.map(x=>`<button class="chip" data-ib="${x._id}">${esc(x.doc?.name||'file')}</button>`).join('')}</div></div>`);
+    box.querySelectorAll('[data-ib]').forEach(b=>b.onclick=()=>{const x=INBOX.find(y=>y._id===b.dataset.ib);const P=x.P;P._inbox=x._id;if(!P.items||!P.items.length)P.items=[{cat:'',size:null,lbs:null,day:null,week:null,m4:null}];reviewDoc(P,x.doc)})}
   if(view==='cmp')renderCmp();else if(view==='list')renderList();else renderVen()}
 function cats(){const m={};Q.forEach(q=>m[q.cat]=(m[q.cat]||0)+1);const ix=c=>{const i=ORD.indexOf(c);return i<0?1e4:i};return Object.keys(m).sort((a,b)=>ix(a)-ix(b)||a.localeCompare(b)).map(c=>[c,m[c]])}
 document.head.insertAdjacentHTML('beforeend',`<style>.eqgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}.eqtile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(255,255,255,.05);color:inherit;font:inherit;text-align:center;cursor:pointer}.eqtbl th.n,.eqtbl td.n{text-align:center!important}.eqtbl th+th,.eqtbl td+td{border-left:1px solid rgba(255,255,255,.12)}.eqtbl td{vertical-align:middle}.eqtile:active{transform:scale(.97)}.eqgrid.arr .eqtile{touch-action:none;cursor:grab;border-style:dashed;animation:eqw .3s infinite alternate}.eqgrid.arr .eqtile.drag{opacity:.6;transform:scale(1.05);animation:none;border-color:var(--accent,#c8742c)}@keyframes eqw{from{transform:rotate(-.6deg)}to{transform:rotate(.6deg)}}.eqtile b{font-size:15px}.eqtile small{color:rgba(243,237,230,.65);font-size:12px}.eqic{display:inline-flex;width:64px;height:64px;color:var(--accent,#c8742c)}.eqic svg{width:100%;height:100%}.eqic.sm{width:32px;height:32px}.eqic.xs{width:18px;height:18px;margin-right:4px;vertical-align:-4px}.eqsel{display:flex;align-items:center;gap:12px;margin:4px 0 10px}.eqcur{display:flex;align-items:center;gap:8px;font-size:17px}@media(max-width:420px){.eqgrid{grid-template-columns:1fr 1fr;gap:10px}.eqic{width:52px;height:52px}}</style>`);
@@ -106,7 +109,7 @@ async function exportX(){if(!window.XLSX)return;const rows=[...Q].sort((a,b)=>a.
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});const dl=await window.claude?.use?.('downloads');const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const name='AME_Equipment_Prices_'+new Date().toISOString().slice(0,10)+'.xlsx';if(dl)dl.save({filename:name,data:blob})}
 
 /* ---------- quote / invoice upload ---------- */
-function pickDoc(){let f=document.getElementById('eqDoc');if(!f){f=document.createElement('input');f.type='file';f.id='eqDoc';f.accept='application/pdf,image/*';f.hidden=true;document.body.appendChild(f);f.onchange=()=>{const x=f.files[0];f.value='';if(x)handleDoc(x)}}f.click()}
+function pickDoc(){let f=document.getElementById('eqDoc');if(!f){f=document.createElement('input');f.type='file';f.id='eqDoc';f.accept='application/pdf,image/*';f.multiple=true;f.hidden=true;document.body.appendChild(f);f.onchange=()=>{const x=[...f.files];f.value='';if(x.length)handleDocs(x)}}f.click()}
 function askKind(){return new Promise(ok=>{document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>What is this document?</h3><div class="names"><button data-k="Quote">Quote</button><button data-k="Invoice">Invoice</button></div><div class="bar"><button class="btn" id="kC">Cancel</button></div></div></div>`;
   document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>ok(b.dataset.k));document.getElementById('kC').onclick=()=>{closeDlg();ok(null)}})}
 async function pdfText(file){if(!window.pdfjsLib){await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
@@ -131,6 +134,31 @@ function parseDoc(lines){const txt=lines.join('\n');const vendors=[...new Set([.
     items.push({line:l,cat:normType(type),size:sz?+sz[1]:null,lbs:lb?Math.round(num(lb[1])/(lb[1].includes(',')?1000:1)):null,day,week,m4:m4,amount:(day==null&&week==null&&m4==null)?nums[nums.length-1]:null})});
   return {vendor,date,job:jm?jm[1]:'',deliv:fee(/deliver/i),pick:fee(/pick ?up|return/i),items:items.slice(0,15)}}
 function normType(t){t=String(t).toLowerCase();if(/tele|reach/.test(t))return 'Telehandler';if(/art/.test(t))return 'ART Boom Lift';if(/straight|telescopic/.test(t))return 'ST Boom Lift';if(/boom/.test(t))return 'ART Boom Lift';if(/rough|rt scissor/.test(t))return 'RT Scissor Lift';if(/scissor/.test(t))return 'Scissor Lift';if(/forklift/.test(t))return 'Mast Forklift';if(/generator/.test(t))return 'Generator';if(/compressor/.test(t))return 'Air Compressor';if(/light/.test(t))return 'Tower Light';if(/toilet/.test(t))return 'Toilet';if(/wash/.test(t))return 'Hand Wash Station';if(/fence/.test(t))return 'Fence';if(/dumpster/.test(t))return 'Dumpster';if(/container/.test(t))return 'Storage Container';return ''}
+
+async function loadJs(src){if(document.querySelector(`script[src="${src}"]`))return;await new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
+let OCRW=null;async function ocr(img){await loadJs('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js');if(!OCRW)OCRW=await Tesseract.createWorker('eng');const r=await OCRW.recognize(img);return r.data.text.split('\n').map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean)}
+async function pdfOcr(file){await pdfText(file).catch(()=>{});const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;const out=[];
+  for(let p=1;p<=Math.min(pdf.numPages,4);p++){const pg=await pdf.getPage(p);const v=pg.getViewport({scale:2});const c=document.createElement('canvas');c.width=v.width;c.height=v.height;await pg.render({canvasContext:c.getContext('2d'),viewport:v}).promise;out.push(...await ocr(c))}return out}
+async function readLines(file){const isPdf=/pdf/i.test(file.type)||/\.pdf$/i.test(file.name);
+  if(isPdf){let l=[];try{l=await pdfText(file)}catch(e){}if(l.join('').replace(/\s/g,'').length>80)return l;return pdfOcr(file)}
+  return ocr(file)}
+function vendorGuess(lines){const t=lines.join(' ');const m=t.match(/www\.([a-z0-9\-]+)\.com|@([a-z0-9\-]+)\.com/i);if(m){const d=(m[1]||m[2]).toLowerCase();const known=[...new Set(Q.map(q=>q.vendor))].find(v=>d.includes(v.toLowerCase().replace(/[^a-z]/g,'').slice(0,6)));if(known)return known;return d.replace(/rentals?$/,' Rentals').replace(/^./,c=>c.toUpperCase())}
+  const top=lines.slice(0,5).find(l=>/rental|equipment|sanitation|waste|fence|disposal|inc\b|llc/i.test(l));return top?top.replace(/[^\w &.,'-]/g,'').trim().slice(0,40):''}
+const hasPrice=it=>[it.day,it.week,it.m4,it.amount].some(v=>v!=null&&v>0);
+async function saveParsed(P,doc){const ok=P.items.filter(it=>it.cat&&hasPrice(it));if(!P.vendor||!ok.length)return 0;const now=new Date().toISOString();const map={};
+  ok.forEach((it,i)=>map['q'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)+i]={cat:fixType(it.cat),size:it.size??null,lbs:it.lbs??null,kw:null,option:it.option||'',fuel:'',vendor:clean(P.vendor),day:it.day??null,week:it.week??null,m4:it.m4??null,month:it.amount??null,deliv:P.deliv??null,pick:P.pick??null,date:P.date||now.slice(0,10),job:P.job?normJob(P.job):'',site:'',note:doc.kind+' (auto)',doc,by:curUser,at:now,src:'doc'});
+  if(db.setMany)await db.setMany('eqp',map);else for(const [k,v] of Object.entries(map))await db.doc('eqp/'+k).set(v);return ok.length}
+async function handleDocs(files){let saved=0,prices=0,review=0,fail=0;const prog=m=>{let t=document.getElementById('eqProg');if(!t){t=document.createElement('div');t.id='eqProg';t.className='toast';t.style.animation='none';document.body.appendChild(t)}t.textContent=m};
+  for(let i=0;i<files.length;i++){const file=files[i];const tag=`(${i+1}/${files.length}) `;
+    try{prog(tag+'Uploading '+file.name+'…');const fs=await window.claude.use('files');const r=await fs.save('eqdocs/'+new Date().toISOString().slice(0,10)+'_'+file.name.replace(/[^\w.\-]+/g,'_'),file);
+      prog(tag+'Reading '+file.name+'…');let lines=[];try{lines=await readLines(file)}catch(e){console.warn(e)}
+      const kind=/invoice/i.test(lines.slice(0,25).join(' '))?'Invoice':'Quote';const doc={url:r.url,name:file.name,kind};
+      let P={vendor:'',date:'',job:'',deliv:null,pick:null,items:[]};try{P=parseDoc(lines)}catch(e){}if(!P.vendor)P.vendor=vendorGuess(lines);
+      const n=await saveParsed(P,doc);if(n){saved++;prices+=n}else{review++;await db.doc('eqinbox/d'+Date.now().toString(36)+i).set({P,doc,by:curUser,at:new Date().toISOString(),text:lines.slice(0,60).join('\n')})}}
+    catch(e){fail++;console.warn(e)}}
+  document.getElementById('eqProg')?.remove();
+  toast(`${files.length} file(s): ${prices} price(s) recorded from ${saved}`+(review?` · ${review} need a quick look`:'')+(fail?` · ${fail} failed`:''));view='cmp';render()}
+let INBOX=[];
 async function handleDoc(file){const kind=await askKind();if(!kind)return;closeDlg();toast('Uploading '+kind.toLowerCase()+'…');
   let doc=null;try{const f=await window.claude.use('files');const r=await f.save('eqdocs/'+new Date().toISOString().slice(0,10)+'_'+file.name.replace(/[^\w.\-]+/g,'_'),file);doc={url:r.url,name:file.name,kind}}catch(e){toast('Could not store the file: '+(e.message||e));return}
   let P={vendor:'',date:'',job:'',deliv:null,pick:null,items:[]};
@@ -153,7 +181,7 @@ function reviewDoc(P,doc){const cs=[...new Set(Q.map(x=>x.cat))].sort(),vs=[...n
   wire();document.getElementById('dadd').onclick=()=>{collect();P.items.push({cat:'',size:null});reviewDoc(P,doc)};document.getElementById('dC').onclick=closeDlg;
   document.getElementById('dS').onclick=async()=>{collect();if(!P.vendor){toast('Enter the vendor.');return}const ok=P.items.filter(it=>it.cat&&[it.day,it.week,it.m4,it.month].some(v=>v!=null));if(!ok.length){toast('Add at least one priced line.');return}
     const now=new Date().toISOString();const map={};ok.forEach((it,i)=>map['q'+Date.now().toString(36)+i]={cat:fixType(it.cat),size:it.size??null,lbs:it.lbs??null,kw:null,option:it.option||'',fuel:'',vendor:clean(P.vendor),day:it.day??null,week:it.week??null,m4:it.m4??null,month:it.month??null,deliv:P.deliv,pick:P.pick,date:P.date||now.slice(0,10),job:P.job?normJob(P.job):'',site:P.site||'',note:doc.kind,doc,by:curUser,at:now,src:'doc'});
-    try{if(db.setMany)await db.setMany('eqp',map);else for(const [k,v] of Object.entries(map))await db.doc('eqp/'+k).set(v);closeDlg();cat=fixType(ok[0].cat);view='cmp';toast(ok.length+' price(s) saved from the '+doc.kind.toLowerCase());render()}catch(e){toast('Could not save: '+(e.message||e.code))}}}
+    try{if(db.setMany)await db.setMany('eqp',map);else for(const [k,v] of Object.entries(map))await db.doc('eqp/'+k).set(v);closeDlg();if(P._inbox)db.doc('eqinbox/'+P._inbox).delete().catch(()=>{});cat=fixType(ok[0].cat);view='cmp';toast(ok.length+' price(s) saved from the '+doc.kind.toLowerCase());render()}catch(e){toast('Could not save: '+(e.message||e.code))}}}
 
 /* ---------- Excel import (your “Equipment Price Tracking” workbook layout) ---------- */
 function wireImp(){const b=document.getElementById('eqImp');if(!b)return;b.onclick=()=>{let f=document.getElementById('eqFile');if(!f){f=document.createElement('input');f.type='file';f.id='eqFile';f.accept='.xlsx,.xls';f.hidden=true;document.body.appendChild(f);f.onchange=()=>{const x=f.files[0];f.value='';if(x)importFile(x)}}f.click()}}
@@ -192,7 +220,7 @@ async function importFile(f){try{const wb=XLSX.read(await f.arrayBuffer(),{type:
 /* dumpsters & flat prices show in Compare via the "flat" field */
 const _bc=bestCost;bestCost=function(q,D){if(num(q.flat)!=null)return {cost:num(q.flat),how:q.note||'flat'};return _bc(q,D)};
 
-AME.eqParse=parseWB;
+AME.eqParse=parseWB;AME.eqDocs=handleDocs;
 AME.register({id:'eqp',name:'Equipment Prices',desc:'Rental quotes by vendor · compare · cheapest for N days',perm:'EQP',tabs:['eqp'],section:'tab-eqp',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h13l3-6h-4l-2-4H7"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="18" r="2"/><path d="M10 7l2 4"/></svg>',
   open:()=>showTab('eqp'),onShow:render});
