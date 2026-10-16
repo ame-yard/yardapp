@@ -85,6 +85,7 @@ function crumbs(){return `<div class="mplsteps">${STEPS.map(([k,l],n)=>`<button 
 function chips(list,sel,attr){return `<div class="mplchips">${list.map(([id,name])=>`<button data-${attr}="${id}" aria-pressed="${sel.includes(id)}">${esc(name)}</button>`).join('')}</div>`}
 let svT=null;const snap=()=>JSON.stringify([W.job,W.jobName,W.mpPm,W.mpFm,W.pm,W.fm,W.crew,W.st,W.lines]);
 async function saveDraft(manual){clearTimeout(svT);if(!W||!W.job)return;try{await save(W.status==='out'||W.status==='closed'?W.status:'draft');W._saved=snap();W._dirty=false;const e=document.getElementById('mSv');if(e)e.textContent='All changes saved';const b=document.getElementById('mSave');if(b)b.classList.remove('pri');if(manual)toast('MPL saved')}catch(e){toast('Could not save: '+(e.message||e))}}
+(window.ameSaveHooks=window.ameSaveHooks||[]).push(async()=>{if(view==='wiz'&&W&&W.job&&W._dirty)await saveDraft(false)});
 window.addEventListener('beforeunload',e=>{if(view==='wiz'&&W&&W._dirty){e.preventDefault();e.returnValue=''}});
 function renderWiz(){if(W&&W._saved===undefined)W._saved=openId?snap():'';W._dirty=!!W.job&&snap()!==W._saved;if(W._dirty){clearTimeout(svT);svT=setTimeout(()=>{if(view==='wiz')saveDraft(false)},2500)}const box=el();const s=W.step;let body='',next='Next';
   if(s===0){body=jobStep()}

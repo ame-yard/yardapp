@@ -9,6 +9,7 @@ const num=v=>{if(v==null||v==='')return null;const n=Number(String(v).replace(/[
 const canEdit=()=>isAdmin||can('EQP');
 function spec(q){return [q.lbs?q.lbs+'K lbs':'',q.size?q.size+"'":'',q.kw?q.kw+' kW':'',q.option||''].filter(Boolean).join(' · ')}
 function key(q){return [q.cat,q.lbs||'',q.size||'',q.kw||'',(q.option||'').toLowerCase()].join('|')}
+(window.ameSaveHooks=window.ameSaveHooks||[]).push(async()=>{const b=document.getElementById('vSave');if(b&&!b.disabled)await b.onclick()});
 const venDirty=()=>{const b=document.getElementById('vSave');return !!(b&&!b.disabled)};
 function load(){db.collection('eqp').onSnapshot(s=>{Q=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn()&&!venDirty())render()},()=>{});
   db.doc('config/eqvendors').onSnapshot(s=>{VEN=s.data()||{};if(isOn()&&!venDirty())render()},()=>{});

@@ -3,7 +3,7 @@
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=286"></script>
+<script src="msbackend.js?v=293"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -521,7 +521,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 </div></header>
 
 <main class="wrap">
-  <div class="statusrow"><div class="status" id="status">Connecting to the yard database…</div><div class="ver"><span id="verTxt"></span><span id="syncTxt"></span><button class="btn" id="syncBtn">⟳ Sync</button></div></div>
+  <div class="statusrow"><div class="status" id="status">Connecting to the yard database…</div><div class="ver"><span id="verTxt"></span><span id="syncTxt"></span><button class="btn" id="saveBtn" title="Save all changes to SharePoint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" style="vertical-align:-2px"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg> Save</button><button class="btn" id="syncBtn">⟳ Sync</button></div></div>
 
   <!-- YARD -->
   <section id="tab-yard">
@@ -645,7 +645,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.92',APP_DATE='2026-10-15';
+const APP_VERSION='2.93',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1613,8 +1613,8 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=240"></script>
-<script src="mpl.js?v=291"></script>
-<script src="eqp.js?v=291"></script>
+<script src="mpl.js?v=293"></script>
+<script src="eqp.js?v=293"></script>
 <script>
 /* auto-detect a newer app version */
 (function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}
@@ -1638,5 +1638,9 @@ window.addEventListener('beforeunload',e=>{if(document.getElementById('syncTxt')
   if(ios)setTimeout(show,4000);
   window.ameInstall=()=>{try{localStorage.removeItem('ameInstallHide')}catch(e){}dismissed=false;document.getElementById('instBar')?.remove();show()};
 })();
+
+document.getElementById('saveBtn').onclick=async()=>{const b=document.getElementById('saveBtn');b.disabled=true;const t=b.innerHTML;b.lastChild.textContent=' Saving…';
+  try{for(const h of (window.ameSaveHooks||[]))await h();const ok=db&&db.idle?await db.idle():true;toast(ok?'All changes are saved to SharePoint ✓':'Still saving — try again in a moment')}catch(e){toast('Could not save: '+(e.message||e))}b.innerHTML=t;b.disabled=false};
+window.addEventListener('ame-save',e=>{const b=document.getElementById('saveBtn');if(b)b.classList.toggle('pri',e.detail==='saving'||e.detail==='error')});
 </script>
 </body></html>
