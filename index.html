@@ -271,7 +271,7 @@ body.nophoto .cam,body.nophoto #e_photoLbl{display:none!important}
   h2{font-size:24px}
   .subbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.subbar::-webkit-scrollbar{display:none}.subbar .chip{flex:none;padding:8px 12px;font-size:14px}
   .names.jobs button{min-width:100%!important;width:100%}
-  .cb-in .btn.ghost{display:none}
+  .cb-in .btn.ghost{padding:8px 10px;font-size:14px;flex:none}.cb-in .go{padding:12px 12px;font-size:15px}
   .dlg .bar{gap:6px;flex-wrap:nowrap}.dlg .bar .btn{padding:10px 10px;font-size:14px;white-space:nowrap}
   .dlg .go,.cb-in .go{white-space:nowrap}
   .units button{padding:7px 10px}
@@ -638,7 +638,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.76',APP_DATE='2026-10-15';
+const APP_VERSION='2.77',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
