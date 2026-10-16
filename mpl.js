@@ -54,6 +54,7 @@ function yardFor(line){if(line.yid&&byId(line.yid))return byId(line.yid);if(line
 /* ---------- data ---------- */
 function load(){db.doc('mplref/ref').onSnapshot(s=>{REF=s.data()||null;if(isOn())render()},()=>{});
   db.collection('mpl').onSnapshot(s=>{MPLS=s.docs.map(d=>({...d.data(),_id:d.id}));if(isOn())render()},()=>{});
+  db.doc('config/spectrum').onSnapshot(s=>{SPC=s.data()||null},()=>{});
   db.doc('config/mplmap').onSnapshot(s=>{MAP=s.data()||{}},()=>{})}
 const isOn=()=>el()&&!el().hidden;
 window.addEventListener('message',async e=>{if(e.origin!=='https://amebuilders.org'||!e.data||e.data.type!=='MPLREF')return;
@@ -92,9 +93,10 @@ function renderWiz(){const box=el();const s=W.step;let body='',next='Next';
   box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← ${s===0?'All MPLs':'Back'}</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2>${W.step>=4?topBtns(W,openId):''}</div>${crumbs()}<div class="panel mplbody">${body}</div>
    <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${s>=4?'<button class="btn" id="mSave">Save draft</button>':''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
   wire()}
-let mpJ=null,mpU=null,mpErr='',jq='';
+let mpJ=null,mpU=null,mpErr='',jq='',mpLive=false,mpBusy=false,SPC=null;
 function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" style="margin:0"><p>Job numbers come from <b>Spectrum through Mob Prep</b>. Connect once on this device.</p><button class="go" id="mpConn" style="width:auto">Connect Mob Prep</button></div>`;
-  if(!mpJ&&!mpErr){mpJobs().then(j=>{mpJ=j;return mpUsers()}).then(u=>{mpU=u;render()}).catch(e=>{mpErr=e.message;render()});return '<h3>Which job?</h3><p class="muted">Loading jobs from Spectrum / Mob Prep…</p>'}
+  if(!mpLive&&!mpErr&&!mpBusy){mpBusy=true;mpJobs().then(j=>{mpJ=j;mpLive=true;return mpUsers()}).then(u=>{mpU=u;mpBusy=false;render()}).catch(e=>{mpBusy=false;if(!mpJ)mpErr=e.message;render()});if(!mpJ&&SPC&&SPC.jobs&&SPC.jobs.length)mpJ=SPC.jobs.map(j=>({...j}))}
+  if(!mpJ&&!mpErr)return '<h3>Which job?</h3><p class="muted">Loading jobs from Spectrum / Mob Prep…</p>';
   if(mpErr)return `<h3>Which job?</h3><p class="bad">${esc(mpErr)}</p><button class="btn" id="mpRetry">Try again</button> <button class="btn" id="mpConn">Reconnect</button>`;
   const q=jq.toLowerCase();const l=mpJ.filter(j=>j.active!==false&&(!q||j.no.includes(q)||j.name.toLowerCase().includes(q))).slice(0,60);
   const pms=(mpU||[]).filter(u=>['pm','admin','president','office'].includes(String(u.role||'').toLowerCase())||true);
@@ -126,9 +128,9 @@ function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f)
   q('[data-mj]',b=>b.onclick=()=>{const j=mpJ.find(x=>x.no===b.dataset.mj);W.job='#'+j.no;const reg=jobs.find(x=>x.no==='#'+j.no);W.jobName=(reg&&reg.name)||j.name;W.city=j.city||'';W.mpPid=j.pid||null;render()});
   const jn=document.getElementById('mJn');if(jn)jn.onchange=()=>{W.jobName=jn.value.trim()};
   const jqi=document.getElementById('mJq');if(jqi)jqi.oninput=()=>{jq=jqi.value;const p=jqi.selectionStart;render();const n=document.getElementById('mJq');n.focus();n.setSelectionRange(p,p)};
-  const cn=document.getElementById('mpConn');if(cn)cn.onclick=()=>connectDlg(()=>{mpJ=null;mpErr='';render()});
-  const rt=document.getElementById('mpRetry');if(rt)rt.onclick=()=>{mpErr='';mpJ=null;MP.cache={};render()};
-  const mo=document.getElementById('mpOut');if(mo)mo.onclick=e=>{e.preventDefault();MP.logout();mpJ=null;render()};
+  const cn=document.getElementById('mpConn');if(cn)cn.onclick=()=>connectDlg(()=>{mpJ=null;mpLive=false;mpErr='';render()});
+  const rt=document.getElementById('mpRetry');if(rt)rt.onclick=()=>{mpErr='';mpJ=null;mpLive=false;MP.cache={};render()};
+  const mo=document.getElementById('mpOut');if(mo)mo.onclick=e=>{e.preventDefault();MP.logout();mpJ=null;mpLive=false;render()};
   const mj=document.getElementById('mJob');if(mj)mj.onchange=()=>{W.job=normJob(mj.value)};
   q('[data-cr]',b=>b.onclick=()=>{W.crew=Math.max(1,W.crew+ +b.dataset.cr);render()});
   const pm=document.getElementById('mPm');if(pm)pm.onchange=()=>{W.mpPm=pm.value;W.pm=pm.selectedOptions[0]?.text||''};const fm=document.getElementById('mFm');if(fm)fm.onchange=()=>{W.mpFm=fm.value;W.fm=fm.selectedOptions[0]?.text||''};

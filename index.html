@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"><style>button[data-ck]{min-width:34px;min-height:34px}</style></head><body>
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
@@ -636,7 +636,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='2.68',APP_DATE='2026-10-15';
+const APP_VERSION='2.69',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1371,6 +1371,7 @@ const TABN={yard:'Yard',inv:'Inventory',jobs:'Jobs',log:'Activity',sheet:'Sheet'
 function devName(){const u=navigator.userAgent;return /iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'iPad':/iPhone/.test(u)?'iPhone':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows PC':/Mac/.test(u)?'Mac':'Browser'}
 let msAcct='';
 async function beat(){if(document.hidden||!db)return;const t=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab||'yard';
+  const sig=(curUser||'')+'|'+t+'|'+act;if(sig===beat._s&&Date.now()-(beat._t||0)<55000)return;if(Date.now()-(beat._t||0)<8000){clearTimeout(beat._q);beat._q=setTimeout(beat,8000);return}beat._s=sig;beat._t=Date.now();
   try{if(!msAcct){const u=await window.claude.use('user');msAcct=u?.name?.()||''}
     await db.doc('presence/'+devId).set({name:curUser||'',acct:msAcct,device:devName(),tab:TABN[t]||t,mode:t==='yard'?(ACTNAME[act]||act):'',ts:new Date().toISOString()})}catch(e){}}
 function startPresence(){beat();setInterval(beat,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()})}
@@ -1595,6 +1596,6 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=240"></script>
-<script src="mpl.js?v=254"></script>
-<script src="eqp.js?v=268"></script>
+<script src="mpl.js?v=269"></script>
+<script src="eqp.js?v=269"></script>
 </body></html>
