@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.39',APP_DATE='2026-10-15';
+const APP_VERSION='3.40',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1342,7 +1342,7 @@ $('#addItem').onclick=()=>openItem('');
 /* jobs */
 $('#jstat').onchange=()=>renderJobs();
 $('#saveOwnPin').onclick=async()=>{if(!isOwner(curUser))return;const p=$('#ownPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({ownerPinH:await sha(p)});$('#ownPin').value='';toast('Your personal PIN is saved. Use it next time you sign in.')}catch(e){toast('Could not save: '+(e.message||e.code))}};
-$('#savePin').onclick=async()=>{if(!isOwner(curUser)){toast('Only Kyle can change the editor PIN.');return}const p=$('#newPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({officePin:p});$('#newPin').value='';toast('Office PIN saved')}catch(e){toast('Could not save: '+(e.message||e.code))}};
+$('#savePin').onclick=async()=>{if(!isOwner(curUser)){toast('Only Kyle can change the editor PIN.');return}const p=$('#newPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({officePinH:await sha(p),officePin:null});$('#newPin').value='';toast('Office PIN saved')}catch(e){toast('Could not save: '+(e.message||e.code))}};
 $('#gAdd').onclick=()=>{const name=$('#gName').value;const feats=$$('#gFeats [data-gf][aria-pressed="true"]').map(b=>b.dataset.gf);if(!name||!feats.length){toast('Pick a person and at least one permission.');return}
   const d=$('#gDur').value;let until=null;if(d==='today'){const t=new Date();t.setHours(23,59,59,0);until=+t}else if(d!=='0')until=Date.now()+Number(d)*3600e3;
   const now=Date.now();savePerms({...perms,grants:[...(perms.grants||[]).filter(g=>!g.until||g.until>now),{id:'g'+now.toString(36),name,feats,until,by:curUser,at:new Date().toISOString()}]});$$('#gFeats [data-gf]').forEach(b=>b.setAttribute('aria-pressed','false'))};
@@ -1546,7 +1546,7 @@ function render(){renderYard();renderCartBar();if(!$('#tab-inv').hidden)renderIn
 
 renderPeople();render();
 let ownerPinH='';async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ame-yard:'+t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-let curUser='',accountAdmin=false,officePin='',lastAct=Date.now();
+let curUser='',accountAdmin=false,officePin='',officePinH='',pinFails=0,pinLockUntil=0,lastAct=Date.now();
 try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3)curUser=u.n}catch(e){}
 try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p)curUser=p}catch(e){}
 
@@ -1573,7 +1573,7 @@ function showLogin(){if(curUser)return;
     let pin='';const draw=()=>{$('#pinArea').innerHTML=`<div class="pinbox"><div class="qlabel">${isOwner(n)&&ownerPinH?'Personal PIN':'Editor PIN'} for ${esc(n)}</div><div class="pindots">${[0,1,2,3].map(k=>`<span class="${k<pin.length?'on':''}"></span>`).join('')}</div>
       <div class="pinpad">${['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('')}</div><button class="btn" id="pinCancel">Cancel</button></div>`;
       $$('#pinArea [data-k]').forEach(x=>x.onclick=()=>{const k=x.dataset.k;if(k==='⌫')pin=pin.slice(0,-1);else if(pin.length<4)pin+=k;
-        if(pin.length===4){const p=pin;pin='';(async()=>{const ok=isOwner(n)&&ownerPinH?(await sha(p))===ownerPinH:p===officePin;if(ok){setUser(n);return}toast('Wrong PIN');draw()})();return}draw()});
+        if(pin.length===4){const p=pin;pin='';(async()=>{if(Date.now()<pinLockUntil){toast('Too many wrong PINs — try again in '+Math.ceil((pinLockUntil-Date.now())/1000)+' s');draw();return}const h=await sha(p);const ok=isOwner(n)&&ownerPinH?h===ownerPinH:(officePinH?h===officePinH:p===officePin);if(ok){pinFails=0;setUser(n);return}pinFails++;if(pinFails>=5){pinFails=0;pinLockUntil=Date.now()+60000;toast('Too many wrong PINs — locked for 1 minute');try{logLogin(n+' (wrong PIN x5)',true)}catch(e){}}else toast('Wrong PIN');draw()})();return}draw()});
       $('#pinCancel').onclick=()=>{$('#pinArea').innerHTML=''}};draw()});
 }
 
@@ -1622,7 +1622,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
   db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()},()=>{});
   db.doc('config/perms').onSnapshot(s=>{perms=s.data()||{roles:{},grants:[]};if(curUser)setUser(curUser);renderPerms()},()=>{});
   setInterval(()=>{if(curUser)setUser(curUser)},60e3);
-  db.doc('config/security').onSnapshot(s=>{officePin=s.data()?.officePin||'';ownerPinH=s.data()?.ownerPinH||'';renderCrew()},()=>{});
+  db.doc('config/security').onSnapshot(async s=>{const d=s.data()||{};officePinH=d.officePinH||'';officePin=officePinH||d.officePin||'';ownerPinH=d.ownerPinH||'';if(d.officePin&&isOwner(curUser)){try{await db.doc('config/security').update({officePinH:officePinH||await sha(d.officePin),officePin:null})}catch(e){}}renderCrew()},()=>{});
   db.collection('presence').onSnapshot(s=>{presence=s.docs.map(d=>({...d.data(),_id:d.id}));renderOnline()},()=>{});
   startPresence();
   db.collection('jobs').onSnapshot(s=>{jobs=s.docs.map(d=>({...d.data(),_id:d.id}));render()},()=>{});
@@ -1653,7 +1653,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=339"></script>
 <script src="safety.js?v=338"></script>
 <script src="deliv.js?v=311"></script>
-<script src="admin.js?v=337"></script>
+<script src="admin.js?v=340"></script>
 <script src="scan.js?v=310"></script>
 <script>
 /* auto-detect a newer app version */
