@@ -108,7 +108,7 @@ function tsBody(){const d=W.data;d.paper=d.paper||[];const nd=d.days.length;if(t
      <div class="tsp add"><input id="tsNew" list="frCrew" placeholder="+ Add crew member"><button type="button" class="btn small" id="tsNewB">Add</button></div></div>
     <div class="fields"><label class="f wide">Delivery / note<input data-k="data.days.${tsDay}.note" value="${esc(x.note||'')}"></label></div>
     <label class="frchk"><input type="checkbox" data-k="data.days.${tsDay}.safe" ${x.safe?'checked':''}> Crew confirmed no injuries today and took their breaks</label></div>`;
-  const S=weekSum(d);h+=`<h4>Week totals</h4><div class="tblwrap"><table class="tssum"><thead><tr><th>Crew</th>${d.days.map((_,i)=>`<th>${DAYS[i]}</th>`).join('')}<th>Reg</th><th>OT</th><th>DT</th><th>Total</th></tr></thead><tbody>${S.map(s=>`<tr><td>${esc(s.name)}</td>${s.days.map(v=>`<td>${v||''}</td>`).join('')}<td>${s.reg}</td><td class="${s.ot?'ot':''}">${s.ot||''}</td><td class="${s.dt?'ot':''}">${s.dt||''}</td><td><b>${s.tot}</b></td></tr>`).join('')}<tr class="tot"><td>Total</td>${d.days.map((_,i)=>`<td>${st(i)||''}</td>`).join('')}<td>${S.reduce((a,s)=>a+s.reg,0)}</td><td>${S.reduce((a,s)=>a+s.ot,0)||''}</td><td>${S.reduce((a,s)=>a+s.dt,0)||''}</td><td><b>${S.reduce((a,s)=>a+s.tot,0)}</b></td></tr></tbody></table></div>
+  const S=weekSum(d);h+=`<h4>Week totals</h4><div class="tblwrap"><table class="tssum"><thead><tr><th>Crew</th>${d.days.map((_,i)=>`<th class="dcol">${DAYS[i]}</th>`).join('')}<th>Reg</th><th>OT</th><th>DT</th><th>Total</th></tr></thead><tbody>${S.map(s=>`<tr><td>${esc(s.name)}</td>${s.days.map(v=>`<td class="dcol">${v||''}</td>`).join('')}<td>${s.reg}</td><td class="${s.ot?'ot':''}">${s.ot||''}</td><td class="${s.dt?'ot':''}">${s.dt||''}</td><td><b>${s.tot}</b></td></tr>`).join('')}<tr class="tot"><td>Total</td>${d.days.map((_,i)=>`<td class="dcol">${st(i)||''}</td>`).join('')}<td>${S.reduce((a,s)=>a+s.reg,0)}</td><td>${S.reduce((a,s)=>a+s.ot,0)||''}</td><td>${S.reduce((a,s)=>a+s.dt,0)||''}</td><td><b>${S.reduce((a,s)=>a+s.tot,0)}</b></td></tr></tbody></table></div>
    <p class="muted" style="font-size:12px">CA rules: OT after 8 hrs/day or 40 hrs/week, DT after 12 hrs/day.</p>`;
   return h}
 function pickPhase(cb){const l=phases(job);const used={};R.filter(r=>r.job===job&&r.type==='ts').forEach(r=>(r.data.rows||[]).forEach(x=>(x.d||[]).forEach(c=>{if(c?.p)used[c.p]=(used[c.p]||0)+1})));
@@ -284,8 +284,8 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .tshead{flex-wrap:nowrap}.tshead h3{font-size:16px;white-space:nowrap}.tsday .tshead{flex-wrap:wrap}
 .tcal{gap:3px}.tc{min-height:42px;padding:4px 1px}.tc small{font-size:9px}
 .frtbl{display:block;overflow-x:auto;max-width:100%}
-.tspaper{padding:8px}.tspaper .frphadd{min-height:0;padding:10px 14px}
+.tspaper{padding:8px;flex-wrap:nowrap}.tspaper small{display:none}.tspaper .frph{flex-wrap:nowrap}.tspaper .frphadd{min-height:0;height:auto;width:auto;padding:8px 12px;font-size:13px}.tssum .dcol{display:none}.tssum{width:100%}
 .tsp{padding:6px}.tsname{min-width:0;flex:1 1 100%}.tsp .tsx{margin-left:auto}.tsph{max-width:170px}
-.tstimes input{width:100%}.tstimes label{flex:1 1 40%}}
+.tstimes input{width:100%}#tab-field .mplbar{position:sticky;bottom:0;z-index:5;margin:12px -16px 0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}#tab-field .mplbar .go{font-size:18px;padding:10px 18px}.tsweek button{min-width:52px;padding:6px 2px}.tsh{width:64px;min-height:42px}.tsph{min-height:40px}.tstimes label{flex:1 1 40%}}
 </style>`);
 })();
