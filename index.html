@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.54',APP_DATE='2026-10-15';
+const APP_VERSION='3.55',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1670,7 +1670,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=352"></script>
 <script src="safety.js?v=352"></script>
 <script src="deliv.js?v=311"></script>
-<script src="admin.js?v=346"></script>
+<script src="admin.js?v=355"></script>
 <script src="scan.js?v=310"></script>
 <script>
 /* auto-detect a newer app version */
@@ -1701,8 +1701,12 @@ document.getElementById('saveBtn').onclick=async()=>{const b=document.getElement
 window.addEventListener('ame-save',e=>{const b=document.getElementById('saveBtn');if(b)b.classList.toggle('pri',e.detail==='saving'||e.detail==='error')});
 
 /* iOS: keep the cart bar glued to the visible bottom (keyboard / address bar / call banner shift the viewport) */
-(function(){const vv=window.visualViewport;let fxq=0;const fix=()=>{if(fxq)return;fxq=requestAnimationFrame(()=>{fxq=0;fix2()})};const fix2=()=>{const b=document.querySelector('.cartbar');const off0=vv?innerHeight-(vv.height+vv.offsetTop):0;document.querySelectorAll('#dlgRoot .scrim,.ysfull').forEach(x=>{x.style.top=vv&&vv.offsetTop>1?vv.offsetTop+'px':'';x.style.height=vv&&Math.abs(off0)>1?vv.height+'px':''});if(!b)return;const kb=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
-  if(!vv){b.style.transform='';return}const off=innerHeight-(vv.height+vv.offsetTop);b.style.transform=Math.abs(off)>1&&!kb?`translateY(${-off}px)`:''};
+(function(){const vv=window.visualViewport;let fxq=0;const fix=()=>{if(fxq)return;fxq=requestAnimationFrame(()=>{fxq=0;fix2()})};const fix2=()=>{const b=document.querySelector('.cartbar');const kb0=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);const off0=vv&&kb0?innerHeight-(vv.height+vv.offsetTop):0;document.querySelectorAll('#dlgRoot .scrim,.ysfull').forEach(x=>{x.style.top=vv&&kb0&&vv.offsetTop>1?vv.offsetTop+'px':'';x.style.height=vv&&kb0&&Math.abs(off0)>1?vv.height+'px':''});if(!b)return;b.style.transform=''};
   if(vv){vv.addEventListener('resize',fix);vv.addEventListener('scroll',fix)}addEventListener('scroll',fix,{passive:true});document.addEventListener('focusin',fix);document.addEventListener('focusout',()=>setTimeout(()=>{fix();if(innerWidth<820)window.scrollTo(window.scrollX,window.scrollY)},120));addEventListener('orientationchange',()=>setTimeout(fix,300));new MutationObserver(()=>fix()).observe(document.getElementById('dlgRoot'),{childList:true})})();
+
+/* maintenance notice: status.json in the repo (set by Claude while fixing) or Admin toggle (config/app.maint) */
+(function(){let a=null,b=null;const show=()=>{const on=(a&&a.maint)||(b&&b.on);const msg=(a&&a.maint&&a.msg)||(b&&b.on&&b.msg)||'';let el=document.getElementById('maintBar');if(!on){el&&el.remove();return}if(!el){el=document.createElement('div');el.id='maintBar';el.style.cssText='position:sticky;top:0;z-index:250;background:#e8a33d;color:#1d1a17;font-weight:700;text-align:center;padding:9px 14px;font-size:14px';document.body.prepend(el)}el.textContent='🛠 '+(msg||'Maintenance in progress — the app may act up for a few minutes. Your saved work is safe.')};
+  const poll=async()=>{try{const r=await fetch('status.json?t='+Date.now(),{cache:'no-store'});if(r.ok)a=await r.json()}catch(e){}show()};poll();setInterval(poll,60000);
+  const w=()=>{if(typeof db!=='undefined'&&db&&db.doc){try{db.doc('config/app').onSnapshot(s=>{b=(s.data()||{}).maint||null;show()},()=>{})}catch(e){}}else setTimeout(w,500)};w()})();
 </script>
 </body></html>
