@@ -1,5 +1,6 @@
 /* AME responsive polish — phone card-rows for wide tables, "show more" on long tables, compact phone layouts. */
 (function(){
+if(/[?&]plain=1/.test(location.search)){try{localStorage.setItem('amePlain','1')}catch(e){}}if(/[?&]plain=0/.test(location.search)){try{localStorage.removeItem('amePlain')}catch(e){}}let PLAIN=false;try{PLAIN=localStorage.getItem('amePlain')==='1'}catch(e){}window.amePlain=PLAIN;if(PLAIN){console.warn('polish off');return}
 const PH=()=>innerWidth<600;
 const SKIP='.tstbl,.tssum,.sfmx,.frtbl,.nocard';
 /* 1. Wide tables → labeled cards on phones */
@@ -59,8 +60,11 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 @media(min-width:600px) and (max-width:900px){#tab-home .apps{grid-template-columns:repeat(2,1fr)}.act b{font-size:17px;letter-spacing:0;white-space:normal;line-height:1.1}.act span{display:none}.act{padding:10px 8px;min-height:56px;justify-content:center}}
 </style>`);
 })();
+/* long-task log for debugging: window.__slow */
+try{window.__slow=[];new PerformanceObserver(l=>{for(const e of l.getEntries())window.__slow.push([Math.round(e.startTime),Math.round(e.duration)])}).observe({entryTypes:['longtask']})}catch(e){}
 /* ---- Español toggle for the crew-facing screens (text-node swap, no code changes elsewhere) ---- */
 (function(){
+if(window.amePlain)return;
 const ES={"Who's using the app?":"¿Quién está usando la app?","Tap your name.":"Toque su nombre.","Not on the list?":"¿No está en la lista?","Continue":"Continuar","HQ":"Oficina","Field":"Campo",
 "What are you doing?":"¿Qué va a hacer?","Take Out":"Sacar","Take tools & materials to a job":"Llevar herramientas y materiales a una obra","Return":"Devolver","Bring things back to the yard":"Regresar cosas al yarda","Inventory check & update":"Revisar inventario","Count, fix quantities, add photos":"Contar, corregir cantidades, agregar fotos","Just look around":"Solo mirar",
 "To a job":"A una obra","Back to yard":"De regreso al yarda","Repair":"Reparar","Requests & in repair":"Pedidos y en reparación","Audit":"Inventario","Count & photos":"Contar y fotos","Removed":"Retirado","Yard Map":"Mapa","Categories":"Categorías","Scan code":"Escanear","Tap a rack or search.":"Toque un estante o busque.","Search:":"Buscar:","Out on Jobs":"En obras","Ladders":"Escaleras","Power Tools":"Herramientas eléctricas","Hand Tools":"Herramientas de mano","Equipment":"Equipo","Safety":"Seguridad",

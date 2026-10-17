@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.53',APP_DATE='2026-10-15';
+const APP_VERSION='3.54',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1663,7 +1663,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=352"></script>
-<script src="polish.js?v=353"></script>
+<script src="polish.js?v=354"></script>
 <script src="mpl.js?v=346"></script>
 <script src="eqp.js?v=313"></script>
 <script src="field.js?v=350"></script>
@@ -1701,7 +1701,7 @@ document.getElementById('saveBtn').onclick=async()=>{const b=document.getElement
 window.addEventListener('ame-save',e=>{const b=document.getElementById('saveBtn');if(b)b.classList.toggle('pri',e.detail==='saving'||e.detail==='error')});
 
 /* iOS: keep the cart bar glued to the visible bottom (keyboard / address bar / call banner shift the viewport) */
-(function(){const vv=window.visualViewport;const fix=()=>{const b=document.querySelector('.cartbar');const off0=vv?innerHeight-(vv.height+vv.offsetTop):0;document.querySelectorAll('#dlgRoot .scrim,.ysfull').forEach(x=>{x.style.top=vv&&vv.offsetTop>1?vv.offsetTop+'px':'';x.style.height=vv&&Math.abs(off0)>1?vv.height+'px':''});if(!b)return;const kb=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+(function(){const vv=window.visualViewport;let fxq=0;const fix=()=>{if(fxq)return;fxq=requestAnimationFrame(()=>{fxq=0;fix2()})};const fix2=()=>{const b=document.querySelector('.cartbar');const off0=vv?innerHeight-(vv.height+vv.offsetTop):0;document.querySelectorAll('#dlgRoot .scrim,.ysfull').forEach(x=>{x.style.top=vv&&vv.offsetTop>1?vv.offsetTop+'px':'';x.style.height=vv&&Math.abs(off0)>1?vv.height+'px':''});if(!b)return;const kb=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if(!vv){b.style.transform='';return}const off=innerHeight-(vv.height+vv.offsetTop);b.style.transform=Math.abs(off)>1&&!kb?`translateY(${-off}px)`:''};
   if(vv){vv.addEventListener('resize',fix);vv.addEventListener('scroll',fix)}addEventListener('scroll',fix,{passive:true});document.addEventListener('focusin',fix);document.addEventListener('focusout',()=>setTimeout(()=>{fix();if(innerWidth<820)window.scrollTo(window.scrollX,window.scrollY)},120));addEventListener('orientationchange',()=>setTimeout(fix,300));new MutationObserver(()=>fix()).observe(document.getElementById('dlgRoot'),{childList:true})})();
 </script>
