@@ -226,7 +226,7 @@ function exportBtns(t=''){return `<button class="btn" data-xl="1">Excel</button>
 function wireExport(){document.querySelectorAll('#tab-mpl [data-xl]').forEach(a=>a.onclick=exportXlsx);document.querySelectorAll('#tab-mpl [data-pdf]').forEach(b=>b.onclick=exportPdf);document.querySelectorAll('#tab-mpl [data-tdel]').forEach(b=>b.onclick=()=>delMpl(b.dataset.tdel))}
 
 /* ---------- module registration ---------- */
-AME.register({id:'mpl',badge:t=>MPLS.filter(m=>(m.updatedAt||'')>t&&m.updatedBy&&m.updatedBy!==curUser).length,name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',tabs:['mpl'],section:'tab-mpl',
+AME.register({id:'mpl',name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',tabs:['mpl'],section:'tab-mpl',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M8.5 11l1.5 1.5 3-3M8.5 16.5l1.5 1.5 3-3"/></svg>',
   open:()=>showTab('mpl'),onShow:()=>{view=view==='wiz'&&W?view:'list';render()}});
 const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="mpl"]');if(b)b.hidden=!can('MPL')};

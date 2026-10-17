@@ -79,7 +79,7 @@ function renderCfg(){const r=REQ();const cs=C();
   document.getElementById('cfBack').onclick=()=>{view='home';render()};
   document.getElementById('cfBin').onclick=()=>{const f=document.createElement('input');f.type='file';f.accept='application/pdf';f.onchange=async()=>{const x=f.files[0];if(!x)return;try{toast('Uploading binder…');const fs=await window.claude.use('files');await fs.save('safety/IIPP_binder.pdf',x);await db.doc('config/safety').set({...(CFG||{}),binder:'safety/IIPP_binder.pdf'});toast('Binder uploaded')}catch(e){toast('Could not upload: '+(e.message||e))}};f.click()};
   document.getElementById('cfS').onclick=async()=>{const N={};sec.querySelectorAll('[data-rq]').forEach(i=>{const [x,k]=i.dataset.rq.split('|');N[x]=N[x]||[];if(i.checked)N[x].push(k)});await db.doc('config/safety').set({...(CFG||{}),req:N});toast('Saved')}}
-AME.register({id:'safety',badge:t=>M.filter(m=>(m.at||'')>t&&m.by!==curUser).length,beta:true,name:'Safety',desc:'Weekly crew safety meetings · sign sheets · required courses',tabs:['safety'],section:'tab-safety',
+AME.register({id:'safety',beta:true,name:'Safety',desc:'Weekly crew safety meetings · sign sheets · required courses',tabs:['safety'],section:'tab-safety',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 0 1 16 0z"/><path d="M2 15h20v3H2zM12 7v4"/></svg>',
   open:()=>{if(!edit)view=job?'job':'home';showTab('safety')},onShow:render});
 const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="safety"]');if(b)b.hidden=!AME.allowed(AME.mod('safety'))};

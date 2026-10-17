@@ -252,7 +252,7 @@ async function pdf(r){if(!r)return;try{await lib('https://cdnjs.cloudflare.com/a
   const jn=String(r.job).replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');const name=`${T[r.type].n.replace(/[^A-Za-z]+/g,'_')}_${jn}_${r.date}.pdf`;const blob=D.output('blob');
   try{const dl=await window.claude.use('downloads');await dl.save({filename:name,data:blob})}catch(e){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click()}
   try{const f=await window.claude.use('files');f.save('reports/field/'+jn+'/'+name,blob).catch(()=>{})}catch(e){}}
-AME.register({id:'field',badge:t=>R.filter(r=>(r.updated||r.at||'')>t&&(r.updatedBy||r.by)!==curUser).length,beta:true,name:'Field Reports',desc:'Timesheets · T&M · daily · safety · leak · accident',tabs:['field'],section:'tab-field',
+AME.register({id:'field',beta:true,name:'Field Reports',desc:'Timesheets · T&M · daily · safety · leak · accident',tabs:['field'],section:'tab-field',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v3H9z"/><path d="M7 5H5v16h14V5h-2"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>',
   open:()=>{if(!(view==='edit'&&dirty)){view=job?'job':'jobs'}showTab('field')},onShow:render});
 const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="field"]');if(b)b.hidden=!AME.allowed(AME.mod('field'))};

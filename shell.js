@@ -17,7 +17,7 @@ const AME=window.AME={modules:[],cur:'',
   count(m){try{return m.badge?Math.max(0,m.badge(this.seen(m.id))|0):0}catch(e){return 0}},
   badges(){clearTimeout(this._bt);this._bt=setTimeout(()=>{if(this.cur==='home')renderHome()},300)},
   open(id){const m=this.mod(id);if(!m||!this.allowed(m))return;setMod(id);m.open()}};
-AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],badge:t=>(typeof logs!=='undefined'?logs:[]).filter(g=>g.ts>t&&g.by!==curUser).length,open:()=>{showTab('yard');yardStart()}});
+AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>{showTab('yard');yardStart()}});
 function yardStart(){const opts=[['OUT','Take Out','Take tools &amp; materials to a job','#e8594a'],['RETURN','Return','Bring things back to the yard','#3fb950'],['AUDIT','Inventory check &amp; update','Count, fix quantities, add photos','#a98bff']].filter(o=>{try{return o[0]==='AUDIT'||can(o[0])}catch(e){return true}});
   if(opts.length<2)return;try{if(isAdmin||isEditor(curUser))return}catch(e){}const r=document.getElementById('dlgRoot');
   r.innerHTML=`<div class="ysfull"><div class="ystart"><div class="ysbrand">${typeof curUser!=='undefined'?'Hi '+esc(curUser):''}</div><h3>What are you doing?</h3><div class="ysopts">${opts.map(o=>`<button type="button" data-ys="${o[0]}" style="--c:${o[3]}"><b>${o[1]}</b><small>${o[2]}</small></button>`).join('')}</div><button class="btn" id="ysX" style="margin-top:10px;width:100%">Just look around</button></div></div>`;
