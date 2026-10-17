@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"><style>button[data-ck]{min-width:34px;min-height:34px}#dlgRoot .scrim>.dlg{margin-top:auto;margin-bottom:auto}#dlgRoot .scrim{overscroll-behavior:contain}</style></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"><style>button[data-ck]{min-width:34px;min-height:34px}#dlgRoot .scrim>.dlg{margin-top:auto;margin-bottom:auto}</style></head><body>
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
@@ -1717,5 +1717,10 @@ if(/[?&]debug=1/.test(location.search)){const box=document.createElement('div');
   ['touchend','touchcancel','pointerup','pointercancel','mousedown','click'].forEach(k=>document.addEventListener(k,ev=>{add(k+'→'+desc(ev.target)+(ev.defaultPrevented?' (prevented)':''))},true));
   ['touchend','click'].forEach(k=>window.addEventListener(k,ev=>{if(ev.defaultPrevented)add(k+' PREVENTED later')},false));
   document.addEventListener('scroll',()=>add('scroll'),{capture:true,passive:true})}
+
+/* iOS safety net: if a short tap on a button/link does not produce a click within 350ms, click it ourselves */
+(function(){let sx=0,sy=0,st=0,pend=null,tm=0;document.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now()},{capture:true,passive:true});
+  document.addEventListener('touchend',e=>{const t=e.changedTouches[0];if(Math.abs(t.clientX-sx)>10||Math.abs(t.clientY-sy)>10||Date.now()-st>600)return;const b=e.target.closest&&e.target.closest('button,a,[data-cell],[data-pd],.card,.tkmc');if(!b||b.disabled||b.closest('input,select,textarea,label'))return;pend=b;clearTimeout(tm);tm=setTimeout(()=>{if(pend===b&&b.isConnected){pend=null;b.click()}},350)},{capture:true,passive:true});
+  document.addEventListener('click',()=>{pend=null},true)})();
 </script>
 </body></html>
