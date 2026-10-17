@@ -9,7 +9,7 @@ const fmt=d=>{const x=new Date(d+'T12:00');return (x.getMonth()+1)+'/'+x.getDate
 const lbl=v=>v?(v.code?v.code+' ':'')+v.name:'';
 (function w(){if(typeof db!=='undefined'&&db&&db.collection){
   db.collection('vehicles').onSnapshot(s=>{V=s.docs.map(d=>({...d.data(),_id:d.id})).sort((a,b)=>(a.order??999)-(b.order??999)||String(a.code||a.name).localeCompare(String(b.code||b.name),undefined,{numeric:true}));if(AME.cur==='trucks')render()},()=>{});
-  db.collection('reservations').onSnapshot(s=>{const old=new Set(RS.map(r=>r._id));const first=!RS.length&&!w.done;RS=s.docs.map(d=>({...d.data(),_id:d.id}));w.done=true;
+  db.collection('reservations').onSnapshot(s=>{const old=new Set(RS.map(r=>r._id));const first=!RS.length&&!w.done;RS=s.docs.map(d=>({...d.data(),_id:d.id}));AME.badges&&AME.badges();w.done=true;
     if(!first){RS.filter(r=>!old.has(r._id)&&r.by!==curUser).forEach(r=>notify(r))}if(AME.cur==='trucks')render()},()=>{});
   db.doc('config/trucks').onSnapshot(s=>{CFG=s.data()||{}},()=>{})}else setTimeout(w,400)})();
 function notify(r){const v=V.find(x=>x._id===r.vid);const t=`${r.who||r.by} reserved ${lbl(v)} · ${fmt(r.from)}${r.to!==r.from?'–'+fmt(r.to):''}${r.job?' · '+r.job:''}`;try{toast('🚚 '+t)}catch(e){}
@@ -90,7 +90,7 @@ function hookDlg(){document.getElementById('dlgRoot').innerHTML=`<div class="scr
   <div class="bar"><button class="btn" id="hkT">Send test</button><button class="btn" id="hkX">Close</button><button class="go" id="hkS" style="width:auto">Save</button></div></div></div>`;
   document.getElementById('hkX').onclick=closeDlg;window.tkTest=()=>post('Test message — truck reservation alerts are connected.');{const t=document.getElementById('hkT');if(t)t.onclick=async()=>{await db.doc('config/trucks').set({...CFG,hook:document.getElementById('hkU').value.trim()});CFG.hook=document.getElementById('hkU').value.trim();await post('Test message — truck reservation alerts are connected.');toast('Test sent — check Teams')}}document.getElementById('hkS').onclick=async()=>{await db.doc('config/trucks').set({...CFG,hook:document.getElementById('hkU').value.trim()});closeDlg();toast('Saved')};
   }
-AME.register({id:'trucks',beta:true,name:'Truck Reservations',desc:'Reserve company trucks · calendar · alerts',tabs:['trucks'],section:'tab-trucks',
+AME.register({id:'trucks',badge:t=>RS.filter(r=>((r.cancelledAt||r.at||'')>t)&&(r.cancelledBy||r.by)!==curUser).length,beta:true,name:'Truck Reservations',desc:'Reserve company trucks · calendar · alerts',tabs:['trucks'],section:'tab-trucks',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M3 16V7h11v9M14 10h4l3 3v3h-2M9 18h6"/></svg>',
   open:()=>{showTab('trucks');try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission()}catch(e){}},onShow:render});
 const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="trucks"]');if(b)b.hidden=!AME.allowed(AME.mod('trucks'))};

@@ -16,7 +16,7 @@ const C=()=>CFG?.courses||DEF_COURSES,REQ=()=>CFG?.req||DEF_REQ;const cname=k=>(
 const iso=d=>d.toISOString().slice(0,10);const today=()=>iso(new Date());const monday=(d)=>{const x=new Date((d||today())+'T12:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return iso(x)};
 const md=d=>{const x=new Date(d+'T12:00');return (x.getMonth()+1)+'/'+x.getDate()+'/'+String(x.getFullYear()).slice(2)};
 const jk=j=>String(j).replace(/[^A-Za-z0-9]/g,'');const isMgr=()=>typeof isAdmin!=='undefined'&&isAdmin;
-(function w(){if(typeof db!=='undefined'&&db&&db.collection){db.collection('safetymeet').onSnapshot(s=>{M=s.docs.map(d=>({...d.data(),_id:d.id}));if(AME.cur==='safety'&&!edit)render()},()=>{});
+(function w(){if(typeof db!=='undefined'&&db&&db.collection){db.collection('safetymeet').onSnapshot(s=>{M=s.docs.map(d=>({...d.data(),_id:d.id}));AME.badges&&AME.badges();if(AME.cur==='safety'&&!edit)render()},()=>{});
   db.collection('safetyjobs').onSnapshot(s=>{SJ={};s.docs.forEach(d=>SJ[d.id]=d.data());if(AME.cur==='safety'&&!edit)render()},()=>{});db.collection('fsites').onSnapshot(s=>{FS=s.docs.map(d=>d.data());if(AME.cur==='safety'&&!edit)render()},()=>{});db.doc('config/safety').onSnapshot(s=>{CFG=s.data()||null;if(AME.cur==='safety'&&!edit)render()},()=>{})}else setTimeout(w,400)})();
 const jl=n=>{const x=FS.find(y=>y.no===n);return x?n+(x.name?' · '+x.name:''):jobLabel(n)};
 function required(j){const s=SJ[jk(j)]||{};const r=REQ();const set=new Set(r._all||[]);[...(s.sys||[]),...(s.eq||[])].forEach(x=>(r[x]||[]).forEach(k=>set.add(k)));return C().map(c=>c[0]).filter(k=>set.has(k))}
@@ -79,7 +79,7 @@ function renderCfg(){const r=REQ();const cs=C();
   document.getElementById('cfBack').onclick=()=>{view='home';render()};
   document.getElementById('cfBin').onclick=()=>{const f=document.createElement('input');f.type='file';f.accept='application/pdf';f.onchange=async()=>{const x=f.files[0];if(!x)return;try{toast('Uploading binder…');const fs=await window.claude.use('files');await fs.save('safety/IIPP_binder.pdf',x);await db.doc('config/safety').set({...(CFG||{}),binder:'safety/IIPP_binder.pdf'});toast('Binder uploaded')}catch(e){toast('Could not upload: '+(e.message||e))}};f.click()};
   document.getElementById('cfS').onclick=async()=>{const N={};sec.querySelectorAll('[data-rq]').forEach(i=>{const [x,k]=i.dataset.rq.split('|');N[x]=N[x]||[];if(i.checked)N[x].push(k)});await db.doc('config/safety').set({...(CFG||{}),req:N});toast('Saved')}}
-AME.register({id:'safety',beta:true,name:'Safety',desc:'Weekly crew safety meetings · sign sheets · required courses',tabs:['safety'],section:'tab-safety',
+AME.register({id:'safety',badge:t=>M.filter(m=>(m.at||'')>t&&m.by!==curUser).length,beta:true,name:'Safety',desc:'Weekly crew safety meetings · sign sheets · required courses',tabs:['safety'],section:'tab-safety',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 0 1 16 0z"/><path d="M2 15h20v3H2zM12 7v4"/></svg>',
   open:()=>{if(!edit)view=job?'job':'home';showTab('safety')},onShow:render});
 const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="safety"]');if(b)b.hidden=!AME.allowed(AME.mod('safety'))};

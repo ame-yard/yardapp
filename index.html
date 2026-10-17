@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.41',APP_DATE='2026-10-15';
+const APP_VERSION='3.42',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1624,7 +1624,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
   if(!db){$('#status').textContent='Not connected. Sign in with your company Microsoft account.';return}
   $('#status').textContent='Live · changes from the yard and the office show up here automatically.';
   db.collection('items').onSnapshot(s=>{rawItems=s.docs.map(d=>({...d.data(),id:d.id}));mergeItems();markSync();render()},e=>$('#status').textContent='Could not load items: '+e.message);
-  db.collection('logs').onSnapshot(s=>{const prev=new Set(logs.map(g=>g._id)),first=!logs.length;logs=s.docs.map(d=>({...d.data(),_id:d.id})).filter(g=>g.ts).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));if(!first&&curUser){const nw=logs.filter(g=>!prev.has(g._id)&&isOther(g));if(nw.length)toast(nw[0].by+': '+(ACTNAME[nw[0].action]||nw[0].action)+' – '+nw[0].name+(nw.length>1?' (+'+(nw.length-1)+' more)':''))}markSync();render();updBell()},e=>toast('Could not load activity: '+(e.message||e.code)));
+  db.collection('logs').onSnapshot(s=>{const prev=new Set(logs.map(g=>g._id)),first=!logs.length;logs=s.docs.map(d=>({...d.data(),_id:d.id})).filter(g=>g.ts).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));try{AME.badges()}catch(e){}if(!first&&curUser){const nw=logs.filter(g=>!prev.has(g._id)&&isOther(g));if(nw.length)toast(nw[0].by+': '+(ACTNAME[nw[0].action]||nw[0].action)+' – '+nw[0].name+(nw.length>1?' (+'+(nw.length-1)+' more)':''))}markSync();render();updBell()},e=>toast('Could not load activity: '+(e.message||e.code)));
   db.doc('config/brand').onSnapshot(s=>{const u=s.data()?.logo;if(u)$('#logoImg').src=u},()=>{});
   db.collection('newitems').onSnapshot(s=>{pendingItems=s.docs.map(d=>({...d.data(),id:d.id,pending:true,issue:'New item added from the yard — office to review'}));mergeItems();render()},()=>{});
   db.collection('stock').onSnapshot(s=>{stockMap={};s.docs.forEach(d=>stockMap[d.id]=d.data());mergeItems();render()},()=>{});
@@ -1662,12 +1662,12 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=320"></script>
-<script src="mpl.js?v=306"></script>
+<script src="shell.js?v=342"></script>
+<script src="mpl.js?v=342"></script>
 <script src="eqp.js?v=313"></script>
-<script src="field.js?v=339"></script>
-<script src="trucks.js?v=339"></script>
-<script src="safety.js?v=338"></script>
+<script src="field.js?v=342"></script>
+<script src="trucks.js?v=342"></script>
+<script src="safety.js?v=342"></script>
 <script src="deliv.js?v=311"></script>
 <script src="admin.js?v=340"></script>
 <script src="scan.js?v=310"></script>
