@@ -5,16 +5,17 @@ const SKIP='.tstbl,.tssum,.sfmx,.frtbl,.nocard';
 /* 1. Wide tables → labeled cards on phones */
 function label(t){if(t.matches(SKIP)||t.closest('.nocard'))return;const ths=[...t.querySelectorAll(':scope>thead th')];if(ths.length<4){t.classList.remove('cardrows');return}
   const names=ths.map(h=>h.textContent.trim());let ti=ths.findIndex(h=>h.dataset.ph==='t');if(ti<0)ti=ths.findIndex(h=>/^(item|name|report|what|vehicle|course)$/i.test(h.textContent.trim()));if(ti<0)ti=0;t.classList.add('cardrows');
-  t.querySelectorAll(':scope>tbody>tr').forEach(tr=>{const tds=[...tr.children];if(tds.length<3){tr.classList.add('cr-full');return}let ci=0;tds.forEach(td=>{const span=td.colSpan||1;td.classList.toggle('cr-t',ci===ti);if(!td.dataset.l&&names[ci]!==undefined)td.dataset.l=names[ci];if(!td.textContent.trim()&&!td.querySelector('img,button,input,select,.pill,.lchk'))td.classList.add('cr-empty');else td.classList.remove('cr-empty');ci+=span})})}
+  t.querySelectorAll(':scope>tbody>tr').forEach(tr=>{if(tr.classList.contains('cr-hid')||tr.dataset.crl)return;tr.dataset.crl=1;const tds=[...tr.children];if(tds.length<3){tr.classList.add('cr-full');return}let ci=0;tds.forEach(td=>{const span=td.colSpan||1;td.classList.toggle('cr-t',ci===ti);if(!td.dataset.l&&names[ci]!==undefined)td.dataset.l=names[ci];if(!td.textContent.trim()&&!td.querySelector('img,button,input,select,.pill,.lchk'))td.classList.add('cr-empty');else td.classList.remove('cr-empty');ci+=span})})}
 /* 2. Long tables → show 80 rows + "Show more" */
 const LIM=80;
 function limit(t){const tb=t.querySelector(':scope>tbody');if(!tb)return;const rows=[...tb.children].filter(r=>!r.classList.contains('showmore'));const old=tb.querySelector(':scope>.showmore');
   if(rows.length<=LIM+10){rows.forEach(r=>r.classList.remove('cr-hid'));old&&old.remove();return}
   const n=Number(tb.dataset.show||LIM);rows.forEach((r,i)=>r.classList.toggle('cr-hid',i>=n));const left=rows.length-n;
-  if(left>0){const m=old||document.createElement('tr');m.className='showmore';m.innerHTML=`<td colspan="20"><button type="button" class="btn">Show ${Math.min(left,LIM)} more · ${left} hidden</button></td>`;m.querySelector('button').onclick=()=>{tb.dataset.show=String(n+LIM);limit(t)};tb.appendChild(m)}else old&&old.remove()}
-function pass(){document.querySelectorAll('table').forEach(t=>{try{limit(t);if(PH())label(t);else t.classList.remove('cardrows')}catch(e){}})}
-let tmr=0;const sched=()=>{clearTimeout(tmr);tmr=setTimeout(pass,60)};
-new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});addEventListener('resize',sched);sched();
+  if(left>0){const m=old||document.createElement('tr');m.className='showmore';m.innerHTML=`<td colspan="20"><button type="button" class="btn">Show ${Math.min(left,LIM)} more · ${left} hidden</button></td>`;m.querySelector('button').onclick=()=>{tb.dataset.show=String(n+LIM);one(t)};tb.appendChild(m)}else old&&old.remove()}
+function one(t){try{limit(t);if(PH())label(t);else t.classList.remove('cardrows')}catch(e){}}
+function pass(set){(set||document.querySelectorAll('table')).forEach(one)}
+let tmr=0,dirty=new Set(),all=false;const sched=()=>{clearTimeout(tmr);tmr=setTimeout(()=>{const s=all?null:[...dirty];all=false;dirty.clear();if(s&&!s.length)return;pass(s)},60)};
+new MutationObserver(ms=>{for(const m of ms){const n=m.target.nodeType===1?m.target:m.target.parentElement;const t=n&&n.closest&&n.closest('table');if(t)dirty.add(t);else for(const a of m.addedNodes){if(a.nodeType!==1)continue;if(a.tagName==='TABLE')dirty.add(a);else if(a.querySelectorAll)a.querySelectorAll('table').forEach(x=>dirty.add(x))}}if(dirty.size)sched()}).observe(document.body,{childList:true,subtree:true});addEventListener('resize',()=>{all=true;sched()});all=true;sched();
 /* 3. Long help paragraphs collapse on phones (tap to read) */
 document.addEventListener('click',e=>{const p=e.target.closest('.panel>p.muted,.frform>p.muted,section>p.muted');if(p&&PH())p.classList.toggle('open')});
 document.head.insertAdjacentHTML('beforeend',`<style>
