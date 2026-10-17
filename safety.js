@@ -36,7 +36,7 @@ function render(){if(!sec)return;if(edit)return renderMeet();if(view==='job'&&jo
 function renderJob(){const s=SJ[jk(job)]||{};const req=required(job);const L=M.filter(m=>m.job===job).sort((a,b)=>String(b.date).localeCompare(a.date));
   const crewL=[...new Set([...(s.crew||[]),...L.flatMap(m=>m.attend||[])])];
   sec.innerHTML=`<div class="mplhead"><button class="btn" id="sfBack">← All jobs</button><h2>${esc(jl(job))}</h2><span class="mtop"><button class="btn pri" id="sfNew">+ Safety meeting</button></span></div>
-   <div class="panel"><h3 style="margin-top:0">Roof systems &amp; equipment on this job</h3><p class="muted" style="margin-top:0">Pick what this job uses — the required courses below update automatically.</p>
+   <div class="panel"><h3 style="margin-top:0">Roof systems &amp; equipment</h3><p class="muted" style="margin-top:0">Pick what this job uses — the required courses below update automatically.</p>
     <div class="qlabel">Roof systems</div><div class="units">${SYS.map(x=>`<button type="button" data-sys="${esc(x)}" aria-pressed="${(s.sys||[]).includes(x)}"><b>${esc(x)}</b></button>`).join('')}</div>
     <div class="qlabel" style="margin-top:10px">Equipment</div><div class="units">${EQ.map(x=>`<button type="button" data-eq="${esc(x)}" aria-pressed="${(s.eq||[]).includes(x)}"><b>${esc(x)}</b></button>`).join('')}</div></div>
    <div class="panel"><h3 style="margin-top:0">Required courses · ${req.length}</h3><div class="sfreq">${req.map(k=>{const c=C().find(x=>x[0]===k);return `<button class="sfc" data-oc="${k}"><b>${esc(c?.[1]||k)}</b><small>${c?.[2]?'IIPP binder p.'+c[2]+' — tap to open':'No binder page'}</small></button>`}).join('')}</div></div>
