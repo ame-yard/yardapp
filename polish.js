@@ -18,6 +18,8 @@ function one(t){try{limit(t);if(PH())label(t);else t.classList.remove('cardrows'
 function pass(set){(set||document.querySelectorAll('table')).forEach(one)}
 let tmr=0,dirty=new Set(),all=false;const sched=()=>{clearTimeout(tmr);tmr=setTimeout(()=>{const s=all?null:[...dirty];all=false;dirty.clear();if(s&&!s.length)return;pass(s)},60)};
 new MutationObserver(ms=>{for(const m of ms){const n=m.target.nodeType===1?m.target:m.target.parentElement;const t=n&&n.closest&&n.closest('table');if(t)dirty.add(t);else for(const a of m.addedNodes){if(a.nodeType!==1)continue;if(a.tagName==='TABLE')dirty.add(a);else if(a.querySelectorAll)a.querySelectorAll('table').forEach(x=>dirty.add(x))}}if(dirty.size)sched()}).observe(document.body,{childList:true,subtree:true});addEventListener('resize',()=>{all=true;sched()});all=true;sched();
+/* short labels on phones */
+function shortLabels(){const t=document.querySelector('#sideSeg [data-sd=tool]');if(t)t.textContent=PH()?'Tools':'Tools & Equipment'}addEventListener('resize',shortLabels);setTimeout(shortLabels,0);
 /* 3. Long help paragraphs collapse on phones (tap to read) */
 document.addEventListener('click',e=>{const p=e.target.closest('.panel>p.muted,.frform>p.muted,section>p.muted');if(p&&PH())p.classList.toggle('open')});
 document.head.insertAdjacentHTML('beforeend',`<style>
@@ -56,7 +58,18 @@ document.head.insertAdjacentHTML('beforeend',`<style>
  .names .lname{min-height:56px;font-size:18px}
  /* generic nav tabs scroll */
  nav.tabs{overflow-x:auto;scrollbar-width:none}nav.tabs::-webkit-scrollbar{display:none}
- .mplhead h2{font-size:19px}
+ main .mplhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center}main .mplhead>h2{flex:1 1 100%;order:1;font-size:20px;line-height:1.2;margin:0}main .mplhead>.btn:first-child{order:0}main .mplhead>.mtop{order:0;margin-left:auto}
+ .pill,.btn.small,.betatag{white-space:nowrap}
+ #sideSeg button{font-size:13px}
+ .tspaper{flex-direction:column;align-items:stretch}.tspaper>div:first-child{min-width:0}.tspaper .frph{width:100%;margin:0}.tspaper .frphadd{width:100%;height:auto;padding:10px;white-space:nowrap;font-size:14px}
+ .frtbl input{min-width:96px}.frtbl input[type=date]{min-width:132px}.frtbl td:nth-child(2) input{min-width:150px}.frtbl input[inputmode=decimal],.frtbl input[inputmode=numeric]{min-width:64px}
+ #pkP{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px}#pkP button{white-space:nowrap}
+ .ystart h3{font-size:24px}
+ .ddr{grid-template-columns:1fr auto;grid-template-areas:'t a' 's a'}.ddr>b{grid-area:t}.ddr>span:not(.muted){grid-area:s}.ddr>.muted{grid-area:a}
+ .dvline{display:flex;flex-wrap:wrap;gap:6px}.dvline input[data-lf=name]{flex:1 1 100%}.dvline input[data-lf=qty]{flex:1}.dvline input[data-lf=unit]{flex:1}
+ body.ro #addItem,body.ro #exportCsv{display:none}
+ .elcfg{flex-wrap:wrap;gap:6px 10px}.elcfg small{flex:1 1 100%;order:2;font-size:12px}.elcfg #elType{margin-left:auto;white-space:nowrap}
+ [data-pt] b,[data-tp] b,[data-sys] b,[data-eq] b,[data-at] b,[data-dnt] b{font-family:var(--body)!important}
 }
 @media(min-width:600px) and (max-width:900px){#tab-home .apps{grid-template-columns:repeat(2,1fr)}.act b{font-size:17px;letter-spacing:0;white-space:normal;line-height:1.1}.act span{display:none}.act{padding:10px 8px;min-height:56px;justify-content:center}}
 </style>`);

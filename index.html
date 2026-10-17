@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"><style>button[data-ck]{min-width:34px;min-height:34px}#dlgRoot .scrim>.dlg{margin-top:auto;margin-bottom:auto}</style></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"><style>button[data-ck]{min-width:34px;min-height:34px}#dlgRoot .scrim>.dlg{margin-top:auto;margin-bottom:auto}@media(min-width:600px){#lbody td:nth-child(1),#lbody td:nth-child(2),#lbody td:nth-child(4),#lbody td:nth-child(5),#lbody td:nth-child(6),#lbody td:nth-child(8){white-space:nowrap}#lbody td:nth-child(3) .btn.small{margin-left:6px;vertical-align:middle}}</style></head><body>
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
@@ -159,7 +159,7 @@ label.f input,label.f select,label.f textarea{padding:10px 12px;border:1px solid
 .blab{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding-top:9px}
 .browse .chips{margin:0}
 .chip small{opacity:.7;margin-left:4px;font-family:var(--mono)}
-#imfgr{max-height:96px;overflow:auto}
+#imfgr{max-height:84px;overflow:hidden}#imfgr.open{max-height:none}
 tr.grp td{background:var(--chip);font-weight:700;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.03em;cursor:default}
 tr.grp td small{font-family:var(--mono);font-weight:400;font-size:12px;color:var(--muted);margin-left:8px;text-transform:none}
 .card.oos{opacity:.45;cursor:not-allowed}
@@ -236,7 +236,7 @@ body.nophoto .cam,body.nophoto #e_photoLbl{display:none!important}
   .userchip{padding:4px 6px 4px 10px;font-size:13px;margin-left:auto}.userchip small{display:none}.ucsw{font-size:11px}
   body.ro header .wrap nav.tabs{display:none!important}
   body:not(.ro) header .wrap nav.tabs{display:flex!important;order:10;width:100%;flex-wrap:nowrap;overflow-x:auto;gap:2px}
-  .fields{grid-template-columns:1fr!important}label.f input,label.f select,label.f textarea{width:100%;min-width:0;box-sizing:border-box}.dlg{max-width:100%;box-sizing:border-box;overflow-x:hidden}.qpl .qpi{flex-wrap:wrap}.qpi span{white-space:normal}.unitgen input{min-width:0}
+  .fields{grid-template-columns:1fr!important}label.f input,label.f select,label.f textarea{width:100%;min-width:0;box-sizing:border-box}label.f input[type=checkbox],label.f input[type=radio]{width:auto;flex:none;margin:0}.frchk>span{white-space:nowrap}.dlg{max-width:100%;box-sizing:border-box;overflow-x:hidden}.qpl .qpi{flex-wrap:wrap}.qpi span{white-space:normal}.unitgen input{min-width:0}
   nav.tabs::-webkit-scrollbar{display:none}
   nav.tabs button{padding:7px 12px;font-size:14px;flex:none}
   main{padding-block:10px 120px}
@@ -635,7 +635,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <div class="filters" id="sfilters"></div>
     <div class="colpick" id="colpick" hidden></div>
     <p class="muted" style="font-size:13px;margin:0 0 8px" id="sheetHint">Inventory cells are editable: tap a cell, type, then tap outside or press Enter. Changes save for everyone.</p>
-    <div class="tblwrap sheetwrap"><table class="sheet"><thead id="shead"></thead><tbody id="sbody"></tbody></table></div>
+    <div class="tblwrap sheetwrap"><table class="sheet nocard"><thead id="shead"></thead><tbody id="sbody"></tbody></table></div>
   </section>
   <section id="tab-mpl" hidden></section>
   <section id="tab-eqp" hidden></section>
@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.66',APP_DATE='2026-10-15';
+const APP_VERSION='3.69',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1205,7 +1205,7 @@ function renderInv(){
   const zs=[...new Set(items.map(i=>i.zone))].sort(),cur=$('#fzone').value;
   $('#fzone').innerHTML='<option value="">All zones</option>'+zs.map(z=>`<option ${z===cur?'selected':''}>${z}</option>`).join('');
   const k=[[items.length,'Line items',0,''],[items.filter(i=>i.out>0).length,'Items out on jobs',0,'out'],[items.filter(isLow).length,'Low / out of stock',1,'low'],[items.filter(i=>i.cond==='Bad'||i.cond==='Needs Check').length,'Bad / needs check',1,'bad'],[items.filter(i=>i.repair>0).length,'In repair',1,'repair'],[items.filter(i=>i.issue).length,'To verify',1,'ver']];const cf=$('#fflag').value;
-  $('#kpis').innerHTML=k.map(([n,l,a,f])=>`<button type="button" class="kpi ${a&&n?'alert':''} ${cf===f&&(f||!cf)?'on':''}" data-kf="${f}" title="Show these items"><b class="mono">${n}</b><span>${l}</span></button>`).join('');
+  const KS={'Line items':'Items','Items out on jobs':'Out on jobs','Low / out of stock':'Low stock','Bad / needs check':'Needs check','In repair':'In repair','To verify':'To verify'};$('#kpis').innerHTML=k.map(([n,l,a,f])=>`<button type="button" class="kpi ${a&&n?'alert':''} ${cf===f&&(f||!cf)?'on':''}" data-kf="${f}" title="${esc(l)}"><b class="mono">${n}</b><span>${innerWidth<600?(KS[l]||l):l}</span></button>`).join('');
   $$('#kpis [data-kf]').forEach(b=>b.onclick=()=>{const f=b.dataset.kf;$('#fflag').value=f;if(!f){$('#isearch').value='';$('#fzone').value='';$('#ftype').value='';$('#fcond').value=''}invSide='';invCat='';invSub='';invMfgr='';renderInv();setTimeout(()=>{const t=document.querySelector('#tab-inv .browse')||document.querySelector('#tab-inv table');t&&t.scrollIntoView({behavior:'smooth',block:'start'})},50)});
   $$('#sideSeg button').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.sd===invSide);b.onclick=()=>{invSide=b.dataset.sd;LS.set('invSide',invSide);invCat='';invSub='';invMfgr='';LS.set('invCat','');renderInv()}});
   const sideItems=items.filter(i=>!invSide||sideOf(i)===invSide);
@@ -1215,7 +1215,8 @@ function renderInv(){
   $('#icats').innerHTML=`<button class="chip" data-c="" aria-pressed="${!invCat}">All<small>${sideItems.length}</small></button>`+GROUPS.filter(g=>cc[g[0]]).map(([k,l])=>`<button class="chip" data-c="${k}" aria-pressed="${k===invCat}">${l}<small>${cc[k]}</small></button>`).join('');
   const mc={},mname={};base.forEach(i=>{const k=mkey(i.mfgr);mc[k]=(mc[k]||0)+1;mname[k]=mname[k]||i.mfgr||'No brand'});
   if(invMfgr&&!mc[invMfgr])invMfgr='';
-  $('#imfgr').innerHTML=`<button class="chip" data-m="" aria-pressed="${!invMfgr}">All</button>`+Object.keys(mc).sort((a,b)=>mc[b]-mc[a]||a.localeCompare(b)).map(k=>`<button class="chip" data-m="${esc(k)}" aria-pressed="${k===invMfgr}">${esc(k==='—'?'No brand':mname[k])}<small>${mc[k]}</small></button>`).join('');
+  {const mm=$('#imfgrMore');if(mm)mm.remove()}$('#imfgr').classList.toggle('open',!!window.__mfOpen);  $('#imfgr').innerHTML=`<button class="chip" data-m="" aria-pressed="${!invMfgr}">All</button>`+Object.keys(mc).sort((a,b)=>mc[b]-mc[a]||a.localeCompare(b)).map(k=>`<button class="chip" data-m="${esc(k)}" aria-pressed="${k===invMfgr}">${esc(k==='—'?'No brand':mname[k])}<small>${mc[k]}</small></button>`).join('');
+  {const el=$('#imfgr');if(el.scrollHeight>el.clientHeight+4||window.__mfOpen){const b=document.createElement('button');b.id='imfgrMore';b.className='chip';b.style.margin='6px 0 0';b.textContent=window.__mfOpen?'Fewer brands ▴':'More brands ▾';b.onclick=()=>{window.__mfOpen=!window.__mfOpen;renderInv()};el.parentNode.appendChild(b)}}
   $('#igroup').innerHTML=[['','None'],['cat','Type'],['sub','Kind'],['mfgr','MFGR'],['loc','Location']].map(([k,l])=>`<button class="chip" data-gb="${k}" aria-pressed="${k===invGroup}">${l}</button>`).join('');
   const subs=SUBS[invCat];$('#isubRow').hidden=!subs;if(!subs)invSub='';
   if(subs)$('#isub').innerHTML=['',...subs].filter(x=>!x||base.some(i=>sub(i)===x)).map(x=>`<button class="chip" data-s="${esc(x)}" aria-pressed="${x===invSub}">${x||'All'}<small>${x?base.filter(i=>sub(i)===x).length:base.length}</small></button>`).join('');
@@ -1441,7 +1442,7 @@ $$('.lvseg [data-lv]').forEach(b=>b.onclick=()=>{ylv=b.dataset.lv;try{localStora
 function viewItem(id){if(!id)return;if(AME.cur!=='yard')AME.open('yard');showTab('inv');setTimeout(()=>{const it=byId(id);if(it){const q=$('#isearch')||$('#search');if(q){q.value=it.name;q.dispatchEvent(new Event('input'))}openItem(id)}else openHistory(id,'')},150)}
 function renderLog(){lBar();const q=$('#lsearch').value.trim().toLowerCase();const l=logs.filter(g=>!q||[g.name,g.by,g.job,g.loc,g.note,g.action].join(' ').toLowerCase().includes(q)).slice(0,400);
   if(!l.length){$('#lbody').innerHTML='<tr><td colspan="9" class="empty">No activity yet. Check-outs and returns from the yard iPad show up here.</td></tr>';return}
-  const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${isOther(g)&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size)}</span>${g.itemId?` <button type="button" class="btn small" data-vi="${esc(g.itemId)}" title="Go to this item">View →</button>`:''}</td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
+  const seen=seenTs();$('#lbody').innerHTML=l.map(g=>`<tr class="${isOther(g)&&g.ts>seen?'lnew':''} ${lPick.has(g._id)?'lpick':''}" data-id="${esc(g.itemId)}" data-lid="${esc(g._id)}"><td>${lSel?`<span class="lchk">${lPick.has(g._id)?IC2.boxc:IC2.box}</span> `:''}${fmtD(g.ts)}</td><td class="a-${g.action}">${ACTNAME[g.action]||g.action}</td><td>${thumb(byId(g.itemId))}<b>${esc(g.name)}</b> <span class="muted">${esc(g.size&&g.size!=='-'?g.size:'')}</span>${g.itemId?` <button type="button" class="btn small" data-vi="${esc(g.itemId)}" title="Go to this item">View →</button>`:''}</td><td class="mono">${esc(g.loc)}</td><td class="n">${g.n} ${esc(g.unit)}</td><td class="n">${g.after}</td><td>${esc(g.job?jobLabel(g.job):'')}</td><td>${esc(g.by)}</td><td>${esc(g.note)}</td></tr>`).join('');
   $$('#lbody [data-vi]').forEach(b=>b.onclick=e=>{e.stopPropagation();viewItem(b.dataset.vi)});
   $$('#lbody tr[data-id]').forEach(r=>{r.title=isAdmin?'Tap to edit this record':'';r.onclick=()=>lSel?(lPick.has(r.dataset.lid)?lPick.delete(r.dataset.lid):lPick.add(r.dataset.lid),renderLog()):isAdmin?editLog(r.dataset.lid):(byId(r.dataset.id)?openItem(r.dataset.id):openHistory(r.dataset.id,''))})}
 
@@ -1668,11 +1669,11 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=362"></script>
-<script src="polish.js?v=364"></script>
+<script src="polish.js?v=368"></script>
 <script src="mpl.js?v=346"></script>
 <script src="eqp.js?v=366"></script>
 <script src="field.js?v=350"></script>
-<script src="trucks.js?v=352"></script>
+<script src="trucks.js?v=368"></script>
 <script src="safety.js?v=352"></script>
 <script src="deliv.js?v=311"></script>
 <script src="admin.js?v=355"></script>
