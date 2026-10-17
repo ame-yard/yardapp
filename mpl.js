@@ -31,7 +31,7 @@ async function sendToMobPrep(){if(!MP.tok()){connectDlg(sendToMobPrep);return}co
   try{toast('Sending to Mob Prep…');let p=await MP.call('/projects/custom/'+encodeURIComponent(num));let pid=p?.metadata?.id;
     if(!pid){const c=await MP.call('/projects',{method:'POST',body:JSON.stringify({custom_id:num,project_name:W.jobName||jobLabel(W.job).replace(/^#\S+\s·\s/,'')||num,project_location:'',integrated_with_spectrum:true})});pid=c?.metadata?.id}
     if(!pid)throw new Error('Could not create the project');
-    const me=await MP.get('/users/me');const body={pm_id:W.mpPm||null,fm_id:W.mpFm||null,mob_prep_preparer_id:me?.id||null,crew_size:W.crew,notes:'From AME Yard app',surface_type_ids:W.st};
+    const me=await MP.get('/users/me');const body={pm_id:W.mpPm||null,fm_id:W.mpFm||null,mob_prep_preparer_id:me?.id||null,crew_size:W.crew,notes:'From AME App',surface_type_ids:W.st};
     const ct=await MP.call('/projects/'+pid+'/contents',{method:'POST',body:JSON.stringify(body)});const cid=ct?.id;if(!cid)throw new Error('Could not create the prep list');
     let n=0;for(const l of W.lines||[]){if(!l.rid)continue;try{await MP.call('/projects/'+pid+'/contents/'+cid+'/items',{method:'POST',body:JSON.stringify({item_id:l.rid,quantity:l.n})});n++}catch(e){console.warn(e)}}
     try{await MP.call('/projects/'+pid+'/contents/'+cid,{method:'PUT',body:JSON.stringify({status:'mob_prep'})})}catch(e){}

@@ -3,7 +3,7 @@
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=345"></script>
+<script src="msbackend.js?v=346"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.45',APP_DATE='2026-10-15';
+const APP_VERSION='3.46',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1534,7 +1534,7 @@ $('#xlsxBtn').onclick=async()=>{if(!window.XLSX){toast('Excel library did not lo
   const ver=items.filter(i=>i.issue);const vs=XLSX.utils.aoa_to_sheet([['ID','Location','Level','MFGR','Item','Size','Qty','Unit','Issue'],...ver.map(i=>[i.id,i.loc,i.level,i.mfgr,i.name,i.size,qtyTxt(i),i.unit,i.issue])]);XLSX.utils.book_append_sheet(wb,vs,'To Verify');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   const dl=await window.claude?.use?.('downloads');if(!dl){toast('Download is not available in this view.');return}
-  try{await dl.save({filename:`AME_Yard_Database_${new Date().toISOString().slice(0,10)}.xlsx`,data:new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})})}catch(e){}};
+  try{await dl.save({filename:`AME_App_Database_${new Date().toISOString().slice(0,10)}.xlsx`,data:new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})})}catch(e){}};
 
 /* export */
 async function saveCsv(name,rows){const csv=rows.map(r=>r.map(v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\n');
@@ -1585,7 +1585,7 @@ function showLoginPicker(){
   $('#guestForm').onsubmit=e=>{e.preventDefault();const n=$('#guestName').value.trim().replace(/\s+/g,' ');if(n.length<2){toast('Type your name first.');return}
     const m=crew.find(c=>c.name.toLowerCase()===n.toLowerCase());if(m){$$('#loginRoot [data-u]').find(b=>b.dataset.u===m.name)?.click();return}setUser(n)};
   $$('#loginRoot [data-u]').forEach(b=>b.onclick=()=>{const n=b.dataset.u;
-    if(!isEditor(n)||!(isOwner(n)&&ownerPinH?1:officePin)||viewAs==='__login'&&false){if(isEditor(n)&&!accountAdmin)toast('This device has yard access only — office tools stay hidden.');setUser(n);return}
+    if(!isEditor(n)||!(isOwner(n)&&ownerPinH?1:officePin)||viewAs==='__login'&&false){if(isEditor(n)&&!accountAdmin)toast('This device has basic access only — office tools stay hidden.');setUser(n);return}
     let pin='';const draw=()=>{$('#pinArea').innerHTML=`<div class="pinbox"><div class="qlabel">${isOwner(n)&&ownerPinH?'Personal PIN':'Editor PIN'} for ${esc(n)}</div><div class="pindots">${[0,1,2,3].map(k=>`<span class="${k<pin.length?'on':''}"></span>`).join('')}</div>
       <div class="pinpad">${['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('')}</div><button class="btn" id="pinCancel">Cancel</button></div>`;
       $$('#pinArea [data-k]').forEach(x=>x.onclick=()=>{const k=x.dataset.k;if(k==='⌫')pin=pin.slice(0,-1);else if(pin.length<4)pin+=k;
@@ -1622,7 +1622,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
 (async()=>{
   db=await window.claude?.use?.('db');if(db){secInit();db.doc('config/spectrum').onSnapshot(x=>{SPJ=x.data()||{jobs:[]}},()=>{});const oc=db.collection.bind(db);db.collection=n=>{const c=oc(n);if(n==='logs'){const oa=c.add.bind(c);c.add=d=>oa({...d,dev:devId})}return c}}
   if(!db){$('#status').textContent='Not connected. Sign in with your company Microsoft account.';return}
-  $('#status').textContent='Live · changes from the yard and the office show up here automatically.';
+  $('#status').textContent='Live · changes from the field and the office show up here automatically.';
   db.collection('items').onSnapshot(s=>{rawItems=s.docs.map(d=>({...d.data(),id:d.id}));mergeItems();markSync();render()},e=>$('#status').textContent='Could not load items: '+e.message);
   db.collection('logs').onSnapshot(s=>{const prev=new Set(logs.map(g=>g._id)),first=!logs.length;logs=s.docs.map(d=>({...d.data(),_id:d.id})).filter(g=>g.ts).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));try{AME.badges()}catch(e){}if(!first&&curUser){const nw=logs.filter(g=>!prev.has(g._id)&&isOther(g));if(nw.length)toast(nw[0].by+': '+(ACTNAME[nw[0].action]||nw[0].action)+' – '+nw[0].name+(nw.length>1?' (+'+(nw.length-1)+' more)':''))}markSync();render();updBell()},e=>toast('Could not load activity: '+(e.message||e.code)));
   db.doc('config/brand').onSnapshot(s=>{const u=s.data()?.logo;if(u)$('#logoImg').src=u},()=>{});
@@ -1663,13 +1663,13 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=343"></script>
-<script src="mpl.js?v=343"></script>
+<script src="mpl.js?v=346"></script>
 <script src="eqp.js?v=313"></script>
 <script src="field.js?v=343"></script>
 <script src="trucks.js?v=342"></script>
 <script src="safety.js?v=343"></script>
 <script src="deliv.js?v=311"></script>
-<script src="admin.js?v=345"></script>
+<script src="admin.js?v=346"></script>
 <script src="scan.js?v=310"></script>
 <script>
 /* auto-detect a newer app version */

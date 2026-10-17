@@ -21,7 +21,7 @@ function gate(msg,btn){
   if(!el){el=document.createElement('div');el.id='msGate';
     el.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:#2b2724;color:#f3ede6;font:16px system-ui;text-align:center;padding:24px';
     document.body.appendChild(el)}
-  el.innerHTML=`<div style="font-weight:700;font-size:22px">AME Yard</div><div style="max-width:420px;opacity:.85">${msg}</div>`+
+  el.innerHTML=`<div style="font-weight:700;font-size:22px">AME App</div><div style="max-width:420px;opacity:.85">${msg}</div>`+
     (btn?`<button id="msGo" style="font:600 17px system-ui;padding:14px 26px;border-radius:12px;border:0;background:#c8742c;color:#fff">Sign in with Microsoft</button>`:'');
   if(btn)document.getElementById('msGo').onclick=()=>msal.loginRedirect({scopes:CFG.scopes,prompt:'select_account'});
 }
@@ -45,7 +45,7 @@ async function token(){
 async function gfetch(url,opt={}){
   const t=await token();
   const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+t,...(opt.headers||{})}});
-  if(r.status===403||r.status===401){const e=new Error('No access to the AME Yard App folder. Ask Kyle to share it with you.');e.code=r.status;throw e}
+  if(r.status===403||r.status===401){const e=new Error('No access to the AME App data folder in SharePoint. Ask Kyle to share it with you.');e.code=r.status;throw e}
   return r;
 }
 
