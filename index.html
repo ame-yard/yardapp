@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.64',APP_DATE='2026-10-15';
+const APP_VERSION='3.65',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1679,7 +1679,22 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="scan.js?v=310"></script>
 <script>
 /* auto-detect a newer app version */
-(function(){let shown=false;async function chk(){if(shown||document.hidden)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;const b=document.createElement('button');b.textContent='New version '+m[1]+' — tap to update';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:100001;background:#c8742c;color:#fff;border:0;border-radius:22px;padding:12px 20px;font:700 15px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.4)';b.onclick=()=>location.replace(location.pathname+'?v='+m[1]);document.body.appendChild(b)}}catch(e){}}
+(function(){let shown=false,later=0;
+  /* restore what was in progress before the update */
+  try{const r=JSON.parse(sessionStorage.getItem('ameUpdRestore')||'null');if(r){sessionStorage.removeItem('ameUpdRestore');const go=()=>{if(typeof curUser==='undefined'||!curUser||typeof items==='undefined'||!items.length){setTimeout(go,500);return}
+      try{if(r.cart&&r.cart.length){cart=r.cart;renderCartBar()}if(r.mod&&r.mod!=='home'&&AME.mod(r.mod))AME.open(r.mod);if(r.tab&&r.mod==='yard')showTab(r.tab);if(r.act){const b=document.querySelector('#actions .act[data-act="'+r.act+'"]');b&&b.click()}closeDlg&&closeDlg();toast('Updated to '+APP_VERSION+' — everything you were doing is still here')}catch(e){}};setTimeout(go,800)}}catch(e){}
+  async function doUpdate(v,btn){btn.disabled=true;btn.textContent='Saving your work…';
+    try{for(const h of (window.ameSaveHooks||[]))await h()}catch(e){}
+    try{if(typeof db!=='undefined'&&db&&db.idle)for(let i=0;i<20&&!(await db.idle());i++)await new Promise(r=>setTimeout(r,300))}catch(e){}
+    try{const tab=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab;const act=document.querySelector('#actions .act[aria-pressed="true"]')?.dataset.act;
+      sessionStorage.setItem('ameUpdRestore',JSON.stringify({cart:(typeof cart!=='undefined'?cart:[]),mod:AME.cur,tab,act}))}catch(e){}
+    btn.textContent='Updating…';location.replace(location.pathname+'?v='+v)}
+  function busy(){const d=document.querySelector('#dlgRoot .dlg');return !!(d&&d.querySelector('input:not([type=hidden]),textarea,select'))}
+  function show(v){if(document.getElementById('updDlg'))return;if(busy()){setTimeout(()=>show(v),15000);return}
+    const w=document.createElement('div');w.id='updDlg';w.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(10,8,6,.55);display:flex;align-items:center;justify-content:center;padding:20px';
+    w.innerHTML=`<div style="background:var(--panel,#3b3633);border:1px solid var(--line,#5a514a);border-radius:16px;max-width:380px;width:100%;padding:22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)"><div style="font-size:34px;line-height:1">⬆️</div><h3 style="margin:10px 0 6px">New version ready</h3><p class="muted" style="margin:0 0 16px">Version ${v} is available. Your cart and anything you're editing are saved first, then the app reloads right where you are.</p><button class="go" id="updGo" style="width:100%;min-height:52px">Update now</button><button class="btn" id="updLater" style="width:100%;margin-top:8px;min-height:44px">Later</button></div>`;
+    document.body.appendChild(w);w.querySelector('#updGo').onclick=e=>doUpdate(v,e.target);w.querySelector('#updLater').onclick=()=>{w.remove();later=Date.now();shown=false}}
+  async function chk(){if(shown||document.hidden||Date.now()-later<30*60e3)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;show(m[1])}}catch(e){}}
   setTimeout(chk,8000);setInterval(chk,120000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
 
 window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st;t.textContent=st==='saving'?'Saving…':st==='saved'?'Saved':'Save failed — tap Sync';t.style.color=st==='error'?'#ff8a7a':st==='saved'?'#7fd18b':'';if(st!=='saved')window.__svUntil=Date.now()+60000;if(st==='saved'){window.__svUntil=Date.now()+4000;clearTimeout(window.__svT);window.__svT=setTimeout(()=>{t.style.color='';window.__svUntil=0;try{markSync()}catch(_){}},4100)}});
