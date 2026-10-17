@@ -3,7 +3,7 @@
 <title>AME</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=304"></script>
+<script src="msbackend.js?v=344"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.43',APP_DATE='2026-10-15';
+const APP_VERSION='3.44',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1669,7 +1669,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=342"></script>
 <script src="safety.js?v=343"></script>
 <script src="deliv.js?v=311"></script>
-<script src="admin.js?v=340"></script>
+<script src="admin.js?v=344"></script>
 <script src="scan.js?v=310"></script>
 <script>
 /* auto-detect a newer app version */

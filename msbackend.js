@@ -123,8 +123,8 @@ const clean=o=>{const r={};for(const k in o){const v=o[k];if(v&&typeof v==='obje
 function docRef(path){
   const [c,id]=path.split('/');
   return{
-    set:d=>write(c,docs=>{docs[id]=clean(d)}),
-    update:d=>write(c,docs=>{const cur=docs[id]||{};for(const k in d){const v=d[k];if(v&&typeof v==='object'&&v.__delete__)delete cur[k];else cur[k]=v}docs[id]=cur}),
+    set:d=>{let pv=null,nx=null;return write(c,docs=>{pv=docs[id]?JSON.parse(JSON.stringify(docs[id])):null;docs[id]=clean(d);nx=docs[id]}).then(r=>{partTrash(c,id,pv,nx);return r})},
+    update:d=>{let pv=null,nx=null;return write(c,docs=>{pv=docs[id]?JSON.parse(JSON.stringify(docs[id])):null;const cur=docs[id]||{};for(const k in d){const v=d[k];if(v&&typeof v==='object'&&v.__delete__)delete cur[k];else cur[k]=v}docs[id]=cur;nx=cur}).then(r=>{partTrash(c,id,pv,nx);return r})},
     delete:()=>{let rm=[];return write(c,docs=>{if(docs[id]!==undefined)rm=[[id,docs[id]]];delete docs[id]}).then(r=>{toTrash(c,rm);return r})},
     get:async()=>{const s=await ensure(c);const d=s.docs[id];return{exists:!!d,id,data:()=>d}},
     onSnapshot:(cb,err)=>{subs.push({coll:c,id,cb});ensure(c).then(()=>emit(c)).catch(e=>err&&err(e));return()=>{}}
@@ -138,7 +138,16 @@ function collRef(c){
     get:async()=>{const s=await ensure(c);return{docs:Object.keys(s.docs).map(id=>({id,data:()=>s.docs[id]}))}}
   };
 }
-const NOTRASH=['presence','trash','logins'];
+const NOTRASH=['presence','trash','logins'];const NOPART=['config/security','config/devbind','config/perms','config/spectrum'];
+const idOf=o=>o&&typeof o==='object'?(o._id||o.id||o.key||o.no||o.code||o.path||o.url||(o.name!=null?o.name+'|'+(o.size||o.role||o.date||''):'')||JSON.stringify(o)):JSON.stringify(o);
+function lostParts(a,b,path,out,depth){if(depth>4||!a||typeof a!=='object')return;
+  if(Array.isArray(a)){if(!Array.isArray(b)){if(a.some(x=>x&&typeof x==='object'))out.push({p:path,items:a.filter(x=>x&&typeof x==='object')});return}
+    if(b.length<a.length&&a.some(x=>x&&typeof x==='object')){const ids=new Set(b.map(idOf));let lost=a.filter(x=>x&&typeof x==='object'&&!ids.has(idOf(x)));if(!lost.length){const js=new Set(b.map(x=>JSON.stringify(x)));lost=a.filter(x=>!js.has(JSON.stringify(x))).slice(0,a.length-b.length)}if(lost.length)out.push({p:path,items:lost})}
+    else if(b.length===a.length)a.forEach((x,i)=>lostParts(x,b[i],path+'.'+i,out,depth+1));return}
+  for(const k in a){if(k.startsWith('_'))continue;const v=a[k];if(b&&typeof b==='object'&&k in b)lostParts(v,b[k],path?path+'.'+k:k,out,depth+1);else if(v&&typeof v==='object'&&(Array.isArray(v)?v.length:Object.keys(v).length))out.push({p:path?path+'.'+k:k,obj:v})}}
+function partTrash(c,id,prev,next){if(NOTRASH.includes(c)||NOPART.includes(c+'/'+id)||!prev)return;const out=[];try{lostParts(prev,next,'',out,0)}catch(e){return}if(!out.length)return;
+  let by='';try{by=typeof curUser!=='undefined'?curUser:''}catch(e){}const at=new Date().toISOString();
+  write('trash',t=>{t['p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)]={coll:c,id,kind:'part',parts:out,parent:{name:prev.name||prev.job||prev.no||prev.code||'',type:prev.type||''},at,by}}).catch(()=>{})}
 function toTrash(c,removed){if(NOTRASH.includes(c)||!removed.length)return;let by='';try{by=typeof curUser!=='undefined'?curUser:''}catch(e){}const at=new Date().toISOString();
   write('trash',t=>{removed.forEach(([id,d],k)=>{t['t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+k]={coll:c,id,data:d,at,by}})}).catch(()=>{})}
 const db={idle:async()=>{for(const c of Object.keys(queue)){try{await queue[c]}catch(e){}}return pending===0},collection:collRef,doc:docRef,deleteMany:(c,ids)=>{let rm=[];return write(c,docs=>{rm=[];ids.forEach(id=>{if(docs[id]!==undefined)rm.push([id,docs[id]]);delete docs[id]})}).then(r=>{toTrash(c,rm);return r})},setMany:(c,map)=>write(c,docs=>{Object.assign(docs,map)}),
