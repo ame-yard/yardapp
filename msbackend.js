@@ -197,12 +197,30 @@ const downloads={save:async({filename,data})=>{
 }};
 
 const files={save:async(path,blob)=>{const r=await gfetch(pathUrl(path)+':/content',{method:'PUT',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});if(!r.ok)throw new Error('Save failed ('+r.status+')');const j=await r.json();return{url:j.webUrl,id:j.id}},list:async folder=>{const r=await gfetch(pathUrl(folder)+':/children?$select=name&$top=999');if(!r.ok)return[];return (await r.json()).value.map(x=>x.name)},get:async path=>{const r=await gfetch(pathUrl(path)+':/content');if(!r.ok)throw new Error('Open failed ('+r.status+')');return r.blob()}};
+
+/* ---------- daily backup: data/*.json -> backups/YYYY-MM-DD/, keep 30 days ---------- */
+const BK={keep:30};
+async function bkList(){const r=await gfetch(pathUrl('backups')+':/children?$select=name,folder&$top=500');if(r.status===404)return[];if(!r.ok)throw new Error('List backups failed ('+r.status+')');return (await r.json()).value.filter(f=>f.folder&&/^\d{4}-\d{2}-\d{2}/.test(f.name)).map(f=>f.name).sort().reverse()}
+async function bkRun(force,tag){const day=new Date().toLocaleDateString('en-CA');const name=tag?day+'-'+tag:day;
+  const have=await bkList();if(!force&&have.includes(day))return {skipped:true,name:day};
+  const r=await gfetch(pathUrl('data')+':/children?$select=name&$top=500');if(!r.ok)throw new Error('List data failed ('+r.status+')');
+  const names=(await r.json()).value.map(f=>f.name).filter(n=>n.endsWith('.json'));let n=0;
+  for(const f of names){const g=await gfetch(pathUrl('data/'+f)+':/content');if(!g.ok)continue;const b=await g.arrayBuffer();
+    const p=await gfetch(pathUrl('backups/'+name+'/'+f)+':/content',{method:'PUT',headers:{'Content-Type':'application/json'},body:b});if(p.ok)n++}
+  const cut=new Date(Date.now()-BK.keep*864e5).toLocaleDateString('en-CA');
+  for(const d of have)if(d.slice(0,10)<cut){try{await gfetch(pathUrl('backups/'+d),{method:'DELETE'})}catch(e){}}
+  try{localStorage.setItem('ameBkDay',day)}catch(e){}return {name,files:n}}
+async function bkFiles(name){const r=await gfetch(pathUrl('backups/'+name)+':/children?$select=name,size&$top=500');if(!r.ok)return[];return (await r.json()).value.map(f=>({name:f.name.replace(/\.json$/,''),size:f.size}))}
+async function bkRestore(name,coll){await bkRun(true,'before-restore');const g=await gfetch(pathUrl('backups/'+name+'/'+coll+'.json')+':/content');if(!g.ok)throw new Error('Backup file not found');const docs=await g.json();
+  await write(coll,cur=>{for(const k of Object.keys(cur))delete cur[k];Object.assign(cur,docs)});return Object.keys(docs).length}
+window.ameBackup={list:bkList,run:bkRun,files:bkFiles,restore:bkRestore};
 const user={canEdit:()=>true,name:()=>account?.name||'',email:()=>account?.username||''};
 
 readyP=(async()=>{
   await init();
   try{await seedIfEmpty()}catch(e){gate(e.message||String(e),false);throw e}
   setInterval(poll,CFG.pollMs);
+  setTimeout(()=>{let d='';try{d=localStorage.getItem('ameBkDay')}catch(e){}if(d!==new Date().toLocaleDateString('en-CA'))bkRun(false).catch(e=>console.warn('backup',e))},20000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
 })();
 window.claude={use:async name=>{
