@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.40',APP_DATE='2026-10-15';
+const APP_VERSION='3.41',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -946,11 +946,12 @@ function editLog(lid){if(!isAdmin){toast('Only editors can change records.');ret
 function editCrew(k){if(!isAdmin)return;const c=crew[k];if(!c)return;if(isOwner(c.name)&&!isOwner(curUser)){toast('The owner account can only be changed by Kyle.');return}
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>Edit person</h3><div class="fields">
    <label class="f">Name<input id="p_n" value="${esc(c.name)}"></label><label class="f">Role<select id="p_r">${ROLES.map(r=>`<option ${r===c.role?'selected':''}>${r}</option>`).join('')}</select></label>
-   <label class="f wide" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="p_e" ${c.editor?'checked':''}> Editor (office tools, needs PIN)</label></div>
+   <label class="f wide" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="p_e" ${c.editor?'checked':''}> Editor (office tools)</label>
+   <label class="f wide">Microsoft account email <small class="muted">— signs this person in automatically. Leave empty for crew who use the shared yard iPad.</small><input id="p_m" type="email" value="${esc(c.email||'')}" placeholder="name@amebuilders.net"></label></div>
    <div class="bar"><button class="btn" id="p_c">Cancel</button><button class="btn pri" id="p_s">Save</button></div></div></div>`;
   $('#p_c').onclick=closeDlg;
   $('#p_s').onclick=async()=>{const n=isOwner(c.name)?c.name:$('#p_n').value.trim();if(!n)return;const ed=$('#p_e').checked;if(!ed&&c.editor&&crew.filter(x=>x.editor).length===1){toast('Keep at least one editor.');return}
-    await saveCrew(crew.map((x,i)=>i===k?{...x,name:n,role:$('#p_r').value,editor:ed}:x));
+    const em=$('#p_m').value.trim().toLowerCase();if(em&&crew.some((x,i)=>i!==k&&(x.email||'').toLowerCase()===em)){toast('That email is already linked to someone else.');return}await saveCrew(crew.map((x,i)=>i===k?{...x,name:n,role:$('#p_r').value,editor:ed,email:em}:x));
     if(n!==c.name)for(const j of jobs){const u={};['pm','fm','sfm'].forEach(f=>{if(j[f]===c.name)u[f]=n});if(Object.keys(u).length)db.doc('jobs/'+j._id).update(u).catch(()=>{})}
     toast('Saved');closeDlg()}}
 let repMode=false,repPick=new Set();
@@ -1402,7 +1403,7 @@ function hashStr(t){let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCode
 let DEVB={},msEmail='',myIp='',devbOk=false,secReadyRes;const secReady=new Promise(r=>secReadyRes=r);
 function devKey(){return (msEmail||'?')+'|'+devName()}
 async function secInit(){try{const u=await window.claude.use('user');msEmail=(u?.email?.()||'').toLowerCase();msAcct=u?.name?.()||msAcct}catch(e){}
-  try{db.doc('config/devbind').onSnapshot(x=>{DEVB=x.data()||{};if(!devbOk){devbOk=true;secReadyRes()}},()=>{secReadyRes()})}catch(e){secReadyRes()}
+  try{db.doc('config/devbind').onSnapshot(x=>{DEVB=x.data()||{};if(!devbOk){devbOk=true;secReadyRes();if(!curUser&&typeof showLogin==='function'&&crew.length)showLogin()}},()=>{secReadyRes()})}catch(e){secReadyRes()}
   try{myIp=(await (await fetch('https://api.ipify.org?format=json')).json()).ip||''}catch(e){}
   secReady.then(()=>{if(curUser&&isOwner(curUser)&&msEmail&&!(DEVB.__owners||[]).includes(msEmail))bindName(curUser)})}
 function logLogin(n,blocked){try{db.collection('logins').add({ts:new Date().toISOString(),name:n,acct:msAcct,email:msEmail,dev:devName(),key:devKey(),ip:myIp,ua:navigator.userAgent.slice(0,160),blocked:!!blocked})}catch(e){}}
@@ -1551,14 +1552,29 @@ try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now
 try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p)curUser=p}catch(e){}
 
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
-function setUser(n){if(n&&n!==curUser){if(!canUseName(n)){logLogin(n,true);toast('“'+n+'” is registered to another device. Ask Kyle to allow this device.');return}logLogin(n,false);bindName(n)}setTimeout(()=>{try{beat()}catch(e){}},300);if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}));if(isOwner(n))localStorage.setItem('ameOwnerStay',n);else localStorage.removeItem('ameOwnerStay')}catch(e){}lastAct=Date.now();
-  $('#loginRoot').innerHTML='';const r=curRole();$('#userChip').hidden=!n;$('#ucName').textContent=n;$('#ucRole').textContent=r;
+function setUserRaw(n){window.__raw=1;try{setUser(n)}finally{window.__raw=0}}
+function setUser(n){if(viewAs==='__login'&&n){toast('Preview only — tap the banner to return');return}if(n&&n!==curUser&&!window.__raw){if(!canUseName(n)){logLogin(n,true);toast('“'+n+'” is registered to another device. Ask Kyle to allow this device.');return}logLogin(n,false);bindName(n)}setTimeout(()=>{try{beat()}catch(e){}},300);if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{if(!viewAs)sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}));if(viewAs){}else if(isOwner(n))localStorage.setItem('ameOwnerStay',n);else localStorage.removeItem('ameOwnerStay')}catch(e){}lastAct=Date.now();
+  $('#loginRoot').innerHTML='';const r=curRole();$('#userChip').hidden=!n;$('#ucName').textContent=n;$('#ucRole').textContent=r;{const w=document.querySelector('#userChip .ucsw');if(w){const pers=n&&myName()===n;w.textContent=viewAs?'Return':isOwner(n)?'View as':pers?'':'Switch';w.style.display=w.textContent?'':'none'}}
   isAdmin=accountAdmin&&(isEditor(n)||can('EDIT'));applyRole();renderPerms()}
 function logout(){curUser='';selWho='';cart=[];try{sessionStorage.removeItem('ameUser');localStorage.removeItem('ameOwnerStay')}catch(e){}$('#userChip').hidden=true;isAdmin=false;applyRole();closeDlg();showLogin()}
-$('#userChip').onclick=logout;
+$('#userChip').onclick=()=>{if(viewAs){endViewAs();return}if(isOwner(curUser)){viewAsDlg();return}if(myName()===curUser){toast('Signed in with your Microsoft account ('+msEmail+')');return}logout()};
+function viewAsDlg(){$('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>View the app as…</h3><p class="muted" style="margin-top:0">See exactly what this person sees. No sign-in is recorded for them, but anything you change is saved under their name. Tap the orange banner to come back.</p>
+   <div class="names">${[...crew].filter(c=>!isOwner(c.name)).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<button data-va="${esc(c.name)}" class="lname">${esc(c.name)}<small style="display:block;opacity:.6;font-size:11px">${esc(c.role)}</small></button>`).join('')}</div>
+   <div class="bar"><button class="btn" id="vaShared">Shared-device sign-in screen</button><button class="btn" id="vaX">Close</button></div></div></div>`;
+  $('#vaX').onclick=closeDlg;$('#vaShared').onclick=()=>{closeDlg();vaOwner=vaOwner||curUser;viewAs='__login';curUser='';$('#userChip').hidden=true;isAdmin=false;applyRole();showLoginPicker();vaBanner()};
+  $$('[data-va]').forEach(b=>b.onclick=()=>{closeDlg();startViewAs(b.dataset.va)})}
+let vaOwner='';function startViewAs(n){vaOwner=vaOwner||curUser;viewAs=n;curUser='';setUserRaw(n);vaBanner()}
+function endViewAs(){const o=vaOwner;viewAs='';vaOwner='';document.getElementById('vaBan')?.remove();curUser='';setUserRaw(o);toast('Back to '+o)}
+function vaBanner(){document.getElementById('vaBan')?.remove();const b=document.createElement('button');b.id='vaBan';b.textContent=(viewAs==='__login'?'Previewing the sign-in screen':'Viewing as '+viewAs)+' · tap to return to '+vaOwner;b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;background:#e8a33d;color:#1d1a17;border:0;border-radius:999px;padding:10px 18px;font:inherit;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer;max-width:calc(100vw - 24px)';b.onclick=endViewAs;document.body.appendChild(b)}
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{lastAct=Date.now();if(curUser)try{sessionStorage.setItem('ameUser',JSON.stringify({n:curUser,t:lastAct}))}catch(e){}},true));
-setInterval(()=>{if(curUser&&!isOwner(curUser)&&Date.now()-lastAct>10*60e3){logout();toast('Signed out after 10 minutes idle')}},30e3);
-function showLogin(){if(curUser)return;
+setInterval(()=>{if(curUser&&!isOwner(curUser)&&!viewAs&&!myName()&&Date.now()-lastAct>10*60e3){logout();toast('Signed out after 10 minutes idle')}},30e3);
+function myName(){if(!msEmail)return'';const c=crew.find(c=>(c.email||'').toLowerCase()===msEmail);if(c)return c.name;
+  if((DEVB.__owners||[]).includes(msEmail)){const o=crew.find(c=>isOwner(c.name));if(o)return o.name}
+  const ns=Object.keys(DEVB).filter(k=>!k.startsWith('__')&&(DEVB[k]||[]).some(x=>String(x.key).split('|')[0]===msEmail));
+  return ns.length===1&&!crew.some(c=>c.email&&c.name===ns[0]&&c.email.toLowerCase()!==msEmail)?ns[0]:''}
+let viewAs='';
+function showLogin(){if(curUser)return;{const me=myName();if(me&&crew.some(c=>c.name===me)){setUser(me);return}}showLoginPicker()}
+function showLoginPicker(){
   const names=[...crew];
   $('#loginRoot').innerHTML=`<div class="login"><div class="loginbox"><img src="${$('#logoImg').src}" alt="AME Builders" class="loginlogo"><h2>Who's using the app?</h2><p class="muted">Tap your name.</p>
     ${names.length?['HQ','Field'].filter(g=>names.some(c=>groupOf(c.role)===g)).map(g=>`<div class="qlabel">${g}</div><div class="names">${names.filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<button data-u="${esc(c.name)}" class="lname">${esc(c.name)}</button>`).join('')}</div>`).join('')
@@ -1569,7 +1585,7 @@ function showLogin(){if(curUser)return;
   $('#guestForm').onsubmit=e=>{e.preventDefault();const n=$('#guestName').value.trim().replace(/\s+/g,' ');if(n.length<2){toast('Type your name first.');return}
     const m=crew.find(c=>c.name.toLowerCase()===n.toLowerCase());if(m){$$('#loginRoot [data-u]').find(b=>b.dataset.u===m.name)?.click();return}setUser(n)};
   $$('#loginRoot [data-u]').forEach(b=>b.onclick=()=>{const n=b.dataset.u;
-    if(!isEditor(n)||!(isOwner(n)&&ownerPinH?1:officePin)){if(isEditor(n)&&!accountAdmin)toast('This device has yard access only — office tools stay hidden.');setUser(n);return}
+    if(!isEditor(n)||!(isOwner(n)&&ownerPinH?1:officePin)||viewAs==='__login'&&false){if(isEditor(n)&&!accountAdmin)toast('This device has yard access only — office tools stay hidden.');setUser(n);return}
     let pin='';const draw=()=>{$('#pinArea').innerHTML=`<div class="pinbox"><div class="qlabel">${isOwner(n)&&ownerPinH?'Personal PIN':'Editor PIN'} for ${esc(n)}</div><div class="pindots">${[0,1,2,3].map(k=>`<span class="${k<pin.length?'on':''}"></span>`).join('')}</div>
       <div class="pinpad">${['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('')}</div><button class="btn" id="pinCancel">Cancel</button></div>`;
       $$('#pinArea [data-k]').forEach(x=>x.onclick=()=>{const k=x.dataset.k;if(k==='⌫')pin=pin.slice(0,-1);else if(pin.length<4)pin+=k;
