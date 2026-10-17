@@ -274,7 +274,7 @@ body.nophoto .cam,body.nophoto #e_photoLbl{display:none!important}
   .cb-in .btn.ghost{padding:8px 10px;font-size:14px;flex:none}.cb-in .go{padding:12px 12px;font-size:15px}
   .dlg .bar{gap:6px;flex-wrap:nowrap}.dlg .bar .btn{padding:10px 10px;font-size:14px;white-space:nowrap}
   .dlg .go,.cb-in .go{white-space:nowrap}
-  .units button{padding:7px 10px}
+  .units button{padding:7px 10px}#dlgRoot .units button b{font-size:20px}#dlgRoot .units button{min-width:92px;min-height:60px}
   .qlabel{font-size:12px}
   .citem .nm small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .guestrow .go{padding:12px 16px}
@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.51',APP_DATE='2026-10-15';
+const APP_VERSION='3.52',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -794,7 +794,7 @@ const ust=(i,sn)=>{const u=(i?.units||{})[sn];if(u)return u;if(Array.isArray(i?.
   const k=sers(i).indexOf(sn),q=Number(i.qty)||0,o=i.out||0;return k<q?{st:'yard'}:k<q+o?{st:'out',job:i.lastJob||''}:{st:'repair'}};
 const timesOut=(id,sn)=>logs.filter(g=>g.itemId===id&&(g.action==='OUT'||g.action==='REPAIR_OUT')&&Array.isArray(g.units)&&g.units.includes(sn)).length;
 const ST_LABEL={yard:'In yard',out:'Out',repair:'In repair',lost:'Lost',disposed:'Disposed'};
-function unitChips(i,cands,sel,attr){return `<div class="units">${cands.length?cands.map(sn=>{const u=ust(i,sn);return `<button ${attr}="${esc(sn)}" aria-pressed="${sel.includes(sn)}"><b>${esc(sn)}</b><small>${ST_LABEL[u.st]||u.st}${u.job?' · '+esc(u.job):''} · out ${timesOut(i.id,sn)}×</small></button>`}).join(''):'<span class="muted">No units available for this action.</span>'}</div>`}
+function unitChips(i,cands,sel,attr){return `<div class="units">${cands.length?cands.map(sn=>{const u=ust(i,sn);return `<button ${attr}="${esc(sn)}" aria-pressed="${sel.includes(sn)}"><b>${esc(sn)}</b><small>${ST_LABEL[u.st]||u.st}${u.job?' · '+esc(u.job):''}${timesOut(i.id,sn)?' · used '+timesOut(i.id,sn)+'×':''}</small></button>`}).join(''):'<span class="muted">No units available for this action.</span>'}</div>`}
 let pendingItems=[];
 function mergeItems(){_mi();items.forEach(i=>i.kind=sub(i))}
 function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.id===p.id))].map(i=>stockMap[i.id]?{...i,...stockMap[i.id]}:i)}
@@ -1075,10 +1075,10 @@ function openQtyPicker(id){const it=byId(id);if(!it)return;const c=cart.find(c=>
 function openUnitPicker(id){const it=byId(id);if(!it)return;const c=cart.find(c=>c.id===id);let sel=[...(c?.units||[])];
   const cand=sers(it).filter(sn=>act==='OUT'?ust(it,sn).st==='yard':ust(it,sn).st==='out');
   const draw=()=>{$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" role="dialog" aria-modal="true">
-    <h3>${act==='OUT'?`Which ${esc(it.name)}?`:`Which ${esc(it.name)} is coming back?`}</h3>
+    <h3>${act==='OUT'?`Which one are you taking?`:`Which one is coming back?`}</h3>
     <div class="muted" style="font-size:13px">${esc(it.name)} · ${esc(it.size||'')} · ${esc(it.loc)} · ${cand.length} ${act==='OUT'?'in yard':'out'}</div>
     ${unitChips(it,cand,sel,'data-pk')}
-    <div class="muted" style="font-size:12.5px;margin-top:8px">“out N×” = how many times that unit has gone out.</div>
+    <div class="muted" style="font-size:12.5px;margin-top:8px">Tap the number on the ladder / tool you are taking.</div>
     <div class="bar" style="align-items:stretch"><button class="btn" id="upC">Cancel</button>${cand.length>1?'<button class="btn" id="upAll">Select all</button>':''}<button class="go" id="upOk" style="width:auto;flex:1" ${sel.length?'':'disabled'}>${sel.length?`Add ${sel.length} to cart`:'Pick a number'}</button></div></div></div>`;
     $$('#dlgRoot [data-pk]').forEach(b=>b.onclick=()=>{const sn=b.dataset.pk;sel=sel.includes(sn)?sel.filter(x=>x!==sn):[...sel,sn];draw()});
     $('#upC').onclick=()=>{closeDlg();render()};if($('#upAll'))$('#upAll').onclick=()=>{sel=sel.length===cand.length?[]:[...cand];draw()};
@@ -1662,13 +1662,13 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=343"></script>
-<script src="polish.js?v=350"></script>
+<script src="shell.js?v=352"></script>
+<script src="polish.js?v=352"></script>
 <script src="mpl.js?v=346"></script>
 <script src="eqp.js?v=313"></script>
 <script src="field.js?v=350"></script>
-<script src="trucks.js?v=351"></script>
-<script src="safety.js?v=343"></script>
+<script src="trucks.js?v=352"></script>
+<script src="safety.js?v=352"></script>
 <script src="deliv.js?v=311"></script>
 <script src="admin.js?v=346"></script>
 <script src="scan.js?v=310"></script>

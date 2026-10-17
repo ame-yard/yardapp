@@ -47,10 +47,33 @@ document.head.insertAdjacentHTML('beforeend',`<style>
  #tab-jobs .tblwrap table.cardrows>tbody>tr>td:first-child{font-size:14px}
  /* dialogs */
  .dlg h3{font-size:18px}.dlg .fields{gap:8px}
+ #dlgRoot .dlg>.bar:last-child{position:sticky;bottom:-14px;z-index:3;background:var(--panel);margin:10px -14px -14px;padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);border-radius:0 0 12px 12px}
+ #dlgRoot .dlg>.bar:last-child .go,#dlgRoot .dlg>.bar:last-child .btn{min-height:48px}
+ body{font-size:16px}input,select,textarea,button{font-size:16px}.btn.small{font-size:14px}.muted{font-size:14px}
+ .names .lname{min-height:56px;font-size:18px}
  /* generic nav tabs scroll */
  nav.tabs{overflow-x:auto;scrollbar-width:none}nav.tabs::-webkit-scrollbar{display:none}
  .mplhead h2{font-size:19px}
 }
-@media(min-width:600px) and (max-width:900px){#tab-home .apps{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:600px) and (max-width:900px){#tab-home .apps{grid-template-columns:repeat(2,1fr)}.act b{font-size:17px;letter-spacing:0;white-space:normal;line-height:1.1}.act span{display:none}.act{padding:10px 8px;min-height:56px;justify-content:center}}
 </style>`);
+})();
+/* ---- Español toggle for the crew-facing screens (text-node swap, no code changes elsewhere) ---- */
+(function(){
+const ES={"Who's using the app?":"¿Quién está usando la app?","Tap your name.":"Toque su nombre.","Not on the list?":"¿No está en la lista?","Continue":"Continuar","HQ":"Oficina","Field":"Campo",
+"What are you doing?":"¿Qué va a hacer?","Take Out":"Sacar","Take tools & materials to a job":"Llevar herramientas y materiales a una obra","Return":"Devolver","Bring things back to the yard":"Regresar cosas al yarda","Inventory check & update":"Revisar inventario","Count, fix quantities, add photos":"Contar, corregir cantidades, agregar fotos","Just look around":"Solo mirar",
+"To a job":"A una obra","Back to yard":"De regreso al yarda","Repair":"Reparar","Requests & in repair":"Pedidos y en reparación","Audit":"Inventario","Count & photos":"Contar y fotos","Removed":"Retirado","Yard Map":"Mapa","Categories":"Categorías","Scan code":"Escanear","Tap a rack or search.":"Toque un estante o busque.","Search:":"Buscar:","Out on Jobs":"En obras","Ladders":"Escaleras","Power Tools":"Herramientas eléctricas","Hand Tools":"Herramientas de mano","Equipment":"Equipo","Safety":"Seguridad",
+"Review & Confirm":"Revisar y confirmar","Clear":"Borrar","Type your name (e.g. John D.)":"Escriba su nombre (ej. Juan P.)","PO #, damage, who has it...":"PO #, daño, quién lo tiene...","Tap an empty day to reserve that truck. Red outline = double-booked.":"Toque un día vacío para reservar ese camión.","Cart is empty.":"El carrito está vacío.","Which job?":"¿Para qué obra?","Other / not listed":"Otra / no está","type below":"escriba abajo","Repair shop":"Taller","Taking it to be fixed":"Se lleva a reparar","Note (optional)":"Nota (opcional)","Keep shopping":"Seguir","Confirm Take Out":"Confirmar salida","Confirm Return":"Confirmar devolución","Which one are you taking?":"¿Cuál se lleva?","Which one is coming back?":"¿Cuál regresa?","Tap the number on the ladder / tool you are taking.":"Toque el número de la escalera / herramienta que se lleva.","Cancel":"Cancelar","Select all":"Todos","Pick a number":"Elija un número","In yard":"En yarda","Out":"Fuera","Units":"Unidades","Remove":"Quitar","Show all":"Ver todo","+ Add item here":"+ Agregar artículo","Select to remove":"Seleccionar para quitar","Map":"Mapa",
+"Hi":"Hola","What are you working on?":"¿En qué va a trabajar?","Yard Inventory":"Inventario del yarda","Take out · return · repair · audit":"Sacar · devolver · reparar · inventario","Sync":"Sincronizar","Save":"Guardar","Saved":"Guardado","Switch":"Cambiar","Signed out after 10 minutes idle":"Sesión cerrada por inactividad"};
+let lang='';try{lang=localStorage.getItem('ameLang')||''}catch(e){}
+const map=new Map();
+function tr(root){if(lang!=='es')return;const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const list=[];let n;while(n=w.nextNode())list.push(n);
+  for(const t of list){const p=t.parentNode;if(!p||/SCRIPT|STYLE|INPUT|TEXTAREA/.test(p.nodeName))continue;const raw=t.nodeValue;const k=raw.trim();if(!k)continue;const v=ES[k];if(v&&!map.has(t)){map.set(t,raw);t.nodeValue=raw.replace(k,v)}}
+  root.querySelectorAll&&root.querySelectorAll('input[placeholder],button[title]').forEach(el=>{const k=el.placeholder||'';if(ES[k]&&!el.dataset.esp){el.dataset.esp=k;el.placeholder=ES[k]}})}
+function untr(){map.forEach((raw,t)=>{if(t.isConnected)t.nodeValue=raw});map.clear();document.querySelectorAll('[data-esp]').forEach(el=>{el.placeholder=el.dataset.esp;delete el.dataset.esp})}
+let tm=0;new MutationObserver(ms=>{const lb=document.querySelector('#loginRoot .loginbox');if(lb&&!lb.querySelector('#langL')){const a=document.createElement('button');a.id='langL';a.type='button';a.className='btn';a.style.cssText='margin-top:14px';a.textContent=lang==='es'?'English':'Español';a.onclick=()=>{lang=lang==='es'?'':'es';try{localStorage.setItem('ameLang',lang)}catch(e){}if(lang==='es')tr(document.body);else untr();a.textContent=lang==='es'?'English':'Español';paint()};lb.appendChild(a)}if(lang!=='es')return;clearTimeout(tm);tm=setTimeout(()=>tr(document.body),30)}).observe(document.body,{childList:true,subtree:true,characterData:true});
+function btn(){let b=document.getElementById('langBtn');if(b)return b;const bell=document.getElementById('bellBtn');if(!bell)return null;b=document.createElement('button');b.id='langBtn';b.type='button';b.className='bell';b.style.cssText='font:700 13px var(--body);padding:6px 9px';bell.parentNode.insertBefore(b,bell.nextSibling);
+  b.onclick=()=>{lang=lang==='es'?'':'es';try{localStorage.setItem('ameLang',lang)}catch(e){}if(lang==='es')tr(document.body);else untr();paint()};return b}
+function paint(){const b=btn();if(!b)return;b.textContent=lang==='es'?'EN':'ES';b.title=lang==='es'?'Switch to English':'Cambiar a español';b.hidden=!(typeof curUser!=='undefined'&&curUser)}
+setTimeout(()=>{paint();if(lang==='es')tr(document.body)},800);const _ar=window.applyRole;window.applyRole=function(){_ar&&_ar.apply(this,arguments);paint()};
 })();
