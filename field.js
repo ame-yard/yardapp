@@ -341,6 +341,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .chksum{display:flex;align-items:center;gap:8px;padding:8px 0}.chkl{display:flex;flex-direction:column;gap:6px}.chkq{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.chkq.ok{border-color:rgba(63,185,80,.5)}.chkq.bad{border-color:#e8594a;background:rgba(232,89,74,.08)}.chkq input{grid-column:1/-1}
 .chka{display:flex;gap:4px}.chka button{min-width:50px;min-height:38px;border-radius:8px;border:1px solid var(--line);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}.chka .aYes[aria-pressed=true]{background:#3fb950;border-color:#3fb950;color:#fff}.chka .aNo[aria-pressed=true]{background:#e8594a;border-color:#e8594a;color:#fff}.chka .aNA[aria-pressed=true]{background:#777;color:#fff}
 @media(max-width:600px){.chkq{grid-template-columns:1fr}.chka button{flex:1}}
+#frFlt{overflow-x:auto;flex-wrap:nowrap;max-width:100%;scrollbar-width:none}#frFlt::-webkit-scrollbar{display:none}#frFlt button{white-space:nowrap;flex:0 0 auto}
 .frleak{margin:10px 0}.frchk{flex-direction:row!important;align-items:center;gap:8px}.frwarn{background:rgba(196,60,60,.18);border:1px solid #c43c3c;padding:10px 12px;border-radius:10px;margin-bottom:12px}
 .tspaper{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;margin:6px 0 14px}.tspaper.on{border-style:solid;border-color:#4c9aff;background:rgba(76,154,255,.08)}.tspaper>div:first-child{display:flex;flex-direction:column;min-width:200px;flex:1}.tspaper small{opacity:.75}.tspaper .frph{margin:0}
 .tsweek{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}.tsweek button{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 4px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:inherit;font:inherit;cursor:pointer}.tsweek button small{opacity:.7;font-size:11px}.tsweek button span{font-size:12px;opacity:.6}.tsweek button.has span{color:#3fb950;opacity:1;font-weight:700}.tsweek button[aria-pressed=true]{border-color:#4c9aff;background:rgba(76,154,255,.18)}.tsweek .tsadd{flex:0 0 auto;justify-content:center;opacity:.8}
@@ -359,7 +360,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .sfpdf{width:110px;height:90px;border-radius:8px;background:#5a2b2b;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;cursor:pointer;text-align:center}.sfpdf small{font-weight:400;font-size:10px}
 @media(max-width:600px){.frlegend{grid-template-columns:1fr}
 .frtypes{grid-template-columns:1fr 1fr;gap:8px}.frtype{padding:10px!important}.frtype small{display:none}.frtype .fric svg{width:20px;height:20px}
-#frFlt{overflow-x:auto;flex-wrap:nowrap;max-width:100%}#frFlt button{white-space:nowrap;flex:0 0 auto}
+
 .tshead{flex-wrap:nowrap}.tshead h3{font-size:16px;white-space:nowrap}.tsday .tshead{flex-wrap:wrap}
 .tcal{gap:3px}.tc{min-height:42px;padding:4px 1px}.tc small{font-size:9px}
 .frtbl{display:block;overflow-x:auto;max-width:100%}
