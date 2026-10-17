@@ -95,6 +95,7 @@ function draw(){const ro=document.body.classList.contains('ro');const inYard=doc
   n.hidden=false;const c=cur();const L=[['OUT','Take Out','#e8594a'],['RETURN','Return','#3fb950'],['INV','Inventory','#a98bff']];
   n.innerHTML=L.map(([k,l,col])=>`<button type="button" data-cn="${k}" style="--c:${col}" aria-pressed="${c===k||(k==='INV'&&c==='AUDIT')}">${l}</button>`).join('')}
 setInterval(draw,800);document.addEventListener('click',()=>setTimeout(draw,60),true);
-document.head.insertAdjacentHTML('beforeend',`<style>.crewnav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;order:11;padding:8px 0 2px}.crewnav[hidden]{display:none}.crewnav button{min-height:46px;border-radius:10px;border:2px solid var(--c);background:transparent;color:var(--c);font:800 16px var(--display,inherit);letter-spacing:.02em;text-transform:uppercase;cursor:pointer}.crewnav button[aria-pressed=true]{background:var(--c);color:#fff}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('nav.tabs button,.crewnav button');if(b)b.blur()},true);
+document.head.insertAdjacentHTML('beforeend',`<style>nav.tabs button:focus,nav.tabs button:focus-visible,.crewnav button:focus{outline:none}.crewnav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;order:11;padding:8px 0 2px}.crewnav[hidden]{display:none}.crewnav button{min-height:46px;border-radius:10px;border:2px solid var(--c);background:transparent;color:var(--c);font:800 16px var(--display,inherit);letter-spacing:.02em;text-transform:uppercase;cursor:pointer}.crewnav button[aria-pressed=true]{background:var(--c);color:#fff}
 body.ro #tab-yard #actions{display:none}</style>`);
 })();
