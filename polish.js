@@ -1,7 +1,7 @@
 /* AME responsive polish — phone card-rows for wide tables, "show more" on long tables, compact phone layouts. */
 (function(){
 if(/[?&]plain=1/.test(location.search)){try{localStorage.setItem('amePlain','1')}catch(e){}}if(/[?&]plain=0/.test(location.search)){try{localStorage.removeItem('amePlain')}catch(e){}}let PLAIN=false;try{PLAIN=localStorage.getItem('amePlain')==='1'}catch(e){}window.amePlain=PLAIN;if(PLAIN){console.warn('polish off');return}
-const PH=()=>innerWidth<600;
+let __ph=innerWidth<600;addEventListener('resize',()=>{__ph=innerWidth<600});const PH=()=>__ph;
 const SKIP='.tstbl,.tssum,.sfmx,.frtbl,.nocard';
 /* 1. Wide tables → labeled cards on phones */
 function label(t){if(t.matches(SKIP)||t.closest('.nocard'))return;const ths=[...t.querySelectorAll(':scope>thead th')];if(ths.length<4){t.classList.remove('cardrows');return}
@@ -9,10 +9,11 @@ function label(t){if(t.matches(SKIP)||t.closest('.nocard'))return;const ths=[...
   t.querySelectorAll(':scope>tbody>tr').forEach(tr=>{if(tr.classList.contains('cr-hid')||tr.dataset.crl)return;tr.dataset.crl=1;const tds=[...tr.children];if(tds.length<3){tr.classList.add('cr-full');return}let ci=0;tds.forEach(td=>{const span=td.colSpan||1;td.classList.toggle('cr-t',ci===ti);if(!td.dataset.l&&names[ci]!==undefined)td.dataset.l=names[ci];if(!td.textContent.trim()&&!td.querySelector('img,button,input,select,.pill,.lchk'))td.classList.add('cr-empty');else td.classList.remove('cr-empty');ci+=span})})}
 /* 2. Long tables → show 80 rows + "Show more" */
 const LIM=80;
-function limit(t){const tb=t.querySelector(':scope>tbody');if(!tb)return;const rows=[...tb.children].filter(r=>!r.classList.contains('showmore'));const old=tb.querySelector(':scope>.showmore');
-  if(rows.length<=LIM+10){rows.forEach(r=>r.classList.remove('cr-hid'));old&&old.remove();return}
-  const n=Number(tb.dataset.show||LIM);rows.forEach((r,i)=>r.classList.toggle('cr-hid',i>=n));const left=rows.length-n;
-  if(left>0){const m=old||document.createElement('tr');m.className='showmore';m.innerHTML=`<td colspan="20"><button type="button" class="btn">Show ${Math.min(left,LIM)} more · ${left} hidden</button></td>`;m.querySelector('button').onclick=()=>{tb.dataset.show=String(n+LIM);one(t)};tb.appendChild(m)}else old&&old.remove()}
+function limit(t){const tb=t.querySelector(':scope>tbody');if(!tb||tb.id==='itbody')return;let m=tb.querySelector(':scope>.showmore:not(#invMore)');const rows=[...tb.children].filter(r=>!r.classList.contains('showmore'));
+  const fresh=rows.some(r=>!r.__k);if(!fresh)return;
+  tb.__rest=[];if(rows.length>LIM+10){tb.__rest=rows.slice(LIM);tb.__rest.forEach(r=>r.remove())}rows.slice(0,LIM+10).forEach(r=>r.__k=1);
+  const draw=()=>{const left=tb.__rest.length;if(!left){m&&m.remove();return}if(!m){m=document.createElement('tr');m.className='showmore'}m.innerHTML=`<td colspan="20"><button type="button" class="btn">Show ${Math.min(left,LIM)} more · ${left} hidden</button></td>`;
+    m.querySelector('button').onclick=()=>{const add=tb.__rest.splice(0,LIM);add.forEach(r=>{r.__k=1;tb.insertBefore(r,m)});try{if(PH())label(t)}catch(e){}draw()};tb.appendChild(m)};draw()}
 function one(t){try{limit(t);if(PH())label(t);else t.classList.remove('cardrows')}catch(e){}}
 function pass(set){(set||document.querySelectorAll('table')).forEach(one)}
 let tmr=0,dirty=new Set(),all=false;const sched=()=>{clearTimeout(tmr);tmr=setTimeout(()=>{const s=all?null:[...dirty];all=false;dirty.clear();if(s&&!s.length)return;pass(s)},60)};
@@ -20,7 +21,7 @@ new MutationObserver(ms=>{for(const m of ms){const n=m.target.nodeType===1?m.tar
 /* 3. Long help paragraphs collapse on phones (tap to read) */
 document.addEventListener('click',e=>{const p=e.target.closest('.panel>p.muted,.frform>p.muted,section>p.muted');if(p&&PH())p.classList.toggle('open')});
 document.head.insertAdjacentHTML('beforeend',`<style>
-.cr-hid{display:none!important}.showmore td{text-align:center;padding:10px}
+.showmore td{text-align:center;padding:10px}
 @media(max-width:600px){
  table.cardrows{display:block;border:0}table.cardrows>thead{display:none}table.cardrows>tbody{display:block}
  table.cardrows>tbody>tr{display:flex;flex-wrap:wrap;gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--line);align-items:center}

@@ -651,7 +651,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.57',APP_DATE='2026-10-15';
+const APP_VERSION='3.61',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -666,12 +666,13 @@ function condPill(c){const k={Good:'good',Mixed:'mixed','Needs Check':'needs',Ba
 function flags(i){let s=condPill(i.cond);if(sers(i).length)s+=`<span class="pill p-good">${sers(i).length} S/N</span>`;if(i.repair>0)s+=`<span class="pill p-needs">${i.repair} in repair</span>`;if(isLow(i))s+=`<span class="pill p-low">${i.qty===0?'Out of stock':'Low'}</span>`;if(i.issue)s+=`<span class="pill p-ver">Verify</span>`;return s}
 function isLow(i){return i.qty===0||(i.min!=null&&i.min!==''&&typeof i.qty==='number'&&i.qty<=Number(i.min))}
 function qtyTxt(i){return typeof i.qty==='number'?i.qty:(i.qtyNote||'?')}
-function fmtD(t){if(!t)return'';const d=new Date(String(t).length===10?t+'T12:00':t);return isNaN(d)?String(t):d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+(String(t).length>10?' '+d.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'}):'')}
+const __fd=new Map(),__fdD=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric'}),__fdT=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'});function fmtD(t){if(!t)return'';const c=__fd.get(t);if(c!==undefined)return c;if(__fd.size>5000)__fd.clear();const r=fmtD0(t);__fd.set(t,r);return r}
+function fmtD0(t){const d=new Date(String(t).length===10?t+'T12:00':t);return isNaN(d)?String(t):__fdD.format(d)+(String(t).length>10?' '+__fdT.format(d):'')}
 function match(i,q){if(!q)return true;const h=[i.id,i.loc,i.level,i.type,i.cat,i.mfgr,i.name,i.size,i.remarks,i.unit].join(' ').toLowerCase();return q.toLowerCase().split(/\s+/).every(w=>h.includes(w))}
 
 /* tabs */
 $$('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-function showTab(t){setTimeout(()=>{try{beat()}catch(e){}},300);$$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['yard','inv','jobs','log','sheet'].forEach(x=>$('#tab-'+x).hidden=x!==t);LS.set('tab',t);render()}
+let __stR=0,__stB=0;function showTab(t){clearTimeout(__stB);__stB=setTimeout(()=>{try{beat()}catch(e){}},1500);$$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['yard','inv','jobs','log','sheet'].forEach(x=>$('#tab-'+x).hidden=x!==t);LS.set('tab',t);if(__stR)cancelAnimationFrame(__stR);__stR=requestAnimationFrame(()=>{__stR=requestAnimationFrame(()=>{__stR=0;renderIfDirty(t)})})}
 
 /* yard kiosk */
 const IC={
@@ -1222,15 +1223,16 @@ function renderInv(){
   $$('#icats .chip').forEach(b=>b.onclick=()=>{invSub='';invCat=b.dataset.c;invMfgr='';LS.set('invCat',invCat);LS.set('invMfgr','');renderInv()});
   $$('#imfgr .chip').forEach(b=>b.onclick=()=>{invMfgr=b.dataset.m;LS.set('invMfgr',invMfgr);renderInv()});
   $$('#igroup .chip').forEach(b=>b.onclick=()=>{invGroup=b.dataset.gb;LS.set('invGroup',invGroup);renderInv()});
-  let l=filtered();
+  let l=filtered();{const sg=[invSide,invCat,invSub,invMfgr,invGroup,$('#isearch').value,$('#fzone').value,$('#ftype').value,$('#fcond').value,$('#fflag').value].join('|');if(sg!==window.__invSg){window.__invSg=sg;window.__invN=80}}
   const gk=i=>invGroup==='sub'?(sub(i)||GROUPS.find(g=>g[0]===grp(i))?.[1]||'Other'):invGroup==='cat'?(GROUPS.find(g=>g[0]===grp(i))?.[1]||'Other'):invGroup==='mfgr'?(i.mfgr||'No brand'):invGroup==='loc'?locOf(i):'';
   if(invGroup){const order=invGroup==='cat'?GROUPS.map(g=>g[1]):null;l=[...l].sort((a,b)=>{const x=gk(a),y=gk(b);if(x===y)return 0;return order?order.indexOf(x)-order.indexOf(y):String(x).localeCompare(String(y),undefined,{numeric:true,sensitivity:'base'})})}
   const counts={};if(invGroup)l.forEach(i=>{const k=gk(i).toUpperCase();counts[k]=(counts[k]||0)+1});
   let lastG=null;
   const rowHtml=i=>`<tr data-id="${esc(i.id)}"><td class="mono">${esc(i.loc)}</td><td>${esc(i.level)}</td><td>${esc(i.type)}</td><td>${esc(i.mfgr)}</td><td>${thumb(i)}<b>${esc(i.name)}</b>${flags(i)}</td><td>${esc(i.size)}</td>
     <td class="n">${esc(qtyTxt(i))}</td><td class="n">${i.out||''}</td><td>${esc(i.unit)}</td><td>${esc(i.cond)}</td><td class="muted">${fmtD(i.updatedAt||i.date)}</td></tr>`;
-  $('#itbody').innerHTML=l.length?l.map(i=>{let h='';if(invGroup){const g=gk(i);if(lastG===null||g.toUpperCase()!==lastG.toUpperCase()){lastG=g;h=`<tr class="grp"><td colspan="11">${esc(g)}<small>${counts[g.toUpperCase()]} items</small></td></tr>`}}return h+rowHtml(i)}).join('')
+  window.__invN=window.__invN||80;const __lAll=l.length;if(l.length>window.__invN+10)l=l.slice(0,window.__invN);$('#itbody').innerHTML=l.length?l.map(i=>{let h='';if(invGroup){const g=gk(i);if(lastG===null||g.toUpperCase()!==lastG.toUpperCase()){lastG=g;h=`<tr class="grp"><td colspan="11">${esc(g)}<small>${counts[g.toUpperCase()]} items</small></td></tr>`}}return h+rowHtml(i)}).join('')
     :`<tr><td colspan="11" class="empty">${items.length?'Nothing matches. Not in the yard — OK to order.':'The yard list is empty.'}</td></tr>`;
+  if(__lAll>l.length){$('#itbody').insertAdjacentHTML('beforeend',`<tr class="showmore" id="invMore"><td colspan="20" style="text-align:center;padding:10px"><button type="button" class="btn">Show ${Math.min(80,__lAll-l.length)} more · ${__lAll-l.length} hidden</button></td></tr>`);$('#invMore button').onclick=()=>{window.__invN+=80;renderInv()}}
   $$('#itbody tr[data-id]').forEach(r=>r.onclick=()=>openItem(r.dataset.id));
 }
 function uniq(a){return [...new Set(a.filter(x=>x&&String(x).trim()&&x!=='-'))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}))}
@@ -1543,7 +1545,10 @@ async function saveCsv(name,rows){const csv=rows.map(r=>r.map(v=>{v=String(v??''
 $('#exportCsv').onclick=()=>saveCsv(`AME_Yard_Inventory_${new Date().toISOString().slice(0,10)}.csv`,[['ID','Location','Level','Type','Category','MFGR','Item','Size','In Yard','Out','Unit','Condition','Min','Remarks','Verify','Updated','By'],...filtered().map(i=>[i.id,i.loc,i.level,i.type,i.cat,i.mfgr,i.name,i.size,qtyTxt(i),i.out||0,i.unit,i.cond,i.min,i.remarks,i.issue,i.updatedAt||i.date,i.updatedBy])]);
 $('#exportLog').onclick=()=>saveCsv(`AME_Yard_Activity_${new Date().toISOString().slice(0,10)}.csv`,[['When','Action','Item','Size','Location','Qty','Unit','Yard before','Yard after','Job','By','Note'],...logs.map(g=>[g.ts,g.action,g.name,g.size,g.loc,g.n,g.unit,g.before,g.after,g.job,g.by,g.note])]);
 
-function render(){renderYard();renderCartBar();if(!$('#tab-inv').hidden)renderInv();if(!$('#tab-jobs').hidden)renderJobs();if(!$('#tab-log').hidden)renderLog();if(!$('#tab-sheet').hidden){renderSheet();renderUndo()}}
+const __dirty={yard:1,inv:1,jobs:1,log:1,sheet:1};
+function render(){const v=x=>!$('#tab-'+x).hidden;for(const k in __dirty)__dirty[k]=1;renderCartBar();
+  if(v('yard')){renderYard();__dirty.yard=0}if(v('inv')){renderInv();__dirty.inv=0}if(v('jobs')){renderJobs();__dirty.jobs=0}if(v('log')){renderLog();__dirty.log=0}if(v('sheet')){renderSheet();renderUndo();__dirty.sheet=0}}
+function renderIfDirty(t){renderCartBar();if(!__dirty[t])return;__dirty[t]=0;({yard:renderYard,inv:renderInv,jobs:renderJobs,log:renderLog,sheet:()=>{renderSheet();renderUndo()}})[t]?.()}
 
 renderPeople();render();
 let ownerPinH='';async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ame-yard:'+t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -1663,7 +1668,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
 <script src="shell.js?v=352"></script>
-<script src="polish.js?v=354"></script>
+<script src="polish.js?v=360"></script>
 <script src="mpl.js?v=346"></script>
 <script src="eqp.js?v=313"></script>
 <script src="field.js?v=350"></script>
