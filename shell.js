@@ -27,7 +27,7 @@ document.querySelector('main').insertAdjacentHTML('afterbegin','<section id="tab
 function setMod(id){if(AME.cur&&AME.cur!==id)AME.markSeen(AME.cur);AME.markSeen(id);AME.cur=id;const m=AME.mod(id);const sub=document.querySelector('#brand small');if(sub)sub.textContent=m?m.name:'Apps';
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('offmod',!m||!(m.tabs||[]).includes(b.dataset.tab)));
   document.body.dataset.mod=id;try{sessionStorage.setItem('ameMod',id)}catch(e){}}
-function renderHome(){const el=document.getElementById('tab-home');if(!el)return;const mods=AME.modules.filter(m=>AME.allowed(m));let soon=AME.modules.filter(m=>m.beta&&!AME.betaOk(m));if(!(typeof isAdmin!=='undefined'&&isAdmin))soon=[];if(mods.length===1&&!soon.length&&!(typeof isAdmin!=='undefined'&&isAdmin)&&!(typeof viewAs!=='undefined'&&viewAs)){setTimeout(()=>AME.open(mods[0].id),0);return}
+function renderHome(){const el=document.getElementById('tab-home');if(!el)return;const mods=AME.modules.filter(m=>AME.allowed(m));let soon=AME.modules.filter(m=>m.beta&&!AME.betaOk(m));
   el.innerHTML=`<div class="homehead"><h2>Hi ${esc(curUser||'')}</h2><p class="muted">What are you working on?</p></div>
   <div class="apps">${mods.length?'':'<p class="muted">No apps are turned on for you yet. Ask Kyle to give you access.</p>'}${mods.map(m=>`<button class="apptile" data-app="${m.id}"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small>${m.beta?'<em class="betatag">Early access</em>':''}${(n=>n?`<span class="appbadge">${n>99?'99+':n}</span>`:'')(AME.count(m))}</button>`).join('')}${soon.map(m=>`<div class="apptile soon" aria-disabled="true"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small><em class="betatag">Upcoming — in preparation</em></div>`).join('')}
 </div>`;
@@ -41,7 +41,7 @@ const _st=window.showTab;window.showTab=function(t){
   if(owner&&owner.section){_st('yard');document.getElementById('tab-yard').hidden=true;document.getElementById(owner.section).hidden=false;document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));setMod(owner.id);if(owner.onShow)owner.onShow();scrollTo({top:0});return}
   if(owner&&owner.id!==AME.cur)setMod(owner.id);_st(t)};
 const _su=window.setUser;window.setUser=function(n){const ch=n!==curUser;_su(n);if(ch&&n)setTimeout(()=>AME.home(),30)};
-let started=false;const _ar=window.applyRole;window.applyRole=function(){_ar();if(curUser&&!started){started=true;setTimeout(()=>{const al=AME.modules.filter(m=>AME.allowed(m));if(al.length===1&&!(typeof isAdmin!=='undefined'&&isAdmin)){AME.open(al[0].id);return}if(start==='home'||!AME.mod(start)||!(typeof isEditor==='function'&&isEditor(curUser)))AME.home();else AME.open(start)},0);return}if(AME.cur)setMod(AME.cur);if(AME.cur==='home')renderHome()};
+let started=false;const _ar=window.applyRole;window.applyRole=function(){_ar();if(curUser&&!started){started=true;setTimeout(()=>{if(start==='home'||!AME.mod(start)||!(typeof isEditor==='function'&&isEditor(curUser)))AME.home();else AME.open(start)},0);return}if(AME.cur)setMod(AME.cur);if(AME.cur==='home')renderHome()};
 document.getElementById('brand').onclick=()=>{try{closeDlg()}catch(e){}if(curUser)AME.home();else showTab('yard')};
 let start='home';try{start=sessionStorage.getItem('ameMod')||'home'}catch(e){}
 })();

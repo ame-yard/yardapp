@@ -70,7 +70,7 @@ const ES={"Who's using the app?":"¿Quién está usando la app?","Tap your name.
 "What are you doing?":"¿Qué va a hacer?","Take Out":"Sacar","Take tools & materials to a job":"Llevar herramientas y materiales a una obra","Return":"Devolver","Bring things back to the yard":"Regresar cosas al yarda","Inventory check & update":"Revisar inventario","Count, fix quantities, add photos":"Contar, corregir cantidades, agregar fotos","Just look around":"Solo mirar",
 "To a job":"A una obra","Back to yard":"De regreso al yarda","Repair":"Reparar","Requests & in repair":"Pedidos y en reparación","Audit":"Inventario","Count & photos":"Contar y fotos","Removed":"Retirado","Yard Map":"Mapa","Categories":"Categorías","Scan code":"Escanear","Tap a rack or search.":"Toque un estante o busque.","Search:":"Buscar:","Out on Jobs":"En obras","Ladders":"Escaleras","Power Tools":"Herramientas eléctricas","Hand Tools":"Herramientas de mano","Equipment":"Equipo","Safety":"Seguridad",
 "Review & Confirm":"Revisar y confirmar","Clear":"Borrar","Type your name (e.g. John D.)":"Escriba su nombre (ej. Juan P.)","PO #, damage, who has it...":"PO #, daño, quién lo tiene...","Tap an empty day to reserve that truck. Red outline = double-booked.":"Toque un día vacío para reservar ese camión.","Cart is empty.":"El carrito está vacío.","Which job?":"¿Para qué obra?","Other / not listed":"Otra / no está","type below":"escriba abajo","Repair shop":"Taller","Taking it to be fixed":"Se lleva a reparar","Note (optional)":"Nota (opcional)","Keep shopping":"Seguir","Confirm Take Out":"Confirmar salida","Confirm Return":"Confirmar devolución","Which one are you taking?":"¿Cuál se lleva?","Which one is coming back?":"¿Cuál regresa?","Tap the number on the ladder / tool you are taking.":"Toque el número de la escalera / herramienta que se lleva.","Cancel":"Cancelar","Select all":"Todos","Pick a number":"Elija un número","In yard":"En yarda","Out":"Fuera","Units":"Unidades","Remove":"Quitar","Show all":"Ver todo","+ Add item here":"+ Agregar artículo","Select to remove":"Seleccionar para quitar","Map":"Mapa",
-"Hi":"Hola","What are you working on?":"¿En qué va a trabajar?","Yard Inventory":"Inventario del yarda","Take out · return · repair · audit":"Sacar · devolver · reparar · inventario","Sync":"Sincronizar","Save":"Guardar","Saved":"Guardado","Switch":"Cambiar","Signed out after 10 minutes idle":"Sesión cerrada por inactividad"};
+"Hi":"Hola","What are you working on?":"¿En qué va a trabajar?","Yard Inventory":"Inventario del yarda","Inventory":"Inventario","Take out · return · repair · audit":"Sacar · devolver · reparar · inventario","Sync":"Sincronizar","Save":"Guardar","Saved":"Guardado","Switch":"Cambiar","Signed out after 10 minutes idle":"Sesión cerrada por inactividad"};
 let lang='';try{lang=localStorage.getItem('ameLang')||''}catch(e){}
 const map=new Map();
 function tr(root){if(lang!=='es')return;const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const list=[];let n;while(n=w.nextNode())list.push(n);
@@ -82,4 +82,19 @@ function btn(){let b=document.getElementById('langBtn');if(b)return b;const bell
   b.onclick=()=>{lang=lang==='es'?'':'es';try{localStorage.setItem('ameLang',lang)}catch(e){}if(lang==='es')tr(document.body);else untr();paint()};return b}
 function paint(){const b=btn();if(!b)return;b.textContent=lang==='es'?'EN':'ES';b.title=lang==='es'?'Switch to English':'Cambiar a español';b.hidden=!(typeof curUser!=='undefined'&&curUser)}
 setTimeout(()=>{paint();if(lang==='es')tr(document.body)},800);const _ar=window.applyRole;window.applyRole=function(){_ar&&_ar.apply(this,arguments);paint()};
+})();
+/* Crew (read-only) navigation: Take Out / Return / Inventory always visible in the Yard app */
+(function(){
+function cur(){const inv=!document.getElementById('tab-inv').hidden;if(inv)return 'INV';const a=document.querySelector('#actions .act[aria-pressed="true"]');return a?a.dataset.act:'OUT'}
+function draw(){const ro=document.body.classList.contains('ro');const inYard=document.body.dataset.mod==='yard';let n=document.getElementById('crewNav');
+  if(!ro||!inYard||!(typeof curUser!=='undefined'&&curUser)){if(n)n.hidden=true;return}
+  if(!n){n=document.createElement('div');n.id='crewNav';n.className='crewnav';const h=document.querySelector('header .wrap')||document.querySelector('header');h.appendChild(n);
+    n.addEventListener('click',e=>{const b=e.target.closest('[data-cn]');if(!b)return;const k=b.dataset.cn;
+      if(k==='INV'){if(typeof can==='function'&&can('AUDIT')){showTab('yard');document.querySelector('#actions .act[data-act="AUDIT"]')?.click()}else showTab('inv')}
+      else{showTab('yard');setTimeout(()=>document.querySelector('#actions .act[data-act="'+k+'"]')?.click(),0)}scrollTo({top:0});setTimeout(draw,50)})}
+  n.hidden=false;const c=cur();const L=[['OUT','Take Out','#e8594a'],['RETURN','Return','#3fb950'],['INV','Inventory','#a98bff']];
+  n.innerHTML=L.map(([k,l,col])=>`<button type="button" data-cn="${k}" style="--c:${col}" aria-pressed="${c===k||(k==='INV'&&c==='AUDIT')}">${l}</button>`).join('')}
+setInterval(draw,800);document.addEventListener('click',()=>setTimeout(draw,60),true);
+document.head.insertAdjacentHTML('beforeend',`<style>.crewnav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;order:11;padding:8px 0 2px}.crewnav[hidden]{display:none}.crewnav button{min-height:46px;border-radius:10px;border:2px solid var(--c);background:transparent;color:var(--c);font:800 16px var(--display,inherit);letter-spacing:.02em;text-transform:uppercase;cursor:pointer}.crewnav button[aria-pressed=true]{background:var(--c);color:#fff}
+body.ro #tab-yard #actions{display:none}</style>`);
 })();
