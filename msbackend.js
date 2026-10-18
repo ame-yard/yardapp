@@ -57,7 +57,8 @@ async function readColl(c){
   const r=await gfetch(pathUrl('data/'+c+'.json')+':/content');
   if(r.status===404){store[c]={etag:null,docs:{}};return store[c]}
   if(!r.ok)throw new Error('Read '+c+' failed ('+r.status+')');
-  store[c]={etag:null,docs:await r.json()};
+  const t=await r.text();store[c]={etag:null,docs:JSON.parse(t)};
+  try{if(t.length<1500000)localStorage.setItem('amec:'+c,t);else localStorage.removeItem('amec:'+c)}catch(e){}
   return store[c];
 }
 async function listEtags(){
@@ -78,7 +79,9 @@ function emit(c){
 let loading={};
 async function ensure(c){
   if(store[c])return store[c];
-  if(!loading[c])loading[c]=readColl(c).then(s=>{emit(c);return s});
+  if(!loading[c]){let ch=null;try{ch=localStorage.getItem('amec:'+c)}catch(e){}
+    if(ch){try{store[c]={etag:null,docs:JSON.parse(ch)};const fresh=readColl(c).then(s=>{if(JSON.stringify(s.docs)!==ch)emit(c);return s}).catch(e=>console.warn('refresh',c,e));loading[c]=Promise.resolve(store[c]);return store[c]}catch(e){}}
+    loading[c]=readColl(c).then(s=>{emit(c);return s})}
   return loading[c];
 }
 /* write with optimistic concurrency (If-Match on file eTag) */
@@ -218,7 +221,10 @@ const user={canEdit:()=>true,name:()=>account?.name||'',email:()=>account?.usern
 
 readyP=(async()=>{
   await init();
-  try{await seedIfEmpty()}catch(e){gate(e.message||String(e),false);throw e}
+  let warm=false;try{warm=!!localStorage.getItem('ameWarm')}catch(e){}
+  const sd=seedIfEmpty().then(()=>{try{localStorage.setItem('ameWarm','1')}catch(e){}});
+  if(warm)sd.catch(e=>{console.warn('seed',e);if(e&&(e.code===401||e.code===403))gate(e.message,false)});
+  else try{await sd}catch(e){gate(e.message||String(e),false);throw e}
   setInterval(poll,CFG.pollMs);
   setTimeout(()=>{let d='';try{d=localStorage.getItem('ameBkDay')}catch(e){}if(d!==new Date().toLocaleDateString('en-CA'))bkRun(false).catch(e=>console.warn('backup',e))},20000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
@@ -227,5 +233,5 @@ window.claude={use:async name=>{
   await readyP;
   return {db,assets,downloads,user,files}[name]||null;
 }};
-window.msSignOut=()=>msal?.logoutRedirect({account});
+window.msSignOut=()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('amec:')||k==='ameWarm').forEach(k=>localStorage.removeItem(k))}catch(e){}msal?.logoutRedirect({account})};
 })();
