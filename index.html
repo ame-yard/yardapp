@@ -1,8 +1,10 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"><style>button[data-ck]{min-width:34px;min-height:34px}#dlgRoot .scrim>.dlg{margin-top:auto;margin-bottom:auto}@media(min-width:600px){#lbody td:nth-child(1),#lbody td:nth-child(2),#lbody td:nth-child(4),#lbody td:nth-child(5),#lbody td:nth-child(6),#lbody td:nth-child(8){white-space:nowrap}#lbody td:nth-child(3) .btn.small{margin-left:6px;vertical-align:middle}}input[type=date],input[type=time],input[type=datetime-local]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;width:100%;box-sizing:border-box;display:block}input[type=date]::-webkit-date-and-time-value{text-align:left}
+html.boot section[id^=tab-]{visibility:hidden}
 </style></head><body>
 <title>AME</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>document.documentElement.classList.add('boot');setTimeout(()=>document.documentElement.classList.remove('boot'),4000)</script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
 <script src="msbackend.js?v=346"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -652,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.73',APP_DATE='2026-10-15';
+const APP_VERSION='3.74',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1669,7 +1671,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=362"></script>
+<script src="shell.js?v=374"></script>
 <script src="polish.js?v=370"></script>
 <script src="mpl.js?v=346"></script>
 <script src="eqp.js?v=366"></script>

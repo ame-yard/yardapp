@@ -10,13 +10,13 @@ const AME=window.AME={modules:[],cur:'',
   base(m){return m.allow?m.allow():(!m.perm||can(m.perm))},
   betaOk(m){if(!m.beta)return true;if(typeof isOwner==='function'&&isOwner(curUser))return true;try{return ((perms.beta||{})[m.id]||[]).includes(curUser)}catch(e){return false}},
   allowed(m){return this.base(m)&&this.betaOk(m)},
-  home(){setMod('home');showTab('home')},
+  home(){setMod('home');showTab('home');document.documentElement.classList.remove('boot')},
   seenKey(id){return 'ameSeen:'+(typeof curUser!=='undefined'?curUser:'')+':'+id},
   seen(id){try{let v=localStorage.getItem(this.seenKey(id));if(!v){v=new Date().toISOString();localStorage.setItem(this.seenKey(id),v)}return v}catch(e){return new Date().toISOString()}},
   markSeen(id){if(!id||id==='home'||(typeof viewAs!=='undefined'&&viewAs))return;try{localStorage.setItem(this.seenKey(id),new Date().toISOString())}catch(e){}},
   count(m){try{return m.badge?Math.max(0,m.badge(this.seen(m.id))|0):0}catch(e){return 0}},
   badges(){clearTimeout(this._bt);this._bt=setTimeout(()=>{if(this.cur==='home')renderHome()},300)},
-  open(id){const m=this.mod(id);if(!m||!this.allowed(m))return;setMod(id);m.open()}};
+  open(id){setTimeout(()=>document.documentElement.classList.remove('boot'),0);const m=this.mod(id);if(!m||!this.allowed(m))return;setMod(id);m.open()}};
 AME.register({id:'yard',name:'Yard Inventory',perm:'YARD',desc:'Take out · return · repair · audit',icon:SVG.yard,tabs:['yard','inv','jobs','log','sheet'],open:()=>{showTab('yard');yardStart()}});
 function yardStart(){const opts=[['OUT','Take Out','Take tools &amp; materials to a job','#e8594a'],['RETURN','Return','Bring things back to the yard','#3fb950'],['AUDIT','Inventory check &amp; update','Count, fix quantities, add photos','#a98bff']].filter(o=>{try{return o[0]==='AUDIT'||can(o[0])}catch(e){return true}});
   if(opts.length<2)return;try{if(isAdmin||isEditor(curUser))return}catch(e){}const r=document.getElementById('dlgRoot');
