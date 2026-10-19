@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.81',APP_DATE='2026-10-15';
+const APP_VERSION='3.83',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -904,7 +904,7 @@ function renderYard(){if(!__locMig&&isAdmin)setTimeout(locMig,1200);
   $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(e.target.closest('.cinfo')){e.stopPropagation();openItem(r.dataset.id);return}if(r._lp){r._lp=0;return}if(selMode){const k=r.dataset.id;picked.has(k)?picked.delete(k):picked.add(k);r.classList.toggle('picked',picked.has(k));rmBar();return}if(editMode){openItem(r.dataset.id);return}
     if(act==='REPAIR'&&repMode){const k=r.dataset.id;repPick.has(k)?repPick.delete(k):repPick.add(k);r.classList.toggle('picked',repPick.has(k));repBar();return}
     if(act==='REPAIR'){const d=e.target.closest('[data-dec]');const it=byId(r.dataset.id);openDispose(r.dataset.id,d?d.dataset.dec:(it&&it.repair>0?'done':'repair'));return}
-    if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){pickPhoto(cm.dataset.cam);return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}{const inC=cart.find(x=>x.id===r.dataset.id);if(inC&&act!=='ADJUST'){cart=cart.filter(x=>x!==inC);renderCartBar();renderYard();const it=byId(r.dataset.id);toast('Removed from cart'+(it?' · '+it.name:''));return}}addCart(r.dataset.id)});
+    if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){pickPhoto(cm.dataset.cam);return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}{const inC=cart.find(x=>x.id===r.dataset.id);const _it=byId(r.dataset.id);const _pk=act==='RETURN'||act==='RECEIVE'||(act==='OUT'&&_it&&Array.isArray(_it.serials)&&_it.serials.length);if(inC&&act!=='ADJUST'&&!_pk){cart=cart.filter(x=>x!==inC);renderCartBar();renderYard();const it=byId(r.dataset.id);toast('Removed from cart'+(it?' · '+it.name:''));return}}addCart(r.dataset.id)});
 }
 function renderDisposeLog(q){setTimeout(()=>$$('#ylist tr[data-hn]').forEach(r=>{r.onclick=()=>isAdmin?editLog(r.dataset.lid):openHistory(r.dataset.hid,r.dataset.hn)}),0);const L=logs.filter(g=>(g.action==='DISPOSE'||g.action==='LOST')&&(!q||[g.name,g.by,g.note,g.job,g.loc].join(' ').toLowerCase().includes(q.toLowerCase())));
   const n30=L.filter(g=>Date.now()-new Date(g.ts)<30*864e5).reduce((a,g)=>a+(g.n||0),0);
@@ -1090,10 +1090,10 @@ function openUnitPicker(id){const it=byId(id);if(!it)return;const c=cart.find(c=
     <div class="muted" style="font-size:13px">${esc(it.name)} · ${esc(it.size||'')} · ${esc(it.loc)} · ${cand.length} ${act==='OUT'?'in yard':'out'}</div>
     ${unitChips(it,cand,sel,'data-pk')}
     <div class="muted" style="font-size:12.5px;margin-top:8px">Tap the number on the ladder / tool you are taking.</div>
-    <div class="bar" style="align-items:stretch"><button class="btn" id="upC">Cancel</button>${cand.length>1?'<button class="btn" id="upAll">Select all</button>':''}<button class="go" id="upOk" style="width:auto;flex:1" ${sel.length?'':'disabled'}>${sel.length?`Add ${sel.length} to cart`:'Pick a number'}</button></div></div></div>`;
+    <div class="bar" style="align-items:stretch"><button class="btn" id="upC">Cancel</button>${cand.length>1?'<button class="btn" id="upAll">Select all</button>':''}<button class="go" id="upOk" style="width:auto;flex:1" ${sel.length||c?'':'disabled'}>${sel.length?(c?`Update cart · ${sel.length}`:`Add ${sel.length} to cart`):c?'Remove from cart':'Pick a number'}</button></div></div></div>`;
     $$('#dlgRoot [data-pk]').forEach(b=>b.onclick=()=>{const sn=b.dataset.pk;sel=sel.includes(sn)?sel.filter(x=>x!==sn):[...sel,sn];draw()});
     $('#upC').onclick=()=>{closeDlg();render()};if($('#upAll'))$('#upAll').onclick=()=>{sel=sel.length===cand.length?[]:[...cand];draw()};
-    $('#upOk').onclick=()=>{const e=cart.find(x=>x.id===id);if(e){e.units=sel;e.n=sel.length}else cart.push({id,n:sel.length,units:sel});closeDlg();renderCartBar();renderYard();toast(`In cart (not checked out yet): ${it.name} ${sel.join(', ')}`)}};
+    $('#upOk').onclick=()=>{const e=cart.find(x=>x.id===id);if(!sel.length){if(e)cart=cart.filter(x=>x!==e);closeDlg();renderCartBar();renderYard();toast('Removed from cart · '+it.name);return}if(e){e.units=sel;e.n=sel.length}else cart.push({id,n:sel.length,units:sel});closeDlg();renderCartBar();renderYard();toast(`In cart (not checked out yet): ${it.name} ${sel.join(', ')}`)}};
   if(!cand.length){toast(act==='OUT'?'No units of this item are in the yard.':'None of these units are out.');return}draw()}
 function addCart(id){const it=byId(id);if(!it)return;const c=cart.find(c=>c.id===id);
   if(act==='OUT'){if(Array.isArray(it.serials)&&it.serials.length){openUnitPicker(id);return}}
@@ -1181,7 +1181,8 @@ function drawCartLines(){
   validate();
 }
 function validate(){const s=$('#submit');if(!s)return;const needJob=act==='OUT';
-  s.disabled=!(cart.length&&selWho&&(act!=='DISPOSE'||selReason)&&!!curUser&&(!needJob||selJob)&&cart.every(c=>c.n>0||act==='ADJUST'))}
+  s.disabled=!(cart.length&&selWho&&(act!=='DISPOSE'||selReason)&&!!curUser&&(!needJob||selJob)&&cart.every(c=>c.n>0||act==='ADJUST')&&!unitMissing().length);const um=unitMissing();let w=document.getElementById('unitWarn');if(um.length){if(!w){w=document.createElement('div');w.id='unitWarn';w.className='banner frwarn';w.style.margin='8px 0';s.closest('.bar').before(w)}w.innerHTML='<b>Pick the unit numbers</b> for: '+um.map(esc).join(', ')}else if(w)w.remove()}
+function unitMissing(){if(act!=='OUT')return [];return cart.filter(c=>{const i=byId(c.id);return i&&sers(i).length&&!(c.units&&c.units.length===c.n&&c.n>0)}).map(c=>byId(c.id).name)}
 function retJob(it,c){if(c.units&&c.units.length){const j=ust(it,c.units[0]).job;if(j)return j}
   const m={};for(const g of logs){if(g.itemId!==it.id||!g.job)continue;if(g.action==='OUT')m[g.job]=(m[g.job]||0)+g.n;else if(g.action==='RETURN'||g.action==='LOST')m[g.job]=(m[g.job]||0)-g.n}
   const rj=typeof yGroup==='string'&&yGroup.startsWith('rj:')&&yGroup!=='rj:all'?yGroup.slice(3):'';if(rj&&m[rj]>0)return rj;const best=Object.entries(m).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];return best?best[0]:(it.lastJob||'')}
