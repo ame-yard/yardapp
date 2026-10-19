@@ -16,10 +16,10 @@ function preview(r,fromCam){const it=r.it;const units=Array.isArray(it.serials)?
    <div class="scrow"><span class="scpic">${pic(it)}</span><div><h3 style="margin:0">${esc(it.name)}</h3><div class="muted">${esc([it.size,it.mfgr].filter(Boolean).join(' · '))}</div>
    <div class="scmeta"><b>${esc(it.loc||'')} ${esc(it.level||'')}</b> · ${esc(String(it.qty??''))} ${esc(it.unit||'')} in yard${unitMode?` · <b>Unit ${esc(r.unit)}</b>`:''}</div><div class="muted" style="font-size:12px">Tag ${esc(r.tag)}</div></div></div>
    ${unitMode?'':`<div class="scqty"><span>Quantity</span><div class="step"><button data-sq="-1">−</button><input id="scN" inputmode="numeric" value="${n}"><button data-sq="1">+</button></div><span class="muted">${esc(it.unit||'')}</span></div>`}
-   <div class="bar"><button class="btn" id="scX">Cancel</button>${fromCam?'<button class="btn" id="scNext">Add &amp; scan next</button>':''}<button class="go" id="scOk" style="width:auto">Add to ${esc(ACTNAME[act]||'cart')}</button></div></div></div>`;
+   <div class="bar"><button class="btn" id="scInfo">Details</button><button class="btn" id="scX">Cancel</button>${fromCam?'<button class="btn" id="scNext">Add &amp; scan next</button>':''}<button class="go" id="scOk" style="width:auto">Add to ${esc(ACTNAME[act]||'cart')}</button></div></div></div>`;
    document.querySelectorAll('[data-sq]').forEach(b=>b.onclick=()=>{n=Math.max(1,Math.min(max||9999,n+ +b.dataset.sq));draw()});
    const ni=document.getElementById('scN');if(ni)ni.onchange=()=>{n=Math.max(1,parseInt(ni.value)||1);if(act==='OUT'&&max&&n>max){n=max;toast('Only '+max+' in the yard')}draw()};
-   document.getElementById('scX').onclick=closeDlg;
+   document.getElementById('scX').onclick=closeDlg;document.getElementById('scInfo').onclick=()=>openItem(it.id);
    const add=()=>{if(act==='OUT'&&!unitMode&&!max){toast('None left in the yard.');return false}const c=cart.find(x=>x.id===it.id);
      if(unitMode){if(c){c.units=[...new Set([...(c.units||[]),r.unit])];c.n=c.units.length}else cart.push({id:it.id,n:1,units:[r.unit]})}
      else if(c){c.n=act==='OUT'&&max?Math.min(max,c.n+n):c.n+n}else cart.push({id:it.id,n});

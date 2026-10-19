@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.77',APP_DATE='2026-10-15';
+const APP_VERSION='3.78',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -879,7 +879,7 @@ function renderYard(){
   if(act==='AUDIT'){renderAudit(l);return}
   $('#ylist').innerHTML=l.slice(0,300).map(i=>{const c=cart.find(c=>c.id===i.id);const low=isLow(i);
     const oos=act==='OUT'&&(!(Number(i.qty)>0)||i.cond==='Bad');const svc=act==='OUT'&&!oos&&!!i.report;
-    return `<button class="card ${c?'in':''} ${oos?'oos':''}" data-id="${esc(i.id)}" ${oos?'aria-disabled="true"':''}>${oos?`<span class="oosband">${i.cond==='Bad'&&Number(i.qty)>0?'Marked Bad — do not use':'Out of stock'}</span>`:svc?'<span class="oosband svc">Needs service</span>':''}${c?`<span class="badge">${c.n}</span><span class="minus" data-minus="${esc(i.id)}" aria-label="Remove one">−</span>`:''}
+    return `<button class="card ${c?'in':''} ${oos?'oos':''}" data-id="${esc(i.id)}" ${oos?'aria-disabled="true"':''}><span class="cinfo" role="button" aria-label="Item details" data-info="${esc(i.id)}">i</span>${oos?`<span class="oosband">${i.cond==='Bad'&&Number(i.qty)>0?'Marked Bad — do not use':'Out of stock'}</span>`:svc?'<span class="oosband svc">Needs service</span>':''}${c?`<span class="badge">${c.n}</span><span class="minus" data-minus="${esc(i.id)}" aria-label="Remove one">−</span>`:''}
     <span class="pwrap"><span class="pic">${pic(i)}</span>${i.photo?'':`<span class="cam" data-cam="${esc(i.id)}" aria-label="Take photo" title="Take photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg></span>`}</span><span class="cbody"><span class="cname">${esc(i.name)}</span>
     <span class="csub">${esc([i.size&&i.size!=='-'?i.size:'',i.mfgr].filter(Boolean).join(' · ')||' ')}</span>
     <span class="cfoot"><span class="loc">${esc(i.loc)} ${esc(i.level||'')}</span><span class="cqty ${low?'low':''}">${esc(qtyTxt(i))} ${esc(i.unit)}</span></span>${i.out?outTag(i):''}
@@ -896,7 +896,7 @@ function renderYard(){
   if($('#newCard'))$('#newCard').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
   $$('#ylist .card:not(.newcard)').forEach(r=>{let t;r.oncontextmenu=e=>{e.preventDefault();openItem(r.dataset.id)};r.ontouchstart=()=>{t=setTimeout(()=>{r._lp=1;openItem(r.dataset.id)},650)};r.ontouchend=r.ontouchmove=()=>clearTimeout(t)});
   $$('#ylist .card:not(.newcard)').forEach(r=>{if(selMode)r.classList.toggle('picked',picked.has(r.dataset.id))});
-  $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(r._lp){r._lp=0;return}if(selMode){const k=r.dataset.id;picked.has(k)?picked.delete(k):picked.add(k);r.classList.toggle('picked',picked.has(k));rmBar();return}if(editMode){openItem(r.dataset.id);return}
+  $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(e.target.closest('.cinfo')){e.stopPropagation();openItem(r.dataset.id);return}if(r._lp){r._lp=0;return}if(selMode){const k=r.dataset.id;picked.has(k)?picked.delete(k):picked.add(k);r.classList.toggle('picked',picked.has(k));rmBar();return}if(editMode){openItem(r.dataset.id);return}
     if(act==='REPAIR'&&repMode){const k=r.dataset.id;repPick.has(k)?repPick.delete(k):repPick.add(k);r.classList.toggle('picked',repPick.has(k));repBar();return}
     if(act==='REPAIR'){const d=e.target.closest('[data-dec]');const it=byId(r.dataset.id);openDispose(r.dataset.id,d?d.dataset.dec:(it&&it.repair>0?'done':'repair'));return}
     if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){pickPhoto(cm.dataset.cam);return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}addCart(r.dataset.id)});
@@ -1658,7 +1658,10 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
 <div id="rmBar" hidden><span id="rmCount"></span><button class="btn" id="rmAll">Select all</button><button class="btn dng" id="rmGo">Remove</button></div>
 <style>#rmBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;background:#3a332e;border:1px solid #f47b20;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);color:#f3ede6;font-weight:600}
 #rmBar[hidden]{display:none!important}#ylist.picking .card{cursor:pointer}#ylist.picking .card.oos{opacity:.85;cursor:pointer}#ylist .card.picked{outline:3px solid #e2513a;outline-offset:-3px;position:relative}
-#ylist .card.picked::after{content:"\2713";position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#e2513a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:3}</style>
+#ylist .card.picked::after{content:"\2713";position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#e2513a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:3}.card{position:relative}.cinfo{position:absolute;bottom:8px;right:8px;pointer-events:auto;z-index:3;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font:italic 700 16px/30px Georgia,serif;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.logo{height:52px;padding:4px 10px;min-width:96px;justify-content:center}.logo img{height:44px;max-width:180px}#brand{min-height:52px;padding:0;cursor:pointer}#brand:active .logo{transform:scale(.96)}
+@media (max-width:600px){.logo{height:46px;padding:3px 8px;min-width:84px}.logo img{height:40px;max-width:130px}}
+</style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
 document.getElementById('rmAll').onclick=()=>{$$('#ylist .card:not(.newcard)').forEach(r=>picked.add(r.dataset.id));renderYard()};
@@ -1680,7 +1683,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="safety.js?v=370"></script>
 <script src="deliv.js?v=311"></script>
 <script src="admin.js?v=355"></script>
-<script src="scan.js?v=376"></script>
+<script src="scan.js?v=378"></script>
 <script>
 /* auto-detect a newer app version */
 (function(){let shown=false,later=0;
