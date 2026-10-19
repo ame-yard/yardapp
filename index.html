@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.90',APP_DATE='2026-10-15';
+const APP_VERSION='3.91',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1099,15 +1099,19 @@ function openDispose(id,mode){const i=byId(id);if(!i)return;const max=Math.max(1
 function openQtyPicker(id){const it=byId(id);if(!it)return;const c=cart.find(c=>c.id===id);let n=c?c.n:1;
   const outNow=act==='RETURN'?(it.out||0):0;const max=act==='OUT'?Math.max(0,Number(it.qty)||0):act==='RETURN'?Math.max(1,outNow):9999;
   if(act==='OUT'&&!max){toast('Out of stock.');return}
+  if(act==='RETURN'&&!c&&outNow<=1){cart.push({id,n:1});renderCartBar();renderYard();toast(`Return · ${it.name} — tap again to remove · review before confirming`);return}
+  const jobsOut=(()=>{const m={};for(const g of logs){if(g.itemId!==id||!g.job)continue;if(g.action==='OUT')m[g.job]=(m[g.job]||0)+g.n;else if(g.action==='RETURN'||g.action==='LOST')m[g.job]=(m[g.job]||0)-g.n}return Object.entries(m).filter(([,v])=>v>0)})();
   const draw=()=>{$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" role="dialog" aria-modal="true">
-    <h3>How many?</h3>
-    <div class="muted" style="font-size:13px">${esc(it.name)} · ${esc(it.size||'')} · ${esc(it.loc)} ${esc(it.level||'')} · ${act==='OUT'?`${max} ${esc(it.unit)} in yard`:act==='RETURN'?`${outNow} ${esc(it.unit)} out`:`${esc(qtyTxt(it))} ${esc(it.unit)} in yard now`}</div>
+    <div class="scrow"><span class="scpic">${pic(it)}</span><div><h3 style="margin:0">${esc(it.name)}</h3><div class="muted">${esc([it.size&&it.size!=='-'?it.size:'',it.mfgr].filter(Boolean).join(' · '))}</div>
+     <div class="scmeta"><b>${esc(it.loc||'')} ${esc(it.level||'')}</b> · ${esc(qtyTxt(it))} ${esc(it.unit||'')} in yard${it.out?` · <b>${it.out} out</b>`:''}</div>
+     ${act==='RETURN'&&jobsOut.length?`<div class="muted" style="font-size:12.5px">Out on ${jobsOut.map(([j,v])=>esc(jobLabel(j))+' ('+v+')').join(', ')}</div>`:''}<button type="button" class="btn small" id="qpInfo" style="margin-top:6px">Details</button></div></div>
+    <div class="qlabel" style="margin-top:10px">How many to ${esc((ACTNAME[act]||'').toLowerCase())}?</div>
     <div class="qtybig"><button data-d="-1" aria-label="Less">−</button><input id="qpN" inputmode="numeric" value="${n}"><span>${esc(it.unit)}</span><button data-d="1" aria-label="More">+</button></div>
     <div class="qquick">${[1,2,5,10].filter(x=>x<=max).map(x=>`<button data-q="${x}">${x}</button>`).join('')}${act!=='RECEIVE'&&max>1?`<button data-q="${max}">All ${max}</button>`:''}</div>
     <div class="bar" style="align-items:stretch"><button class="btn" id="qpC">Cancel</button>${c?'<button class="btn dng" id="qpR">Remove</button>':''}<button class="go" id="qpOk" style="width:auto;flex:1">${c?'Update':'Add'} ${n}</button></div></div></div>`;
     const set=v=>{n=Math.min(max,Math.max(1,v||1));draw()};
     $$('#dlgRoot .qtybig button').forEach(b=>b.onclick=()=>set(n+Number(b.dataset.d)));
-    $('#qpN').onchange=()=>set(parseInt($('#qpN').value));$('#qpN').onfocus=e=>e.target.select();
+    $('#qpInfo').onclick=()=>openItem(id);$('#qpN').onchange=()=>set(parseInt($('#qpN').value));$('#qpN').onfocus=e=>e.target.select();
     $$('#dlgRoot [data-q]').forEach(b=>b.onclick=()=>set(Number(b.dataset.q)));
     $('#qpC').onclick=()=>{closeDlg();render()};if($('#qpR'))$('#qpR').onclick=()=>{cart=cart.filter(x=>x.id!==id);closeDlg();render()};
     $('#qpOk').onclick=()=>{const e=cart.find(x=>x.id===id);if(e)e.n=n;else cart.push({id,n});closeDlg();renderCartBar();renderYard();toast(`${ACTNAME[act]}: ${n} ${it.unit} · ${it.name}`)}};
