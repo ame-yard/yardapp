@@ -21,10 +21,10 @@ function quick(r){if(!['OUT','RETURN'].includes(act))return false;const it=r.it;
   if(act==='OUT'&&!sn&&(Number(it.qty)||0)<=0){toast('None of '+it.name+' left in the yard.');return true}
   let c=cart.find(x=>x.id===it.id);
   if(sn){if(c&&(c.units||[]).includes(sn)){toast(it.name+' '+sn+' is already in the list');return true}if(c){c.units=[...(c.units||[]),sn];c.n=c.units.length}else cart.push({id:it.id,n:1,units:[sn]})}
-  else{if(c){if(act==='OUT'&&c.n>=(Number(it.qty)||0)){toast('Only '+it.qty+' '+(it.unit||'')+' in the yard.');return true}c.n++}else cart.push({id:it.id,n:1})}
+  else{const cap=act==='OUT'?(Number(it.qty)||0):act==='RETURN'?Math.max(1,Number(it.out)||0):9999;if(c){if(c.n>=cap){toast(act==='OUT'?'Only '+cap+' '+(it.unit||'')+' in the yard — already in the list.':'Only '+cap+' '+(it.unit||'')+' out on jobs — already in the list.');try{navigator.vibrate&&navigator.vibrate([60,60,60])}catch(e){}return true}c.n++}else cart.push({id:it.id,n:1})}
   c=cart.find(x=>x.id===it.id);renderCartBar();renderYard();
   toast(`${ACTNAME[act]} · ${it.name}${sn?' '+sn:''}${!sn&&c.n>1?' ×'+c.n:''} — ${cart.length} item${cart.length>1?'s':''} in list. Scan the next one, or tap Review.`);return true}
-function preview(r,fromCam){const it=r.it;const units=Array.isArray(it.serials)?it.serials:[];const unitMode=!!r.unit;let n=1;const max=act==='OUT'?Math.max(0,Number(it.qty)||0):9999;
+function preview(r,fromCam){const it=r.it;const units=Array.isArray(it.serials)?it.serials:[];const unitMode=!!r.unit;let n=1;const max=act==='OUT'?Math.max(0,Number(it.qty)||0):act==='RETURN'?Math.max(1,Number(it.out)||0):9999;
   const draw=()=>{document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg scdlg"><div class="scmode">${esc(ACTNAME[act]||act)}</div>
    <div class="scrow"><span class="scpic">${pic(it)}</span><div><h3 style="margin:0">${esc(it.name)}</h3><div class="muted">${esc([it.size,it.mfgr].filter(Boolean).join(' · '))}</div>
    <div class="scmeta"><b>${esc(it.loc||'')} ${esc(it.level||'')}</b> · ${esc(String(it.qty??''))} ${esc(it.unit||'')} in yard${unitMode?` · <b>Unit ${esc(r.unit)}</b>`:''}</div><div class="muted" style="font-size:12px">Tag ${esc(r.tag)}</div></div></div>
@@ -35,7 +35,7 @@ function preview(r,fromCam){const it=r.it;const units=Array.isArray(it.serials)?
    document.getElementById('scX').onclick=closeDlg;document.getElementById('scInfo').onclick=()=>openItem(it.id);
    const add=()=>{if(act==='OUT'&&!unitMode&&!max){toast('None left in the yard.');return false}const c=cart.find(x=>x.id===it.id);
      if(unitMode){if(c){c.units=[...new Set([...(c.units||[]),r.unit])];c.n=c.units.length}else cart.push({id:it.id,n:1,units:[r.unit]})}
-     else if(c){c.n=act==='OUT'&&max?Math.min(max,c.n+n):c.n+n}else cart.push({id:it.id,n});
+     else if(c){c.n=max?Math.min(max,c.n+n):c.n+n}else cart.push({id:it.id,n:Math.min(n,max||n)});
      closeDlg();renderCartBar();renderYard();toast('Added: '+it.name+(unitMode?' '+r.unit:' ×'+n));return true};
    document.getElementById('scOk').onclick=add;const nx=document.getElementById('scNext');if(nx)nx.onclick=()=>{if(add())openCam()}};draw()}
 function unknown(code,fromCam){if(!canReg()){document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>Unknown tag</h3><p>Tag <b>${esc(code)}</b> isn't registered to any item yet. Ask the office to register it.</p><div class="bar"><button class="go" id="scX" style="width:auto">OK</button></div></div></div>`;document.getElementById('scX').onclick=closeDlg;return}

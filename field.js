@@ -326,6 +326,7 @@ async function pdf(r,B){if(!r)return;try{await lib('https://cdnjs.cloudflare.com
   const jn=String(r.job).replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');const name=`${T[r.type].n.replace(/[^A-Za-z]+/g,'_')}_${jn}_${r.date}.pdf`;const blob=D.output('blob');
   try{const dl=await window.claude.use('downloads');await dl.save({filename:name,data:blob})}catch(e){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click()}
   try{const f=await window.claude.use('files');f.save('reports/field/'+jn+'/'+name,blob).catch(()=>{})}catch(e){}}
+AME.nav=AME.nav||{};AME.nav.field={get:()=>({view,job,type,rid}),set:s=>{view=s.view||'jobs';job=s.job||'';type=s.type||'';rid=s.rid||'';render()}};
 AME.register({id:'field',beta:true,name:'Field Reports',desc:'Timesheets · T&M · daily log · safety checklist · leak · accident',tabs:['field'],section:'tab-field',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v3H9z"/><path d="M7 5H5v16h14V5h-2"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>',
   open:()=>{if(!(view==='edit'&&dirty)){view=job?'job':'jobs'}showTab('field')},onShow:render});

@@ -46,21 +46,33 @@ document.getElementById('brand').onclick=()=>{try{closeDlg()}catch(e){}if(curUse
 let start='home';try{start=sessionStorage.getItem('ameMod')||'home'}catch(e){}
 })();
 
-/* ---- browser / mouse Back support: modules and dialogs are history entries ---- */
-(function(){const H=window.history;let silent=0,dlgOn=false;
-  const push=st=>{try{H.pushState(st,'')}catch(e){}};
-  try{H.replaceState({mod:'home',base:1},'')}catch(e){}
-  const _home=AME.home.bind(AME),_open=AME.open.bind(AME);
-  AME.home=function(nopush){_home();if(!nopush&&!(H.state&&H.state.mod==='home'&&!H.state.dlg))push({mod:'home'})};
-  AME.open=function(id,nopush){_open(id);if(!nopush&&AME.cur===id&&!(H.state&&H.state.mod===id&&!H.state.dlg))push({mod:id})};
+/* ---- Back support: every screen change (app, tab, rack, view) and every dialog is a history entry ---- */
+(function(){const H=window.history;let dlgOn=false,restoring=false,silent=0,depth=0;
+  const tabNow=()=>{const b=[...document.querySelectorAll('nav.tabs button[data-tab]')].find(b=>b.getAttribute('aria-selected')==='true');return b?b.dataset.tab:''};
+  const snap=()=>{const m=AME.cur||'home';let s=null;try{if(m==='yard')s={act:typeof act!=='undefined'?act:'',yLoc:typeof yLoc!=='undefined'?yLoc:'',yView:typeof yView!=='undefined'?yView:'',mZone:typeof mZone!=='undefined'?mZone:'',yGroup:typeof yGroup!=='undefined'?yGroup:'',elev:typeof elevOpen!=='undefined'?elevOpen:false};else if(AME.nav&&AME.nav[m])s=AME.nav[m].get()}catch(e){}
+    return {mod:m,tab:m==='yard'?tabNow():'',s}};
+  const key=o=>JSON.stringify([o.mod,o.tab,o.s]);
+  try{H.replaceState({nav:snap(),k:key(snap()),d:0},'')}catch(e){}
+  const btn=()=>{const b=document.getElementById('appBack');if(b)b.hidden=!(depth>0||dlgOn)};
+  const check=()=>{if(restoring||dlgOn)return;const n=snap();const k=key(n);if(H.state&&H.state.k===k)return;depth++;try{H.pushState({nav:n,k,d:depth},'')}catch(e){}btn()};
+  let ct=null;const soon=()=>{clearTimeout(ct);ct=setTimeout(check,80)};
+  ['click','change','keyup'].forEach(ev=>document.addEventListener(ev,soon,true));
+  const _home=AME.home.bind(AME),_open=AME.open.bind(AME);AME.home=function(){_home();soon()};AME.open=function(id){_open(id);soon()};
   const root=document.getElementById('dlgRoot');
   if(root)new MutationObserver(()=>{const open=!!root.querySelector('.dlg,.scrim');
-    if(open&&!dlgOn){dlgOn=true;push({mod:AME.cur,dlg:1})}
-    else if(!open&&dlgOn){dlgOn=false;if(H.state&&H.state.dlg){silent++;H.back()}}}).observe(root,{childList:true});
+    if(open&&!dlgOn){dlgOn=true;try{H.pushState({...(H.state||{}),dlg:1},'')}catch(e){}btn()}
+    else if(!open&&dlgOn){dlgOn=false;if(H.state&&H.state.dlg){silent++;H.back()}btn()}}).observe(root,{childList:true});
+  const restore=n=>{restoring=true;try{const m=n.mod||'home';if(m==='home'||!AME.mod(m))_home();else if(AME.cur!==m)_open(m);
+      if(m==='yard'&&n.s){const s=n.s;if(n.tab&&n.tab!==tabNow()&&typeof showTab==='function')showTab(n.tab);act=s.act||act;yLoc=s.yLoc||'';if(s.yView)yView=s.yView;mZone=s.mZone||'';if(s.yGroup)yGroup=s.yGroup;elevOpen=!!s.elev;
+        document.querySelectorAll('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act));try{render()}catch(e){}}
+      else if(n.s&&AME.nav&&AME.nav[m])AME.nav[m].set(n.s)}catch(e){console.warn('nav',e)}setTimeout(()=>{restoring=false},120)};
   window.addEventListener('popstate',e=>{if(silent){silent--;return}const st=e.state||{};
-    if(dlgOn){dlgOn=false;try{closeDlg()}catch(x){root.innerHTML=''}return}
-    const m=st.mod||'home';if(m==='home'||!AME.mod(m))AME.home(true);else AME.open(m,true)});
+    if(dlgOn){dlgOn=false;try{closeDlg()}catch(x){root.innerHTML=''}btn();return}
+    depth=st.d||0;if(st.nav)restore(st.nav);else restore({mod:'home'});btn()});
   /* mouse side buttons in installed-app windows that don't navigate on their own */
   let lastPop=0;window.addEventListener('popstate',()=>{lastPop=Date.now()},true);
   window.addEventListener('mouseup',e=>{if(e.button!==3&&e.button!==4)return;const t=Date.now();setTimeout(()=>{if(lastPop<t-5)e.button===3?H.back():H.forward()},120)});
+  /* on-screen Back button (phones especially) */
+  const hd=document.querySelector('header.top .wrap');if(hd&&!document.getElementById('appBack')){const b=document.createElement('button');b.id='appBack';b.type='button';b.className='appback';b.hidden=true;b.setAttribute('aria-label','Back');b.innerHTML='‹';b.onclick=()=>H.back();hd.insertBefore(b,hd.firstChild)}
+  document.head.insertAdjacentHTML('beforeend','<style>.appback{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff;font-size:26px;line-height:36px;padding:0;margin-right:6px;cursor:pointer}.appback[hidden]{display:none}</style>');
 })();
