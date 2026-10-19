@@ -1,6 +1,6 @@
 /* AME Yard — Mobilization Prep List (MPL) module */
 (function(){
-let REF=null,MPLS=[],MAP={},W=null,view='list',openId='';
+let REF=null,MPLS=[],MAP={},CH={},W=null,view='list',openId='';
 const ORDER=['Roof System','Equipment and Tool','General','Safety','Demo','Staging Area','Fastener','Custom'];
 const STEPS=[['job','Job & crew'],['sys','Roof system'],['deck','Deck type'],['scope','Other scope'],['list','Item list'],['go','Check out']];
 const SCOPE_PARENTS=[6,7,9,3,4,5,10,2];
@@ -55,7 +55,8 @@ function yardFor(line){if(line.yid&&byId(line.yid))return byId(line.yid);if(line
 function load(){db.doc('mplref/ref').onSnapshot(s=>{REF=s.data()||null;if(isOn())render()},()=>{});
   db.collection('mpl').onSnapshot(s=>{MPLS=s.docs.map(d=>({...d.data(),_id:d.id}));AME.badges&&AME.badges();if(isOn())render()},()=>{});
   db.doc('config/spectrum').onSnapshot(s=>{SPC=s.data()||null},()=>{});
-  db.doc('config/mplmap').onSnapshot(s=>{MAP=s.data()||{}},()=>{})}
+  db.doc('config/mplmap').onSnapshot(s=>{MAP=s.data()||{}},()=>{});
+  db.doc('config/mplchain').onSnapshot(s=>{CH=s.data()||{};if(isOn()&&document.getElementById('chDlg'))chDraw()},()=>{})}
 const isOn=()=>el()&&!el().hidden;
 window.addEventListener('message',async e=>{if(e.origin!=='https://amebuilders.org'||!e.data||e.data.type!=='MPLREF')return;
   try{await db.doc('mplref/ref').set(e.data.ref);toast('Mob Prep reference data imported: '+e.data.ref.its.length+' items, '+e.data.ref.asm.length+' assemblies');try{e.source.postMessage({type:'MPLREF_OK'},e.origin)}catch(x){}}catch(err){toast('Import failed: '+(err.message||err))}});
@@ -63,7 +64,40 @@ window.addEventListener('message',async e=>{if(e.origin!=='https://amebuilders.o
 /* ---------- generation ---------- */
 function generate(stIds){const S=new Set(stIds),m=new Map();
   for(const a of REF.asm){if(!a[2].some(x=>S.has(x)))continue;for(const [rid,q] of a[3]){const r=rItem(rid);if(!r)continue;const cur=m.get(rid);if(!cur||cur.n<q)m.set(rid,{rid,name:r[1],cat:r[2],sub:r[3],unit:r[4],n:Math.max(1,q),from:a[1]})}}
-  return [...m.values()]}
+  for(const st of stIds){const o=(CH.sys||{})[st];if(!o)continue;(o.rm||[]).forEach(r=>{const c=m.get(r);if(c&&!(c.keep))m.delete(r)});
+    (o.add||[]).forEach(x=>{const r=rItem(x.rid);const name=r?r[1]:x.name;if(!name)return;const cur=m.get(x.rid);const q=Math.max(1,+x.q||1);if(!cur||cur.n<q||cur.from!=='admin')m.set(x.rid,{rid:r?x.rid:'',cid:r?'':x.rid,name,cat:r?r[2]:(x.cat||'Custom'),sub:r?r[3]:'',unit:r?r[4]:(x.unit||'EA'),n:q,from:'Admin: '+stName(st),keep:1})})}
+  return [...m.values()].map(x=>{delete x.keep;if(!x.rid&&x.cid)delete x.cid;return x})}
+function baseFor(st){const m=new Map();for(const a of REF.asm){if(!a[2].includes(st))continue;for(const [rid,q] of a[3]){const r=rItem(rid);if(!r)continue;const c=m.get(rid);if(!c||c.n<q)m.set(rid,{rid,name:r[1],cat:r[2],unit:r[4],n:Math.max(1,q)})}}return m}
+/* ---------- admin: edit system item chains ---------- */
+let chSt=null,chQ='';
+function chOv(st){CH.sys=CH.sys||{};return CH.sys[st]=CH.sys[st]||{add:[],rm:[]}}
+async function chSave(){try{await db.doc('config/mplchain').set({sys:CH.sys||{},at:new Date().toISOString(),by:curUser||''})}catch(e){toast('Could not save: '+(e.message||e))}}
+function chEdit(){chSt=chSt||(kids(8)[0]||REF.st[0])[0];chQ='';document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" id="chDlg" style="max-width:720px"></div></div>`;chDraw()}
+function chDraw(){const d=document.getElementById('chDlg');if(!d)return;const par=id=>(REF.st.find(s=>s[0]===id)||[])[1]||'';
+  const groups={};REF.st.filter(s=>s[2]!=null&&REF.st.some(p=>p[0]===s[2])).forEach(s=>{(groups[par(s[2])]=groups[par(s[2])]||[]).push(s)});
+  const o=(CH.sys||{})[chSt]||{add:[],rm:[]};const base=baseFor(chSt);const rm=new Set(o.rm||[]);
+  const rows=[...base.values()].map(x=>({...x,src:'base',off:rm.has(x.rid)}));(o.add||[]).forEach(x=>{const r=rItem(x.rid);const i=rows.findIndex(y=>y.rid===x.rid);const row={rid:x.rid,name:r?r[1]:x.name,cat:r?r[2]:(x.cat||'Custom'),unit:r?r[4]:(x.unit||'EA'),n:+x.q||1,src:'add'};if(i>=0)rows[i]={...row,src:'chg'};else rows.push(row)});
+  rows.sort((a,b)=>(a.off-b.off)||String(a.cat).localeCompare(String(b.cat))||a.name.localeCompare(b.name));
+  const q=chQ.toLowerCase();const have=new Set(rows.filter(r=>!r.off).map(r=>r.rid));
+  const hits=q.length>1?REF.its.filter(r=>!have.has(r[0])&&(r[1]+' '+r[2]+' '+(r[3]||'')).toLowerCase().includes(q)).slice(0,12):[];
+  d.innerHTML=`<h3>Edit system item lists</h3><p class="muted" style="margin-top:0">Items that come up when this system is picked in a new MPL. Changes apply to new MPLs — MPLs already made don't change.</p>
+   <label class="f wide">System / deck / scope<select id="chSel">${Object.entries(groups).map(([g,l])=>`<optgroup label="${esc(g)}">${l.map(s=>`<option value="${s[0]}" ${s[0]===chSt?'selected':''}>${esc(s[1])}</option>`).join('')}</optgroup>`).join('')}</select></label>
+   <div class="chadd"><input id="chQ" class="search" placeholder="Add an item — search ${REF.its.length} Mob Prep items…" value="${esc(chQ)}" autocomplete="off">${q.length>1?`<div class="chhits">${hits.map(r=>`<button type="button" data-add="${r[0]}"><b>${esc(r[1])}</b><small>${esc(r[2])}${r[4]?' · '+esc(r[4]):''}</small><span>+ Add</span></button>`).join('')}<button type="button" data-custom="1"><b>+ “${esc(chQ)}”</b><small>New custom item (not in Mob Prep)</small><span>+ Add</span></button></div>`:''}</div>
+   <div class="chlist">${rows.length?rows.map(r=>`<div class="chrow ${r.off?'off':''} ${r.src!=='base'?'adm':''}"><div><b>${esc(r.name)}</b><small>${esc(r.cat||'')}${r.src==='add'?' · added by admin':r.src==='chg'?' · qty changed':''}${r.off?' · removed':''}</small></div>
+     ${r.off?`<button type="button" class="btn small" data-undo="${esc(r.rid)}">Restore</button>`:`<div class="step"><button type="button" data-q="-1" data-r="${esc(r.rid)}">−</button><input inputmode="numeric" data-qi="${esc(r.rid)}" value="${r.n}"><button type="button" data-q="1" data-r="${esc(r.rid)}">+</button></div><small class="muted">${esc(r.unit||'')}</small><button type="button" class="btn small dng" data-rm="${esc(r.rid)}" data-src="${r.src}" aria-label="Remove">×</button>`}</div>`).join(''):'<p class="muted">No items linked to this one yet — add some above.</p>'}</div>
+   <div class="bar"><span class="muted" style="margin-right:auto;font-size:12px">${CH.at?'Last change '+fmtD(CH.at)+' · '+esc(CH.by||''):''}</span><button class="go" id="chX" style="width:auto">Done</button></div>`;
+  const sel=d.querySelector('#chSel');sel.onchange=()=>{chSt=+sel.value||sel.value;chQ='';chDraw()};
+  const qi=d.querySelector('#chQ');qi.oninput=()=>{chQ=qi.value;const p=qi.selectionStart;chDraw();const n=document.getElementById('chQ');n.focus();n.setSelectionRange(p,p)};
+  d.querySelector('#chX').onclick=closeDlg;
+  const setQ=(rid,n)=>{const o=chOv(chSt);n=Math.max(1,n|0);const r=rItem(rid);const ex=o.add.find(x=>x.rid==rid);const b=baseFor(chSt).get(rid);
+    if(b&&b.n===n&&ex){o.add=o.add.filter(x=>x!==ex)}else if(ex)ex.q=n;else o.add.push({rid,q:n});chSave();chDraw()};
+  const ridOf=v=>{const n=+v;return Number.isFinite(n)&&String(n)===v?n:v};
+  d.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const rid=ridOf(b.dataset.add);const o=chOv(chSt);o.rm=(o.rm||[]).filter(x=>x!=rid);if(!o.add.some(x=>x.rid==rid))o.add.push({rid,q:1});chQ='';chSave();chDraw()});
+  const cu=d.querySelector('[data-custom]');if(cu)cu.onclick=()=>{const o=chOv(chSt);o.add.push({rid:'c'+Date.now().toString(36),q:1,name:chQ.trim(),cat:'Custom',unit:'EA'});chQ='';chSave();chDraw()};
+  d.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const rid=ridOf(b.dataset.rm);const o=chOv(chSt);o.add=o.add.filter(x=>x.rid!=rid);if(baseFor(chSt).has(rid)&&!o.rm.some(x=>x==rid))o.rm.push(rid);chSave();chDraw()});
+  d.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{const rid=ridOf(b.dataset.undo);const o=chOv(chSt);o.rm=o.rm.filter(x=>x!=rid);chSave();chDraw()});
+  d.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{const rid=ridOf(b.dataset.r);const i=d.querySelector(`[data-qi="${b.dataset.r}"]`);setQ(rid,(+i.value||1)+ +b.dataset.q)});
+  d.querySelectorAll('[data-qi]').forEach(i=>i.onchange=()=>setQ(ridOf(i.dataset.qi),+i.value||1))}
 
 /* ---------- UI ---------- */
 function render(){const box=el();if(!box)return;
@@ -75,8 +109,9 @@ async function delMpl(id){const m=MPLS.find(x=>x._id===id);if(!m)return;if(!conf
   try{await db.doc('mpl/'+id).delete();toast('MPL deleted');if(openId===id){openId='';view='list'}render()}catch(e){toast('Could not delete: '+(e.message||e.code))}}
 function topBtns(m,id){return `<span class="mtop">${exportBtns('t')}${m&&(isAdmin||m.prep===curUser)&&id?`<button class="btn dng" data-tdel="${esc(id)}">Delete</button>`:''}</span>`}
 function renderList(){if(W&&W._dirty&&W.job&&(openId||W.lines)){W._dirty=false;saveDraft(false)}const box=el();const l=[...MPLS].sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
-  box.innerHTML=`<div class="mplhead"><h2>Mobilization Prep Lists</h2><button class="btn pri" id="mplNew">+ New MPL</button></div>
+  box.innerHTML=`<div class="mplhead"><h2>Mobilization Prep Lists</h2>${isAdmin?'<button class="btn" id="mplChain">Edit system lists</button>':''}<button class="btn pri" id="mplNew">+ New MPL</button></div>
   ${l.length?`<div class="mplcards">${l.map(m=>`<button class="mplcard" data-m="${esc(m._id)}"><b>${esc(jobLabel(m.job))}</b>${stat(m)}<small>Prepared by ${esc(m.prep||'')} · crew ${m.crew||'-'} · ${(m.lines||[]).length} items</small><small class="muted">${esc((m.st||[]).map(stName).join(', '))}</small><small class="muted">Updated ${fmtD(m.updated)}</small>${(isAdmin||m.prep===curUser)?`<span class="mcdel" data-del="${esc(m._id)}" role="button" aria-label="Delete MPL" title="Delete">${IC2.trash}</span>`:''}</button>`).join('')}</div>`:'<div class="panel muted">No MPLs yet. Tap “+ New MPL” to prepare a job.</div>'}`;
+  {const cb=document.getElementById('mplChain');if(cb)cb.onclick=chEdit}
   document.getElementById('mplNew').onclick=()=>{openId='';W={step:0,job:'',pm:'',fm:'',crew:6,st:[],lines:null,prep:curUser};openId='';view='wiz';render()};
   box.querySelectorAll('[data-del]').forEach(x=>x.onclick=e=>{e.stopPropagation();delMpl(x.dataset.del)});
   box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=MPLS.find(x=>x._id===b.dataset.m);if(!m)return;openId=m._id;
@@ -226,6 +261,7 @@ function exportBtns(t=''){return `<button class="btn" data-xl="1">Excel</button>
 function wireExport(){document.querySelectorAll('#tab-mpl [data-xl]').forEach(a=>a.onclick=exportXlsx);document.querySelectorAll('#tab-mpl [data-pdf]').forEach(b=>b.onclick=exportPdf);document.querySelectorAll('#tab-mpl [data-tdel]').forEach(b=>b.onclick=()=>delMpl(b.dataset.tdel))}
 
 /* ---------- module registration ---------- */
+document.head.insertAdjacentHTML('beforeend','<style>.chadd{position:relative;margin:8px 0}.chhits{border:1px solid var(--line,#555);border-radius:10px;margin-top:4px;max-height:260px;overflow:auto}.chhits button{display:grid;grid-template-columns:1fr auto;width:100%;text-align:left;padding:8px 10px;background:none;border:0;border-bottom:1px solid var(--line,#444);color:inherit}.chhits small{grid-column:1;opacity:.7}.chhits span{grid-row:1/3;grid-column:2;align-self:center;color:#f26a1b;font-weight:700}.chlist{max-height:48vh;overflow:auto;margin:6px 0}.chrow{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line,#444)}.chrow>div:first-child{flex:1;min-width:0}.chrow small{display:block;opacity:.7}.chrow.off{opacity:.45}.chrow.off b{text-decoration:line-through}.chrow.adm b{color:#f5a25d}.chrow .step input{width:44px;text-align:center}</style>');
 AME.register({id:'mpl',name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',tabs:['mpl'],section:'tab-mpl',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M8.5 11l1.5 1.5 3-3M8.5 16.5l1.5 1.5 3-3"/></svg>',
   open:()=>showTab('mpl'),onShow:()=>{view=view==='wiz'&&W?view:'list';render()}});
