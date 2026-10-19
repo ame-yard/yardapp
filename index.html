@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.85',APP_DATE='2026-10-15';
+const APP_VERSION='3.86',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -735,7 +735,7 @@ function scrollToList(){if(!yLoc)return;const m=$('#kiosk .menu');if(m&&getCompu
 const BAYS0=JSON.parse(JSON.stringify(BAYS)),ZONES0=JSON.parse(JSON.stringify(ZONES));let mapEdit=false,mapCfgSaved=null,mapSel=null;
 function applyMapCfg(d){for(const k of Object.keys(BAYS))if(!(k in BAYS0))delete BAYS[k];Object.assign(BAYS,JSON.parse(JSON.stringify(BAYS0)));if(d&&d.bays)for(const [k,v] of Object.entries(d.bays)){if(v===null)delete BAYS[k];else if(Array.isArray(v))BAYS[k]=v}
   ZONES.splice(0,ZONES.length,...JSON.parse(JSON.stringify(d&&Array.isArray(d.zones)&&d.zones.length?d.zones:ZONES0)))}
-function mapEditBar(){let b=document.getElementById('mapEditBar');const w=$('#mapwrap');if(!w||!isAdmin){if(b)b.remove();return}
+function mapEditBar(){let b=document.getElementById('mapEditBar');const w=$('#mapwrap');if(!w||!curUser||!isEditor(curUser)){if(b)b.remove();if(mapEdit){mapEdit=false;mapSel=null}return}
   if(!b){b=document.createElement('div');b.id='mapEditBar';b.className='mapedit';w.appendChild(b)}
   b.innerHTML=mapEdit?`<span><b>Editing map</b> — drag racks or zones; drag a zone's corner ◢ to resize. Tap one to select it.</span><button type="button" class="btn small" data-me="addz">+ Zone</button><button type="button" class="btn small" data-me="addr">+ Rack</button>${mapSel?`<button type="button" class="btn small dng" data-me="del">Delete ${mapSel.k==='bay'?'rack '+esc(mapSel.id):'zone '+esc(mapSel.id.split('|')[0])}</button>`:''}<button type="button" class="btn small" data-me="reset">Reset to default</button><button type="button" class="btn small" data-me="cancel">Cancel</button><button type="button" class="btn pri small" data-me="save">Save layout</button>`:`<button type="button" class="btn small" data-me="edit">✎ Edit map layout</button>`;
   b.querySelectorAll('[data-me]').forEach(x=>x.onclick=async()=>{const a=x.dataset.me;
