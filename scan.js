@@ -10,7 +10,20 @@ const canReg=()=>typeof isAdmin!=='undefined'&&isAdmin;
 /* ---------- result dialog ---------- */
 function onCode(code,fromCam){code=String(code||'').trim();if(!code)return;try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}
   if(AME.cur!=='yard'){AME.open('yard')}if(document.getElementById('tab-yard').hidden)showTab('yard');
-  const r=resolve(code);if(!r)return unknown(code,fromCam);preview(r,fromCam)}
+  const r=resolve(code);if(!r)return unknown(code,fromCam);if(document.querySelector('#dlgRoot .dlg'))return preview(r,fromCam);if(quick(r))return;preview(r,fromCam)}
+/* scanner fast lane: each scan goes straight into the list; Take Out vs Return is picked per item */
+function quick(r){if(!['OUT','RETURN'].includes(act))return false;const it=r.it;const sn=r.unit;const units=sers(it);
+  const want=sn?(ust(it,sn).st==='out'?'RETURN':'OUT'):((Number(it.qty)||0)<=0&&(it.out||0)>0?'RETURN':'OUT');
+  if(sn&&ust(it,sn).st==='repair'){toast('Unit '+sn+' is in repair — use Repair.');return true}
+  if(act!==want){if(cart.length){toast(`${it.name}${sn?' '+sn:''} is ${want==='RETURN'?'out on a job → Return':'in the yard → Take Out'}. Finish the ${ACTNAME[act]} list first (${cart.length} item${cart.length>1?'s':''}).`);try{navigator.vibrate&&navigator.vibrate([60,60,60])}catch(e){}return true}
+    const b=document.querySelector(`#actions .act[data-act="${want}"]`);if(b)b.click();else act=want}
+  if(!sn&&units.length&&(act==='OUT'||Object.values(it.units||{}).some(u=>u&&u.st==='out'))){openUnitPicker(it.id);return true}
+  if(act==='OUT'&&!sn&&(Number(it.qty)||0)<=0){toast('None of '+it.name+' left in the yard.');return true}
+  let c=cart.find(x=>x.id===it.id);
+  if(sn){if(c&&(c.units||[]).includes(sn)){toast(it.name+' '+sn+' is already in the list');return true}if(c){c.units=[...(c.units||[]),sn];c.n=c.units.length}else cart.push({id:it.id,n:1,units:[sn]})}
+  else{if(c){if(act==='OUT'&&c.n>=(Number(it.qty)||0)){toast('Only '+it.qty+' '+(it.unit||'')+' in the yard.');return true}c.n++}else cart.push({id:it.id,n:1})}
+  c=cart.find(x=>x.id===it.id);renderCartBar();renderYard();
+  toast(`${ACTNAME[act]} · ${it.name}${sn?' '+sn:''}${!sn&&c.n>1?' ×'+c.n:''} — ${cart.length} item${cart.length>1?'s':''} in list. Scan the next one, or tap Review.`);return true}
 function preview(r,fromCam){const it=r.it;const units=Array.isArray(it.serials)?it.serials:[];const unitMode=!!r.unit;let n=1;const max=act==='OUT'?Math.max(0,Number(it.qty)||0):9999;
   const draw=()=>{document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg scdlg"><div class="scmode">${esc(ACTNAME[act]||act)}</div>
    <div class="scrow"><span class="scpic">${pic(it)}</span><div><h3 style="margin:0">${esc(it.name)}</h3><div class="muted">${esc([it.size,it.mfgr].filter(Boolean).join(' · '))}</div>
