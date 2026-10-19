@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.80',APP_DATE='2026-10-15';
+const APP_VERSION='3.81',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -904,7 +904,7 @@ function renderYard(){if(!__locMig&&isAdmin)setTimeout(locMig,1200);
   $$('#ylist .card:not(.newcard)').forEach(r=>r.onclick=e=>{if(e.target.closest('.cinfo')){e.stopPropagation();openItem(r.dataset.id);return}if(r._lp){r._lp=0;return}if(selMode){const k=r.dataset.id;picked.has(k)?picked.delete(k):picked.add(k);r.classList.toggle('picked',picked.has(k));rmBar();return}if(editMode){openItem(r.dataset.id);return}
     if(act==='REPAIR'&&repMode){const k=r.dataset.id;repPick.has(k)?repPick.delete(k):repPick.add(k);r.classList.toggle('picked',repPick.has(k));repBar();return}
     if(act==='REPAIR'){const d=e.target.closest('[data-dec]');const it=byId(r.dataset.id);openDispose(r.dataset.id,d?d.dataset.dec:(it&&it.repair>0?'done':'repair'));return}
-    if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){pickPhoto(cm.dataset.cam);return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}addCart(r.dataset.id)});
+    if(r.classList.contains('oos')){const it=byId(r.dataset.id);toast(it&&it.cond==='Bad'&&Number(it.qty)>0?'Marked Bad — the office has to clear it before it can go out.':'Out of stock — nothing left in the yard to take.');return}const cm=e.target.closest('[data-cam]');if(cm){pickPhoto(cm.dataset.cam);return}const m=e.target.closest('[data-minus]');if(m){const c=cart.find(c=>c.id===m.dataset.minus);if(c){c.n--;if(c.n<=0||act==='ADJUST')cart=cart.filter(x=>x!==c)}renderCartBar();renderYard();return}{const inC=cart.find(x=>x.id===r.dataset.id);if(inC&&act!=='ADJUST'){cart=cart.filter(x=>x!==inC);renderCartBar();renderYard();const it=byId(r.dataset.id);toast('Removed from cart'+(it?' · '+it.name:''));return}}addCart(r.dataset.id)});
 }
 function renderDisposeLog(q){setTimeout(()=>$$('#ylist tr[data-hn]').forEach(r=>{r.onclick=()=>isAdmin?editLog(r.dataset.lid):openHistory(r.dataset.hid,r.dataset.hn)}),0);const L=logs.filter(g=>(g.action==='DISPOSE'||g.action==='LOST')&&(!q||[g.name,g.by,g.note,g.job,g.loc].join(' ').toLowerCase().includes(q.toLowerCase())));
   const n30=L.filter(g=>Date.now()-new Date(g.ts)<30*864e5).reduce((a,g)=>a+(g.n||0),0);
@@ -1100,7 +1100,7 @@ function addCart(id){const it=byId(id);if(!it)return;const c=cart.find(c=>c.id==
   else if(act==='RETURN'||act==='RECEIVE'){const uo=Object.values(it.units||{}).some(u=>u&&u.st==='out');act==='RETURN'&&uo?openUnitPicker(id):openQtyPicker(id);return}
   if(act==='OUT'&&c&&Number(it.qty)>0&&c.n>=it.qty){toast(`Only ${it.qty} ${it.unit} in the yard.`);return}
   if(c){if(act!=='ADJUST')c.n++}else cart.push({id,n:act==='ADJUST'?(typeof it.qty==='number'?it.qty:0):1});
-  renderCartBar();renderYard();toast(`Added 1 ${it.unit||''} · ${it.name} (${(cart.find(x=>x.id===id)||{}).n} in cart) — tap again to add more`)}
+  renderCartBar();renderYard();toast(`Added 1 ${it.unit||''} · ${it.name} — tap again to remove · set the quantity in Review`)}
 let audOnly=LS.get('audOnly',false);const audDraft={};
 function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=items.length;
   const L=list.filter(i=>!audOnly||!i.verifiedAt).slice(0,200);
