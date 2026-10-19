@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.03',APP_DATE='2026-10-15';
+const APP_VERSION='4.04',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1681,8 +1681,8 @@ $('#lSelDel').onclick=async()=>{const ids=[...lPick];if(!ids.length||!confirm('D
 $('#brand').onclick=()=>{closeDlg&&closeDlg();yView='map';yLoc='';act='OUT';selMode=false;repMode=false;repPick.clear();picked.clear();showTab('yard');renderYard();scrollTo({top:0,behavior:'smooth'})};
 $('#bellBtn').onclick=e=>{e.stopPropagation();let p=$('#bellPop');if(p){p.remove();return}
   const seen=seenTs();const ck='ameBellClr:'+curUser;let clr='';try{clr=localStorage.getItem(ck)||''}catch(x){}let hid=[];try{hid=JSON.parse(localStorage.getItem(ck+':h')||'[]')}catch(x){}const hk=g=>g.ts+'|'+(g.itemId||g.name||'');const l=logs.filter(g=>(!clr||g.ts>clr)&&!hid.includes(hk(g))).slice(0,20);p=document.createElement('div');p.id='bellPop';
-  p.innerHTML=`<div class="bph"><b>Recent updates</b><small class="muted">${logs.filter(g=>g.ts>seen&&isOther(g)).length} new</small>${l.length?'<button type="button" class="btn small" id="bellClr" style="margin-left:auto">Clear</button>':''}</div>`+(l.length?l.map(g=>`<div class="bpi ${isOther(g)&&g.ts>seen?'new':''}" data-vi="${esc(g.itemId||'')}" style="cursor:pointer" title="Open this item">${thumb(byId(g.itemId))}<div><b>${esc(g.by||'')}</b> <span class="a-${g.action}">${ACTNAME[g.action]||g.action}</span> · ${esc(g.name||'')}${g.n?` <span class="muted">(${g.n} ${esc(g.unit||'')})</span>`:''}${g.job?` <span class="muted">${esc(g.job)}</span>`:''}<small class="muted">${fmtD(g.ts)}${g.note?' · '+esc(g.note):''}</small></div><button type="button" class="bpx" data-bh="${esc(hk(g))}" aria-label="Remove this notification" title="Remove">×</button></div>`).join(''):`<div class="muted" style="padding:12px">${clr?'All caught up. Everything is still in Activity.':'No activity yet.'}</div>`);
-  p.querySelectorAll('[data-vi]').forEach(x=>x.onclick=()=>{p.remove();viewItem(x.dataset.vi)});p.querySelectorAll('[data-bh]').forEach(x=>x.onclick=ev=>{ev.stopPropagation();hid=[x.dataset.bh,...hid].slice(0,300);try{localStorage.setItem(ck+':h',JSON.stringify(hid))}catch(e){}x.closest('.bpi').remove()});{const cb=p.querySelector('#bellClr');if(cb)cb.onclick=ev=>{ev.stopPropagation();try{localStorage.setItem(ck,(logs[0]&&logs[0].ts)||new Date().toISOString())}catch(x){}p.remove();markSeen();$('#bellBtn').click()}}document.body.appendChild(p);const r=$('#bellBtn').getBoundingClientRect();p.style.top=(r.bottom+8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';markSeen()};
+  p.innerHTML=`<div class="bph"><b>Recent updates</b><small class="muted">${logs.filter(g=>g.ts>seen&&isOther(g)).length} new</small>${l.length?'<button type="button" class="btn small" id="bellClr" style="margin-left:auto">Clear</button>':''}</div>`+(l.length?l.map(g=>`<div class="bpi ${isOther(g)&&g.ts>seen?'new':''}" data-vi="${esc(g.itemId||'')}" ${g.action==='DELIV'&&g.dv?`data-dvc="${esc(g.dv)}"`:''} style="cursor:pointer" title="Open this item">${thumb(byId(g.itemId))}<div><b>${esc(g.by||'')}</b> <span class="a-${g.action}">${ACTNAME[g.action]||g.action}</span> · ${esc(g.name||'')}${g.n?` <span class="muted">(${g.n} ${esc(g.unit||'')})</span>`:''}${g.job?` <span class="muted">${esc(g.job)}</span>`:''}<small class="muted">${fmtD(g.ts)}${g.note?' · '+esc(g.note):''}</small></div><button type="button" class="bpx" data-bh="${esc(hk(g))}" aria-label="Remove this notification" title="Remove">×</button></div>`).join(''):`<div class="muted" style="padding:12px">${clr?'All caught up. Everything is still in Activity.':'No activity yet.'}</div>`);
+  p.querySelectorAll('[data-vi]').forEach(x=>x.onclick=()=>{p.remove();if(x.dataset.dvc&&window.ameDelivClaim){window.ameDelivClaim(x.dataset.dvc);return}viewItem(x.dataset.vi)});p.querySelectorAll('[data-bh]').forEach(x=>x.onclick=ev=>{ev.stopPropagation();hid=[x.dataset.bh,...hid].slice(0,300);try{localStorage.setItem(ck+':h',JSON.stringify(hid))}catch(e){}x.closest('.bpi').remove()});{const cb=p.querySelector('#bellClr');if(cb)cb.onclick=ev=>{ev.stopPropagation();try{localStorage.setItem(ck,(logs[0]&&logs[0].ts)||new Date().toISOString())}catch(x){}p.remove();markSeen();$('#bellBtn').click()}}document.body.appendChild(p);const r=$('#bellBtn').getBoundingClientRect();p.style.top=(r.bottom+8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';markSeen()};
 document.addEventListener('click',e=>{const p=$('#bellPop');if(p&&!p.contains(e.target))p.remove()});
 $('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;ameSync().finally(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false})};
 async function ameSync(){try{const d=await window.claude.use('db');await d.refresh();try{markSync()}catch(e){}}catch(e){toast&&toast('Sync failed — check connection')}}
@@ -1751,7 +1751,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="field.js?v=396"></script>
 <script src="trucks.js?v=396"></script>
 <script src="safety.js?v=396"></script>
-<script src="deliv.js?v=403"></script>
+<script src="deliv.js?v=404"></script>
 <script src="admin.js?v=388"></script>
 <script src="scan.js?v=399"></script>
 <script>
