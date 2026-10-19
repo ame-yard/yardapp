@@ -45,3 +45,22 @@ let started=false;const _ar=window.applyRole;window.applyRole=function(){_ar();i
 document.getElementById('brand').onclick=()=>{try{closeDlg()}catch(e){}if(curUser)AME.home();else showTab('yard')};
 let start='home';try{start=sessionStorage.getItem('ameMod')||'home'}catch(e){}
 })();
+
+/* ---- browser / mouse Back support: modules and dialogs are history entries ---- */
+(function(){const H=window.history;let silent=0,dlgOn=false;
+  const push=st=>{try{H.pushState(st,'')}catch(e){}};
+  try{H.replaceState({mod:'home',base:1},'')}catch(e){}
+  const _home=AME.home.bind(AME),_open=AME.open.bind(AME);
+  AME.home=function(nopush){_home();if(!nopush&&!(H.state&&H.state.mod==='home'&&!H.state.dlg))push({mod:'home'})};
+  AME.open=function(id,nopush){_open(id);if(!nopush&&AME.cur===id&&!(H.state&&H.state.mod===id&&!H.state.dlg))push({mod:id})};
+  const root=document.getElementById('dlgRoot');
+  if(root)new MutationObserver(()=>{const open=!!root.querySelector('.dlg,.scrim');
+    if(open&&!dlgOn){dlgOn=true;push({mod:AME.cur,dlg:1})}
+    else if(!open&&dlgOn){dlgOn=false;if(H.state&&H.state.dlg){silent++;H.back()}}}).observe(root,{childList:true});
+  window.addEventListener('popstate',e=>{if(silent){silent--;return}const st=e.state||{};
+    if(dlgOn){dlgOn=false;try{closeDlg()}catch(x){root.innerHTML=''}return}
+    const m=st.mod||'home';if(m==='home'||!AME.mod(m))AME.home(true);else AME.open(m,true)});
+  /* mouse side buttons in installed-app windows that don't navigate on their own */
+  let lastPop=0;window.addEventListener('popstate',()=>{lastPop=Date.now()},true);
+  window.addEventListener('mouseup',e=>{if(e.button!==3&&e.button!==4)return;const t=Date.now();setTimeout(()=>{if(lastPop<t-5)e.button===3?H.back():H.forward()},120)});
+})();
