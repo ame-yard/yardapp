@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.97',APP_DATE='2026-10-15';
+const APP_VERSION='3.98',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1143,7 +1143,7 @@ function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=i
     ${L.length?L.map(i=>{const d=audDraft[i.id]||{n:Number(i.qty)||0,c:i.cond||'Good'};const ch=d.n!==(Number(i.qty)||0)||d.c!==(i.cond||'Good');
       return `<div class="arow ${i.verifiedAt&&!ch?'vok':''}" data-id="${esc(i.id)}">
        <button class="athumb" data-aph="${esc(i.id)}" title="Take photo">${i.photo?`<img src="${esc(i.photo)}" alt="">`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg><small>Photo</small>`}</button>
-       <div class="ainfo"><b>${esc(i.name)}</b><small>${esc([i.size&&i.size!=='-'?i.size:'',i.mfgr].filter(Boolean).join(' · '))}</small><small class="mono">${esc(i.loc)} ${esc(i.level||'')} · list ${esc(qtyTxt(i))} ${esc(i.unit)}</small>${i.issue?`<small class="awarn">${IC2.alert} ${esc(i.issue)}</small>`:''}${i.verifiedAt?`<small class="aok">✓ ${esc(i.verifiedBy||'')} · ${fmtD(i.verifiedAt)}</small>`:''}</div>
+       <div class="ainfo"><b>${esc(i.name)}</b><small>${esc([i.size&&i.size!=='-'?i.size:'',i.mfgr].filter(Boolean).join(' · '))}</small><small class="mono">${esc(i.loc)} ${esc(i.level||'')} · list ${esc(qtyTxt(i))} ${esc(i.unit)}</small>${i.issue?`<small class="awarn">${IC2.alert} ${esc(i.issue)}</small>`:''}${i.verifiedAt?`<small class="aok">✓ ${esc(i.verifiedBy||'')} · ${fmtD(i.verifiedAt)} <button type="button" class="aundo" data-aundo>Undo check</button></small>`:''}</div>
        <div class="actl"><div class="step"><button data-ad="-1">−</button><input data-an inputmode="numeric" value="${d.n}"><button data-ad="1">+</button></div>
          <select data-ac>${['Good','Mixed','Needs Check','Bad'].map(c=>`<option ${c===d.c?'selected':''}>${c}</option>`).join('')}</select>
          ${ch?'<button class="btn" data-areset title="Undo my changes on this row">Reset</button>':''}<button class="btn pri" data-asave>${ch?'Save':'✓ Correct'}</button></div></div>`}).join(''):`<div class="empty">${audOnly?'Everything here is verified.':'Pick a rack or category.'}</div>`}`;
@@ -1154,6 +1154,10 @@ function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=i
     r.querySelector('[data-an]').onfocus=e=>e.target.select();
     r.querySelector('[data-ac]').onchange=e=>{get().c=e.target.value;renderYard()};
     r.querySelector('[data-aph]').onclick=()=>{pickPhoto(id)};
+    {const ub=r.querySelector('[data-aundo]');if(ub)ub.onclick=async()=>{const vt=it.verifiedAt;const g=logs.find(x=>x.itemId===id&&x.action==='ADJUST'&&/^Yard audit/.test(x.note||'')&&!/undone/.test(x.note||'')&&Math.abs(new Date(x.ts)-new Date(vt))<15000);
+      if(!confirm('Undo the check on '+it.name+' by '+(it.verifiedBy||'')+'?'+(g?'\nCount goes back from '+g.after+' to '+g.before+'.':'')))return;const now=new Date().toISOString();
+      const u={verifiedAt:'',verifiedBy:'',updatedAt:now,updatedBy:curUser};if(g){u.qty=g.before;}
+      try{await writeItem(id,u);await db.collection('logs').add({ts:now,action:'ADJUST',itemId:id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:g?g.before:Number(it.qty)||0,before:Number(it.qty)||0,after:g?g.before:Number(it.qty)||0,job:'',by:curUser,note:'Yard audit undone (check by '+(it.verifiedBy||'')+')',cond:it.cond||''});toast('Check undone: '+it.name);renderYard()}catch(e){toast('Could not undo: '+(e.message||e.code))}}}
     {const rs=r.querySelector('[data-areset]');if(rs)rs.onclick=()=>{delete audDraft[id];renderYard()}}
     r.querySelector('[data-asave]').onclick=async e=>{e.target.disabled=true;const d=get(),now=new Date().toISOString(),before=Number(it.qty)||0;
       const u={qty:d.n,cond:d.c,verifiedAt:now,verifiedBy:curUser,issue:'',qtyNote:'',updatedAt:now,updatedBy:curUser};const prev={qty:it.qty,cond:it.cond||'Good',verifiedAt:it.verifiedAt||'',verifiedBy:it.verifiedBy||'',issue:it.issue||'',qtyNote:it.qtyNote||''};
@@ -1724,6 +1728,7 @@ db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()}
 .mapedit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.mapedit span{flex:1 1 100%;font-size:13px}
 #ymap .zedit.msel{stroke-width:4;stroke-dasharray:none;fill:rgba(242,106,27,.18)}#ymap .bedit.msel rect{stroke:#fff;stroke-width:3}#ymap .zlbl{fill:#f6a04d;font:700 14px sans-serif;pointer-events:none}
 #ymap .bhandle{fill:#fff;stroke:#f26a1b;stroke-width:2;cursor:nwse-resize}
+.aundo{background:none;border:0;color:#f6a04d;text-decoration:underline;font:inherit;font-weight:700;padding:2px 4px;cursor:pointer}
 </style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
