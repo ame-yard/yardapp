@@ -480,7 +480,7 @@ body.hascart main{padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))}
 .pal .ph{background:none;border:0;color:var(--muted);font:700 11px var(--mono,monospace);text-align:left;padding:0;cursor:pointer}
 .pchips{display:flex;flex-wrap:wrap;gap:4px}
 .pchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px 7px;font-size:12px;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}
-.pchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}.pchip b{font:600 11px var(--mono,monospace);color:var(--muted)}.pchip .thumb{width:18px;height:18px;margin:0;border-radius:3px}
+.pchip span{white-space:normal;overflow-wrap:anywhere;line-height:1.2;max-width:100%}.pchip b{font:600 11px var(--mono,monospace);color:var(--muted)}.pchip .thumb{width:18px;height:18px;margin:0;border-radius:3px}
 .pchip.sel{border-color:var(--accent,#f47b20);box-shadow:0 0 0 2px var(--accent,#f47b20)}.pchip.dragging{opacity:.35}
 .pchip.ghost{position:fixed;z-index:999;pointer-events:none;transform:translate(-50%,-120%);box-shadow:0 8px 20px rgba(0,0,0,.5);border-color:var(--accent,#f47b20)}
 body:not(.owner) .owner-only{display:none!important}nav.tabs button[hidden]{display:none!important}
@@ -549,7 +549,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
       </div>
     </div>
     <div class="cartbar" id="cartbar" hidden>
-      <div class="cb-in"><div><b id="cbCount">0</b> <span id="cbLabel">items in cart</span><small id="cbMode">Take Out</small></div>
+      <div class="cb-in"><div><b id="cbCount">0</b> <span id="cbLabel">items in cart</span> <u class="cbview">View</u><small id="cbMode">Take Out</small></div>
       <button class="btn ghost" id="cbClear">Clear</button><button class="go" id="cbGo">Review & Confirm</button></div>
     </div>
   </section>
@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.79',APP_DATE='2026-10-15';
+const APP_VERSION='3.80',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -721,8 +721,8 @@ const SUBS=Object.fromEntries(Object.entries(SUBRULES).map(([k,v])=>[k,v.map(x=>
 function sub(i){const r=SUBRULES[grp(i)];if(!r)return'';const n=((i.name||'')+' '+(i.size||'')).toLowerCase();for(const [l,re] of r)if(re.test(n))return l;return''}
 let ySub='',invSub='';
 let yGroup='ladder', jobs=[], selJob='', yView='map', yLoc='';
-const BAYS={"A-08":[240,78],"A-07":[240,128],"A-06":[240,178],"A-05":[240,228],"A-04":[240,278],"A-03":[240,328],"A-02":[240,378],"A-01":[240,428],"A-09":[295,58],"A-10":[345,103],"A-11":[345,153],"A-12":[345,203],"A-13":[345,253],"A-14":[345,303],"B-05":[400,103],"B-04":[400,153],"B-03":[400,203],"B-02":[400,253],"B-01":[400,303],"B-06":[450,58],"B-07":[500,103],"B-08":[500,153],"B-09":[500,203],"B-10":[500,253],"B-11":[500,303],"B-12":[450,353],"C-05":[555,103],"C-04":[555,153],"C-03":[555,203],"C-02":[555,253],"C-01":[555,303],"C-06":[605,58],"C-07":[655,103],"C-08":[655,153],"C-09":[655,203],"C-10":[655,253],"C-11":[655,303],"D-02":[420,410],"D-03":[470,410],"D-01":[420,455],"D-04":[470,455],"D-07":[655,400],"D-06":[655,445],"D-05":[600,455],"F-01":[725,290],"F-02":[775,290],"F-03":[750,335],"Y-01":[290,580],"Y-02":[445,580],"Y-03":[600,580],"Y-04":[290,650],"Y-05":[445,650],"Y-06":[600,650]};
-const ZONES=[["A",210,30,160,440],["B",370,30,155,348],["C",525,30,155,348],["D",370,378,310,92],["E",580,474,100,30],["F",700,260,100,100],["Y",210,545,470,145]];
+const BAYS={"A-08":[240,78],"A-07":[240,128],"A-06":[240,178],"A-05":[240,228],"A-04":[240,278],"A-03":[240,328],"A-02":[240,378],"A-01":[240,428],"A-09":[295,58],"A-10":[345,103],"A-11":[345,153],"A-12":[345,203],"A-13":[345,253],"A-14":[345,303],"B-05":[400,103],"B-04":[400,153],"B-03":[400,203],"B-02":[400,253],"B-01":[400,303],"B-06":[450,58],"B-07":[500,103],"B-08":[500,153],"B-09":[500,203],"B-10":[500,253],"B-11":[500,303],"B-12":[450,353],"C-05":[555,103],"C-04":[555,153],"C-03":[555,203],"C-02":[555,253],"C-01":[555,303],"C-06":[605,58],"C-07":[655,103],"C-08":[655,153],"C-09":[655,203],"C-10":[655,253],"D-02":[420,410],"D-03":[470,410],"D-01":[420,455],"D-04":[470,455],"C-11":[655,400],"C-12":[655,445],"C-13":[600,455],"F-01":[725,290],"F-02":[775,290],"F-03":[750,335],"Y-01":[290,580],"Y-02":[445,580],"Y-03":[600,580],"Y-04":[290,650],"Y-05":[445,650],"Y-06":[600,650]};
+const ZONES=[["A",210,30,160,440],["B",370,30,155,348],["C",525,30,155,348],["D",370,378,200,92],["C",570,378,110,92],["E",580,474,100,30],["F",700,260,100,100],["Y",210,545,470,145]];
 const locOf=i=>(i.loc||'').split('~')[0];
 $$('.viewseg button[data-v]').forEach(b=>b.onclick=()=>{yView=b.dataset.v;LS.set('yview',yView);if(yView==='cat')yLoc='';renderYard()});
 let editMode=false,selMode=false,picked=new Set();
@@ -802,7 +802,12 @@ function unitChips(i,cands,sel,attr){return `<div class="units">${cands.length?c
 let pendingItems=[];
 function mergeItems(){_mi();items.forEach(i=>i.kind=sub(i))}
 function _mi(){items=[...rawItems,...pendingItems.filter(p=>!rawItems.some(r=>r.id===p.id))].map(i=>stockMap[i.id]?{...i,...stockMap[i.id]}:i)}
-async function writeItem(id,upd){const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
+const LOCMAP={'D-07':'C-11','D-06':'C-12','D-05':'C-13'};
+const fixLoc=l=>{if(!l)return l;const s=String(l).replace(/^\s*F\s*\(\s*tool\s*room\s*\)\s*/i,'F').replace(/^F(\d)/,'F-$1');return s.split('~').map(x=>LOCMAP[x.trim()]||x).join('~')};
+let __locMig=false;async function locMig(){if(__locMig||!isAdmin||!items.length)return;__locMig=true;try{const c=await db.doc('config/locmig').get();if(c.exists&&(c.data()||{}).v>=1)return;
+  const todo=items.filter(i=>i.loc&&fixLoc(i.loc)!==i.loc);for(const i of todo){const nl=fixLoc(i.loc);try{await writeItem(i.id,{loc:nl});i.loc=nl}catch(e){console.warn('locmig',i.id,e);__locMig=false;return}}
+  await db.doc('config/locmig').set({v:1,at:new Date().toISOString(),by:curUser,moved:todo.length});if(todo.length){toast('Rack locations updated: '+todo.length+' items (D-05/06/07 → C-13/12/11, Tool Room → F)');render()}}catch(e){console.warn('locmig',e);__locMig=false}}
+async function writeItem(id,upd){if(upd&&upd.loc)upd.loc=fixLoc(upd.loc);const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
 const FEATS=[['YARD','App: Yard Inventory'],['MPL','App: Mobilization Prep List'],['EQP','App: Equipment Prices'],['OUT','Take Out'],['RETURN','Return'],['RECEIVE','App: Deliveries (receive)'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
@@ -823,7 +828,7 @@ function outJobs(id){const m={};for(const g of logs){if(g.itemId!==id||!g.job||(
   return Object.entries(m).filter(([,n])=>n>0)}
 function outTag(i){const js=outJobs(i.id);const txt=js.length?js.map(([j,n])=>`${n} @ ${jobLabel(j)}`).join(', '):`${i.out} out${i.lastJob?' @ '+jobLabel(i.lastJob):''}`;
   return `<span class="outtag" title="${esc(txt)}">${esc(txt)}</span>`}
-function renderYard(){
+function renderYard(){if(!__locMig&&isAdmin)setTimeout(locMig,1200);
   const cnt={};items.forEach(i=>{const g=grp(i);cnt[g]=(cnt[g]||0)+1;if(i.out>0)cnt.out=(cnt.out||0)+1});cnt.all=items.length;
   let jobOut=null;
   if(act==='RETURN'){jobOut={};for(const g of [...logs].reverse()){if(!g.job||(g.action!=='OUT'&&g.action!=='RETURN'))continue;const m=jobOut[g.job]=jobOut[g.job]||{};m[g.itemId]=(m[g.itemId]||0)+(g.action==='OUT'?g.n:-g.n)}
@@ -991,13 +996,15 @@ async function applyDecision(i,mode,each,reason){const id=i.id,now=new Date().to
 let rackCfg={},elevSel=null,elevOpen=false;
 const lvNum=i=>{const m=String(i.level||'').toUpperCase().match(/L\s*(\d+)/);return m?+m[1]:0};
 function rackDef(loc){const c=rackCfg[loc]||rackCfg._default||{};const lp=c.lp||{};const type=(rackCfg[loc]||{}).type||(/^D-0[1-4]$/.test(loc)?'cant':'pallet');return{type,lv:c.levels||4,p:c.pallets||2,lp,pl:l=>type==='cant'?1:(lp[l]||c.pallets||2)}}
+function elUndo(it,prev){let u=document.getElementById('elUndoBar');if(u)u.remove();u=document.createElement('div');u.id='elUndoBar';u.className='elundo';u.innerHTML=`<span>${esc(it.name)} moved</span><button type="button">Undo</button>`;document.body.appendChild(u);
+  const t=setTimeout(()=>u.remove(),7000);u.querySelector('button').onclick=async()=>{clearTimeout(t);u.remove();it.level=prev.level;it.pallet=prev.pallet;renderYard();try{await writeItem(it.id,{level:prev.level,pallet:prev.pallet,updatedAt:new Date().toISOString(),updatedBy:curUser});toast('Undone')}catch(e){toast('Could not undo: '+(e.message||e.code))}}}
 function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(yLoc);const maxLv=d.lv;const eb=$('#elevBtn');eb.hidden=elevOpen;eb.innerHTML=`Side view · ${esc(yLoc)}`;eb.onclick=()=>{elevOpen=true;renderYard()};box.hidden=!elevOpen;if(!elevOpen)return;
   const canMove=isAdmin||can('UNITS');const cant=d.type==='cant';const placed=i=>{const lv=lvNum(i);return lv>=1&&lv<=maxLv&&(cant||(+i.pallet>=1&&+i.pallet<=d.pl(lv)))};
   const unpl=list.filter(i=>!placed(i));
   const chip=i=>`<span class="pchip ${elPick===i.id?'sel':''}" data-iid="${esc(i.id)}">${thumb(i)}<span>${esc(i.name)}${i.size&&i.size!=='-'?' <small>'+esc(i.size)+'</small>':''}</span><b>${esc(qtyTxt(i))}</b></span>`;
   const rows=[];for(let lv=maxLv;lv>=1;lv--)rows.push(lv);
   box.innerHTML=`<button type="button" class="elx" id="elX" aria-label="Close side view">✕</button><div class="elhead"><b>Rack ${esc(yLoc)} — side view</b><small class="muted">${canMove?(cant?'Drag an item onto an arm (or tap the item, then tap the arm). Tap an arm label to filter the list.':'Drag an item onto a pallet (or tap the item, then tap the pallet). Tap a pallet header to filter the list.'):'Tap a pallet to see what\'s on it'}</small>${isAdmin?`<span class="elcfg">${cant?'Arms':'Levels'} <button data-c="lv-">−</button><b>${d.lv}</b><button data-c="lv+">+</button>${cant?'':'<small class="muted">· pallets per level: − / + on each level</small>'}<button type="button" id="elType" style="width:auto;padding:0 10px">${cant?'Cantilever rack':'Pallet rack'} ⇄</button></span>`:''}</div>
-  ${unpl.length?`<div class="tray pal" data-lv="0" data-p=""><span class="pn">Not placed yet · ${unpl.length}${unpl.some(i=>lvNum(i)>maxLv)?' <small>(some are marked on a level above '+maxLv+' — add '+(d.type==='cant'?'arms':'levels')+' or move them)</small>':''}</span><div class="pchips">${unpl.map(chip).join('')}</div></div>`:''}
+  ${unpl.length||canMove?`<div class="tray pal" data-lv="0" data-p=""><span class="pn">Not placed yet · ${unpl.length}${!unpl.length?' <small>— drag an item here to take it off its pallet</small>':''}${unpl.some(i=>lvNum(i)>maxLv)?' <small>(some are marked on a level above '+maxLv+' — add '+(d.type==='cant'?'arms':'levels')+' or move them)</small>':''}</span><div class="pchips">${unpl.map(chip).join('')||'<span class="pe">empty</span>'}</div></div>`:''}
   ${cant?`<div class="cant"><div class="cpost"></div><div class="carms">${rows.map(lv=>{const its=list.filter(i=>placed(i)&&lvNum(i)===lv);const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv;
       return `<div class="pal carm ${its.length?'has':''} ${on?'on':''}" data-lv="${lv}" data-p="1"><button type="button" class="pn ph" data-flt="1">Arm L${lv}${its.length?' · '+its.length:''}</button><div class="pchips">${its.map(chip).join('')||'<span class="pe">empty</span>'}</div><div class="cbeam"></div></div>`}).join('')}</div></div><div class="cfoot"></div>`:''}
   <div class="rack"${cant?' hidden':''}>${rows.map(lv=>{const np=d.pl(lv);return `<div class="lvrow"><span class="lvl">L${lv}${isAdmin?`<span class="lpc"><button data-lp="${lv}" data-d="-1">−</button><b>${np}</b><button data-lp="${lv}" data-d="1">+</button></span>`:''}</span><div class="pals" style="grid-template-columns:repeat(${np},minmax(0,1fr))">${Array.from({length:np},(_,k)=>{const p=k+1;const its=list.filter(i=>placed(i)&&lvNum(i)===lv&&+i.pallet===p);const on=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p)===String(p);
@@ -1007,8 +1014,8 @@ function drawElev(list){const box=$('#rackElev');if(!box)return;const d=rackDef(
   box.querySelectorAll('[data-flt]').forEach(b=>b.onclick=e=>{e.stopPropagation();const c=b.closest('.pal');const lv=+c.dataset.lv,p=c.dataset.p;const same=elevSel&&elevSel.loc===yLoc&&elevSel.lv===lv&&String(elevSel.p)===p;elevSel=same?null:{loc:yLoc,lv,p};renderYard()});
   if($('#elClr'))$('#elClr').onclick=()=>{elevSel=null;renderYard()};
   if($('#elType'))$('#elType').onclick=async()=>{rackCfg={...rackCfg,[yLoc]:{...(rackCfg[yLoc]||{levels:d.lv}),type:cant?'pallet':'cant'}};renderYard();try{await db.doc('config/racks').set(rackCfg)}catch(e){toast('Could not save rack setup')}};
-  const moveTo=async(id,lv,p)=>{const it=byId(id);if(!it)return;const nl=lv?'L'+lv:it.level,np=lv?String(p):'';if(lvNum(it)===lv&&String(it.pallet||'')===np)return;
-    it.level=nl;it.pallet=np;elPick='';renderYard();
+  const moveTo=async(id,lv,p,isUndo)=>{const it=byId(id);if(!it)return;const nl=lv?'L'+lv:(isUndo?(p||''):it.level),np=lv?String(p):(isUndo?'':'');if(!isUndo&&lvNum(it)===lv&&String(it.pallet||'')===np)return;
+    const prev={level:it.level||'',pallet:it.pallet||''};it.level=nl;it.pallet=np;elPick='';renderYard();if(!isUndo)elUndo(it,prev);
     try{await writeItem(id,{level:nl,pallet:np,updatedAt:new Date().toISOString(),updatedBy:curUser});await db.collection('logs').add({ts:new Date().toISOString(),action:'EDIT',itemId:id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:0,before:it.qty,after:it.qty,job:'',by:curUser,note:lv?`Placed on ${yLoc} L${lv} · Pallet ${p}`:'Removed from pallet',cond:''})}catch(e){toast('Could not save: '+(e.message||e.code))}};
   if(canMove){
     box.querySelectorAll('.pchip').forEach(ch=>{ch.onclick=e=>{e.stopPropagation();elPick=elPick===ch.dataset.iid?'':ch.dataset.iid;box.querySelectorAll('.pchip').forEach(x=>x.classList.toggle('sel',x.dataset.iid===elPick))};
@@ -1121,7 +1128,13 @@ function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=i
 function renderCartBar(){const n=cart.reduce((a,c)=>a+c.n,0);$('#cartbar').hidden=!cart.length||$('#tab-yard').hidden||act==='AUDIT';document.body.classList.toggle('hascart',!$('#cartbar').hidden);
   $('#cbCount').textContent=cart.length;$('#cbLabel').textContent=(cart.length===1?'item':'items')+(act==='ADJUST'||innerWidth<600?'':` · ${n} pcs`);$('#cbMode').textContent=ACTNAME[act]}
 function renderCart(){renderCartBar()}
-$('#cbClear').onclick=()=>{cart=[];render()};
+$('#cbClear').onclick=()=>{if(cart.length>1&&!confirm('Remove all '+cart.length+' items from the cart?'))return;cart=[];closeCartPop();render()};
+function closeCartPop(){const p=document.getElementById('cartPop');if(p)p.remove()}
+function openCartPop(){closeCartPop();if(!cart.length)return;const p=document.createElement('div');p.id='cartPop';p.className='cartpop';
+  const draw=()=>{if(!cart.length){closeCartPop();render();return}p.innerHTML=`<div class="cph"><b>In cart · ${cart.length}</b><button type="button" class="btn small" id="cpX">Close</button></div>${cart.map((c,k)=>{const i=byId(c.id)||{};return `<div class="cpr">${thumb(i)}<div><b>${esc(i.name||c.id)}</b><small>${esc([i.size&&i.size!=='-'?i.size:'',i.loc].filter(Boolean).join(' · '))}</small></div><span class="mono">${c.n} ${esc(i.unit||'')}</span><button type="button" class="cprm" data-k="${k}" aria-label="Remove">×</button></div>`}).join('')}`;
+    p.querySelector('#cpX').onclick=closeCartPop;p.querySelectorAll('.cprm').forEach(b=>b.onclick=()=>{cart.splice(+b.dataset.k,1);render();draw()})};
+  draw();document.body.appendChild(p)}
+document.querySelector('#cartbar .cb-in>div').onclick=openCartPop;document.querySelector('#cartbar .cb-in>div').style.cursor='pointer';
 $('#cbGo').onclick=openCheckout;
 let selWho='',selCond='Good';
 function renderPeople(){}
@@ -1247,11 +1260,15 @@ function syncPick(k){const inp=document.getElementById('e_'+k),sel=document.getE
 function buildPicks(pool){for(const k of PICKK){const inp=document.getElementById('e_'+k);if(!inp||inp.disabled)continue;let sel=document.getElementById('pk_'+k);
     if(!sel){sel=document.createElement('select');sel.id='pk_'+k;sel.className='pick';inp.parentNode.insertBefore(sel,inp);
       sel.onchange=()=>{if(sel.value==='__new'){inp.hidden=false;inp.value='';inp.focus()}else{inp.value=sel.value;inp.hidden=true}};}
-    const vals=uniq((k==='loc'||k==='level'?items:pool).map(x=>x[k]));const cur=inp.value;
+    const vals=uniq((k==='loc'||k==='level'?items:typeof pool==='function'?pool(k):pool).map(x=>x[k]));const cur=inp.value;
     sel.innerHTML=`<option value="">— Select —</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+`<option value="__new">+ Type a new one…</option>`;syncPick(k)}}
 function fillLists(pool){setTimeout(()=>buildPicks(pool),0);const keys=['cat','mfgr','name','size','unit','level','loc'];let dl=document.getElementById('dlbox');if(!dl){dl=document.createElement('div');dl.id='dlbox';dl.hidden=true;document.body.appendChild(dl)}
-  dl.innerHTML=keys.map(k=>`<datalist id="dl_${k}">${uniq((k==='loc'||k==='level'?items:pool).map(x=>x[k])).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
-function setupQuickPick(i,isNew){fillLists(items);const box=document.getElementById('qp');if(!box)return;let g='',sb='';
+  dl.innerHTML=keys.map(k=>`<datalist id="dl_${k}">${uniq((k==='loc'||k==='level'?items:typeof pool==='function'?pool(k):pool).map(x=>x[k])).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
+function typePools(){const g=k=>{const e=document.getElementById('e_'+k);return e?e.value.trim():''};const t=g('type'),c=g('cat'),m=g('mfgr'),n=g('name');const L=x=>String(x||'').toLowerCase();
+  const by=(x,lvl)=>(!t||L(x.type)===L(t))&&(lvl<1||!c||L(x.cat)===L(c))&&(lvl<2||!m||L(x.mfgr)===L(m))&&(lvl<3||!n||L(x.name)===L(n));
+  const lv={cat:0,mfgr:1,name:2,size:3,unit:3};return k=>{const r=items.filter(x=>by(x,lv[k]??0));return r.length?r:items.filter(x=>by(x,0)).length?items.filter(x=>by(x,0)):items}}
+function cascadePicks(){const f=typePools();fillLists(f)}
+function setupQuickPick(i,isNew){fillLists(typePools());setTimeout(()=>{['type','cat','mfgr','name'].forEach(k=>{const e=document.getElementById('e_'+k);if(e&&!e._cas){e._cas=1;e.addEventListener('change',cascadePicks)}const s=document.getElementById('pk_'+k);if(s&&!s._cas){s._cas=1;s.addEventListener('change',()=>setTimeout(cascadePicks,0))}})},30);const box=document.getElementById('qp');if(!box)return;let g='',sb='';
   const draw=()=>{const pool=items.filter(x=>(!g||grp(x)===g)&&(!sb||sub(x)===sb));fillLists(g?pool:items);
     const seen=new Map();pool.forEach(x=>{const k=[x.name,x.size,x.mfgr].join('|').toLowerCase();if(!seen.has(k))seen.set(k,x)});const list=[...seen.values()].sort((a,b)=>a.name.localeCompare(b.name)||String(a.size).localeCompare(String(b.size),undefined,{numeric:true}));
     box.innerHTML=`<div class="qph">Quick pick <small class="muted">— choose a category, then tap a similar item to copy its details</small></div>
@@ -1632,7 +1649,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
   db=await window.claude?.use?.('db');if(db){secInit();db.doc('config/spectrum').onSnapshot(x=>{SPJ=x.data()||{jobs:[]}},()=>{});const oc=db.collection.bind(db);db.collection=n=>{const c=oc(n);if(n==='logs'){const oa=c.add.bind(c);c.add=d=>oa({...d,dev:devId})}return c}}
   if(!db){$('#status').textContent='Not connected. Sign in with your company Microsoft account.';return}
   $('#status').textContent='Live · changes from the field and the office show up here automatically.';
-  db.collection('items').onSnapshot(s=>{rawItems=s.docs.map(d=>({...d.data(),id:d.id}));mergeItems();markSync();render()},e=>$('#status').textContent='Could not load items: '+e.message);
+  db.collection('items').onSnapshot(s=>{rawItems=s.docs.map(d=>({...d.data(),id:d.id}));mergeItems();markSync();render();setTimeout(locMig,1500)},e=>$('#status').textContent='Could not load items: '+e.message);
   db.collection('logs').onSnapshot(s=>{const prev=new Set(logs.map(g=>g._id)),first=!logs.length;logs=s.docs.map(d=>({...d.data(),_id:d.id})).filter(g=>g.ts).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));try{AME.badges()}catch(e){}if(!first&&curUser){const nw=logs.filter(g=>!prev.has(g._id)&&isOther(g));if(nw.length)toast(nw[0].by+': '+(ACTNAME[nw[0].action]||nw[0].action)+' – '+nw[0].name+(nw.length>1?' (+'+(nw.length-1)+' more)':''))}markSync();render();updBell()},e=>toast('Could not load activity: '+(e.message||e.code)));
   db.doc('config/brand').onSnapshot(s=>{const u=s.data()?.logo;if(u)$('#logoImg').src=u},()=>{});
   db.collection('newitems').onSnapshot(s=>{pendingItems=s.docs.map(d=>({...d.data(),id:d.id,pending:true,issue:'New item added from the yard — office to review'}));mergeItems();render()},()=>{});
@@ -1661,6 +1678,8 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
 #ylist .card.picked::after{content:"\2713";position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#e2513a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:3}.card{position:relative}.cinfo{position:absolute;bottom:8px;right:8px;pointer-events:auto;z-index:3;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font:italic 700 16px/30px Georgia,serif;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .logo{height:52px;padding:4px 10px;min-width:96px;justify-content:center}.logo img{height:44px;max-width:180px}#brand{min-height:52px;padding:0;cursor:pointer}#brand:active .logo{transform:scale(.96)}
 @media (max-width:600px){.logo{height:46px;padding:3px 8px;min-width:84px}.logo img{height:40px;max-width:130px}}
+.elundo{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9999;background:#222;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:14px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:92vw}.elundo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.elundo button{background:none;border:0;color:#f6a04d;font-weight:800;font-size:15px}
+.cartpop{position:fixed;left:8px;right:8px;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:520px;margin:0 auto;max-height:55vh;overflow:auto;z-index:9998;background:var(--panel,#3a3532);border:1px solid var(--line,#555);border-radius:14px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.5)}.cph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.cpr{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line,#555)}.cpr>div{flex:1;min-width:0}.cpr small{display:block;opacity:.7}.cpr .thumb{width:32px;height:32px}.cprm{width:34px;height:34px;border-radius:50%;border:1px solid var(--line,#555);background:none;color:var(--bad,#e66);font-size:18px;flex:none}.cbview{font-size:12px;opacity:.8;margin-left:4px}@media (max-width:600px){.cbview{display:none}}
 </style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
