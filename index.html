@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.89',APP_DATE='2026-10-15';
+const APP_VERSION='3.90',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -737,7 +737,7 @@ function applyMapCfg(d){for(const k of Object.keys(BAYS))if(!(k in BAYS0))delete
   ZONES.splice(0,ZONES.length,...JSON.parse(JSON.stringify(d&&Array.isArray(d.zones)&&d.zones.length?d.zones:ZONES0)))}
 function mapEditBar(){let b=document.getElementById('mapEditBar');const w=$('#mapwrap');let ok=false;try{ok=!!curUser&&isEditor(curUser)}catch(e){}if(!w||!ok){if(b)b.remove();if(mapEdit){mapEdit=false;mapSel=null}return}
   if(!b){b=document.createElement('div');b.id='mapEditBar';b.className='mapedit';w.appendChild(b)}
-  b.innerHTML=mapEdit?`<span><b>Editing map</b> — drag racks or zones; drag a zone's corner ◢ to resize. Tap one to select it.</span><button type="button" class="btn small" data-me="addz">+ Zone</button><button type="button" class="btn small" data-me="addr">+ Rack</button>${mapSel?`<button type="button" class="btn small dng" data-me="del">Delete ${mapSel.k==='bay'?'rack '+esc(mapSel.id):'zone '+esc(mapSel.id.split('|')[0])}</button>`:''}<button type="button" class="btn small" data-me="reset">Reset to default</button><button type="button" class="btn small" data-me="cancel">Cancel</button><button type="button" class="btn pri small" data-me="save">Save layout</button>`:`<button type="button" class="btn small" data-me="edit">✎ Edit map layout</button>`;
+  b.innerHTML=mapEdit?`<span><b>Editing map</b> — drag racks or zones; drag a zone's corner ◢ to resize. Tap a rack, then drag its small corner square to resize it.</span><button type="button" class="btn small" data-me="addz">+ Zone</button><button type="button" class="btn small" data-me="addr">+ Rack</button>${mapSel?`<button type="button" class="btn small dng" data-me="del">Delete ${mapSel.k==='bay'?'rack '+esc(mapSel.id):'zone '+esc(mapSel.id.split('|')[0])}</button>`:''}<button type="button" class="btn small" data-me="reset">Reset to default</button><button type="button" class="btn small" data-me="cancel">Cancel</button><button type="button" class="btn pri small" data-me="save">Save layout</button>`:`<button type="button" class="btn small" data-me="edit">✎ Edit map layout</button>`;
   b.querySelectorAll('[data-me]').forEach(x=>x.onclick=async()=>{const a=x.dataset.me;
     if(a==='addz'){let z=(prompt('New zone letter or name (e.g. G):')||'').trim().toUpperCase();if(!z)return;if(ZONES.some(x=>x[0]===z)&&!confirm('Zone '+z+' already exists. Add another box for it?'))return;ZONES.push([z,220,40,120,90]);mapSel={k:'zone',id:z+'|220|40'};renderMap();toast('Zone '+z+' added top-left — drag it into place');return}
     if(a==='addr'){let r=(prompt('New rack name (e.g. G-01):')||'').trim().toUpperCase();if(!r)return;if(BAYS[r]){toast(r+' already exists');return}BAYS[r]=[260,80];mapSel={k:'bay',id:r};renderMap();toast('Rack '+r+' added top-left — drag it into place');return}
@@ -748,14 +748,16 @@ function mapEditBar(){let b=document.getElementById('mapEditBar');const w=$('#ma
     if(a==='reset'){if(!confirm('Put every rack and zone back to the original layout?'))return;applyMapCfg({});renderMap();return}
     if(a==='save'){try{const bays={};for(const [k,v] of Object.entries(BAYS))if(JSON.stringify(BAYS0[k])!==JSON.stringify(v))bays[k]=v;for(const k of Object.keys(BAYS0))if(!(k in BAYS))bays[k]=null;await db.doc('config/yardmap').set({bays,zones:ZONES,at:new Date().toISOString(),by:curUser});mapEdit=false;mapSel=null;renderMap();toast('Map layout saved')}catch(e){toast('Could not save: '+(e.message||e))}}})}
 function mapDrag(){const sv=$('#ymap');if(!mapEdit||!sv)return;const pt=e=>{const p=sv.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(sv.getScreenCTM().inverse())};const sn=v=>Math.round(v/5)*5;
-  const start=(e,kind,key)=>{e.preventDefault();e.stopPropagation();const p0=pt(e);const z=kind!=='bay'?ZONES.find(x=>x[0]+'|'+x[1]+'|'+x[2]===key):null;const b0=kind==='bay'?[...BAYS[key]]:[...z];let moved=false;
+  const start=(e,kind,key)=>{e.preventDefault();e.stopPropagation();const p0=pt(e);const z=kind!=='bay'&&kind!=='bsize'?ZONES.find(x=>x[0]+'|'+x[1]+'|'+x[2]===key):null;const b0=kind==='bay'||kind==='bsize'?[...BAYS[key]]:[...z];let moved=false;
     const mv=ev=>{const p=pt(ev),dx=p.x-p0.x,dy=p.y-p0.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;
-      if(kind==='bay'){BAYS[key]=[sn(b0[0]+dx),sn(b0[1]+dy)];const g=sv.querySelector(`.bedit[data-loc="${key}"]`);if(g)g.setAttribute('transform',`translate(${BAYS[key][0]-b0[0]},${BAYS[key][1]-b0[1]})`)}
+      if(kind==='bsize'){const w=Math.max(30,sn((b0[2]||46)+dx*2)),hh=Math.max(26,sn((b0[3]||40)+dy*2));BAYS[key]=[b0[0],b0[1],w,hh];const g=sv.querySelector(`.bedit[data-loc="${key}"] rect`);if(g){g.setAttribute('x',b0[0]-w/2);g.setAttribute('y',b0[1]-hh/2);g.setAttribute('width',w);g.setAttribute('height',hh)}}
+      else if(kind==='bay'){BAYS[key]=[sn(b0[0]+dx),sn(b0[1]+dy),...b0.slice(2)];const g=sv.querySelector(`.bedit[data-loc="${key}"]`);if(g)g.setAttribute('transform',`translate(${BAYS[key][0]-b0[0]},${BAYS[key][1]-b0[1]})`)}
       else if(kind==='zone'){z[1]=sn(b0[1]+dx);z[2]=sn(b0[2]+dy);drawLive()}else{z[3]=Math.max(40,sn(b0[3]+dx));z[4]=Math.max(30,sn(b0[4]+dy));drawLive()}};
     const drawLive=()=>{const r=sv.querySelector(`[data-zk="${key}"]`);if(!r)return;r.setAttribute('x',z[1]);r.setAttribute('y',z[2]);r.setAttribute('width',z[3]);r.setAttribute('height',z[4]);const h=sv.querySelector(`[data-zh="${key}"]`);if(h){h.setAttribute('x',z[1]+z[3]-14);h.setAttribute('y',z[2]+z[4]-14)}key=z[0]+'|'+z[1]+'|'+z[2];r.dataset.zk=key;if(h)h.dataset.zh=key};
-    const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);if(!moved&&kind!=='size')mapSel={k:kind==='bay'?'bay':'zone',id:kind==='bay'?key:z[0]+'|'+z[1]+'|'+z[2]};else if(mapSel&&kind!=='bay'&&z)mapSel={k:'zone',id:z[0]+'|'+z[1]+'|'+z[2]};renderMap()};addEventListener('pointermove',mv);addEventListener('pointerup',up)};
+    const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);if(kind==='bsize'){}else if(!moved&&kind!=='size')mapSel={k:kind==='bay'?'bay':'zone',id:kind==='bay'?key:z[0]+'|'+z[1]+'|'+z[2]};else if(mapSel&&kind!=='bay'&&kind!=='bsize'&&z)mapSel={k:'zone',id:z[0]+'|'+z[1]+'|'+z[2]};renderMap()};addEventListener('pointermove',mv);addEventListener('pointerup',up)};
   sv.querySelectorAll(".bedit[data-loc]").forEach(g=>g.onpointerdown=e=>start(e,'bay',g.dataset.loc));
   sv.querySelectorAll('[data-zk]').forEach(r=>r.onpointerdown=e=>start(e,'zone',r.dataset.zk));
+  sv.querySelectorAll('[data-bh]').forEach(r=>r.onpointerdown=e=>start(e,'bsize',r.dataset.bh));
   sv.querySelectorAll('[data-zh]').forEach(r=>r.onpointerdown=e=>start(e,'size',r.dataset.zh))}
 function renderMap(){
   const q=$('#ysearch').value.trim();const cnt={},hit={},inc={};
@@ -763,10 +765,10 @@ function renderMap(){
   let h=`<rect class="bldg" x="200" y="20" width="610" height="495" rx="6"/>`;
   h+=ZONES.map(([z,x,y,w,hh])=>`<rect class="z ${yLoc==='zone:'+z?'sel':''}" data-zone="${z}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="4"/>${z==='Y'?`<text class="zl" style="font-size:18px" x="${x+12}" y="${y+24}">OUTDOOR YARD</text>`:`<text class="zl" x="${x+w-10}" y="${y+hh-10}" text-anchor="end">${z}</text>`}`).join('');
   h=h.replace('<rect class="z','<rect class="z')
-  h+=Object.entries(BAYS).map(([l,[x,y]])=>{const n=cnt[l]||0;const c=['bay',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
-    return `<g class="${c}" data-loc="${l}"><rect x="${x-23}" y="${y-20}" width="46" height="40" rx="5"/><text x="${x}" y="${y-3}">${l}</text><text class="bc" x="${x}" y="${y+14}">${n?n:'—'}</text></g>`}).join('');
+  h+=Object.entries(BAYS).map(([l,[x,y,bw=46,bh=40]])=>{const n=cnt[l]||0;const c=['bay',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
+    return `<g class="${c}" data-loc="${l}"><rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="5"/><text x="${x}" y="${y-3}">${l}</text><text class="bc" x="${x}" y="${y+14}">${n?n:'—'}</text></g>`}).join('');
   if(mapEdit){h+=ZONES.map(([z,x,y,w,hh])=>`<rect class="zedit ${mapSel&&mapSel.id===z+'|'+x+'|'+y?'msel':''}" data-zk="${z}|${x}|${y}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="4"/><rect class="zhandle" data-zh="${z}|${x}|${y}" x="${x+w-14}" y="${y+hh-14}" width="14" height="14" rx="2"/>`).join('');
-    h+=ZONES.map(([z,x,y,w,hh])=>`<text class="zlbl" x="${x+6}" y="${y+16}">${esc(z)}</text>`).join('');h+=Object.entries(BAYS).map(([l,[x,y]])=>`<g class="bay bedit ${mapSel&&mapSel.id===l?'msel':''}" data-loc="${l}"><rect x="${x-23}" y="${y-20}" width="46" height="40" rx="5"/><text x="${x}" y="${y+5}">${l}</text></g>`).join('')}
+    h+=ZONES.map(([z,x,y,w,hh])=>`<text class="zlbl" x="${x+6}" y="${y+16}">${esc(z)}</text>`).join('');h+=Object.entries(BAYS).map(([l,[x,y,bw=46,bh=40]])=>`<g class="bay bedit ${mapSel&&mapSel.id===l?'msel':''}" data-loc="${l}"><rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="5"/><text x="${x}" y="${y+5}">${l}</text></g>${mapSel&&mapSel.id===l?`<rect class="bhandle" data-bh="${l}" x="${x+bw/2-9}" y="${y+bh/2-9}" width="12" height="12" rx="2"/>`:''}`).join('')}
   $('#ymap').innerHTML=h;$('#ymap').classList.toggle('editing',mapEdit);mapEditBar();if(mapEdit){mapDrag();return}
   {const ZN={A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',Y:'Outdoor'};const zc=z=>Object.keys(BAYS).filter(l=>l.startsWith(z+'-')).reduce((a,l)=>a+(cnt[l]||0),0);
    $('#zbar').innerHTML=`<button type="button" data-zb="" aria-pressed="${!mZone}">Map</button>`+[...new Set(ZONES.map(x=>x[0]))].map((z)=>`<button type="button" data-zb="${z}" aria-pressed="${mZone===z}">${ZN[z]}<small>${zc(z)||''}</small></button>`).join('');
@@ -1712,6 +1714,7 @@ db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()}
 #ymap.editing .bay:not(.bedit),#ymap.editing .zl{display:none}#ymap.editing{touch-action:none}#ymap .zedit{fill:rgba(242,106,27,.08);stroke:#f26a1b;stroke-dasharray:6 4;cursor:move}#ymap .zhandle{fill:#f26a1b;cursor:nwse-resize}#ymap .bedit{cursor:grab}#ymap .bedit rect{fill:#3a3532;stroke:#f6a04d;stroke-width:2}
 .mapedit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.mapedit span{flex:1 1 100%;font-size:13px}
 #ymap .zedit.msel{stroke-width:4;stroke-dasharray:none;fill:rgba(242,106,27,.18)}#ymap .bedit.msel rect{stroke:#fff;stroke-width:3}#ymap .zlbl{fill:#f6a04d;font:700 14px sans-serif;pointer-events:none}
+#ymap .bhandle{fill:#fff;stroke:#f26a1b;stroke-width:2;cursor:nwse-resize}
 </style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
