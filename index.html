@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.92',APP_DATE='2026-10-15';
+const APP_VERSION='3.94',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1735,7 +1735,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="shell.js?v=392"></script>
 <script src="polish.js?v=370"></script>
 <script src="mpl.js?v=379"></script>
-<script src="eqp.js?v=392"></script>
+<script src="eqp.js?v=394"></script>
 <script src="field.js?v=350"></script>
 <script src="trucks.js?v=373"></script>
 <script src="safety.js?v=370"></script>
