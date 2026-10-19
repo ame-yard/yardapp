@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.83',APP_DATE='2026-10-15';
+const APP_VERSION='3.84',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -732,6 +732,27 @@ $('#rackAdd').onclick=()=>openItem('',yLoc&&!yLoc.startsWith('zone:')?yLoc:'');
 $('#rackSel').onclick=()=>{selMode=!selMode;picked.clear();renderYard()};
 $('#rackEdit').onclick=()=>{editMode=!editMode;renderYard()};
 function scrollToList(){if(!yLoc)return;const m=$('#kiosk .menu');if(m&&getComputedStyle($('#kiosk')).gridTemplateColumns.split(' ').length===1)m.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}
+const BAYS0=JSON.parse(JSON.stringify(BAYS)),ZONES0=JSON.parse(JSON.stringify(ZONES));let mapEdit=false,mapCfgSaved=null;
+function applyMapCfg(d){for(const k of Object.keys(BAYS))if(!(k in BAYS0))delete BAYS[k];Object.assign(BAYS,JSON.parse(JSON.stringify(BAYS0)));if(d&&d.bays)for(const [k,v] of Object.entries(d.bays))if(BAYS[k]&&Array.isArray(v))BAYS[k]=v;
+  ZONES.splice(0,ZONES.length,...JSON.parse(JSON.stringify(d&&Array.isArray(d.zones)&&d.zones.length?d.zones:ZONES0)))}
+function mapEditBar(){let b=document.getElementById('mapEditBar');const w=$('#mapwrap');if(!w||!isAdmin){if(b)b.remove();return}
+  if(!b){b=document.createElement('div');b.id='mapEditBar';b.className='mapedit';w.appendChild(b)}
+  b.innerHTML=mapEdit?`<span><b>Editing map</b> — drag racks or zones; drag a zone's corner ◢ to resize</span><button type="button" class="btn small" data-me="reset">Reset to default</button><button type="button" class="btn small" data-me="cancel">Cancel</button><button type="button" class="btn pri small" data-me="save">Save layout</button>`:`<button type="button" class="btn small" data-me="edit">✎ Edit map layout</button>`;
+  b.querySelectorAll('[data-me]').forEach(x=>x.onclick=async()=>{const a=x.dataset.me;
+    if(a==='edit'){mapCfgSaved=JSON.stringify({bays:BAYS,zones:ZONES});mapEdit=true;mZone='';renderMap();return}
+    if(a==='cancel'){applyMapCfg(JSON.parse(mapCfgSaved));mapEdit=false;renderMap();return}
+    if(a==='reset'){if(!confirm('Put every rack and zone back to the original layout?'))return;applyMapCfg({});renderMap();return}
+    if(a==='save'){try{const bays={};for(const [k,v] of Object.entries(BAYS))if(JSON.stringify(BAYS0[k])!==JSON.stringify(v))bays[k]=v;await db.doc('config/yardmap').set({bays,zones:ZONES,at:new Date().toISOString(),by:curUser});mapEdit=false;renderMap();toast('Map layout saved')}catch(e){toast('Could not save: '+(e.message||e))}}})}
+function mapDrag(){const sv=$('#ymap');if(!mapEdit||!sv)return;const pt=e=>{const p=sv.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(sv.getScreenCTM().inverse())};const sn=v=>Math.round(v/5)*5;
+  const start=(e,kind,key)=>{e.preventDefault();e.stopPropagation();const p0=pt(e);const z=kind!=='bay'?ZONES.find(x=>x[0]+'|'+x[1]+'|'+x[2]===key):null;const b0=kind==='bay'?[...BAYS[key]]:[...z];let moved=false;
+    const mv=ev=>{const p=pt(ev),dx=p.x-p0.x,dy=p.y-p0.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;
+      if(kind==='bay'){BAYS[key]=[sn(b0[0]+dx),sn(b0[1]+dy)];const g=sv.querySelector(`.bedit[data-loc="${key}"]`);if(g)g.setAttribute('transform',`translate(${BAYS[key][0]-b0[0]},${BAYS[key][1]-b0[1]})`)}
+      else if(kind==='zone'){z[1]=sn(b0[1]+dx);z[2]=sn(b0[2]+dy);drawLive()}else{z[3]=Math.max(40,sn(b0[3]+dx));z[4]=Math.max(30,sn(b0[4]+dy));drawLive()}};
+    const drawLive=()=>{const r=sv.querySelector(`[data-zk="${key}"]`);if(!r)return;r.setAttribute('x',z[1]);r.setAttribute('y',z[2]);r.setAttribute('width',z[3]);r.setAttribute('height',z[4]);const h=sv.querySelector(`[data-zh="${key}"]`);if(h){h.setAttribute('x',z[1]+z[3]-14);h.setAttribute('y',z[2]+z[4]-14)}key=z[0]+'|'+z[1]+'|'+z[2];r.dataset.zk=key;if(h)h.dataset.zh=key};
+    const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);renderMap()};addEventListener('pointermove',mv);addEventListener('pointerup',up)};
+  sv.querySelectorAll(".bedit[data-loc]").forEach(g=>g.onpointerdown=e=>start(e,'bay',g.dataset.loc));
+  sv.querySelectorAll('[data-zk]').forEach(r=>r.onpointerdown=e=>start(e,'zone',r.dataset.zk));
+  sv.querySelectorAll('[data-zh]').forEach(r=>r.onpointerdown=e=>start(e,'size',r.dataset.zh))}
 function renderMap(){
   const q=$('#ysearch').value.trim();const cnt={},hit={},inc={};
   items.forEach(i=>{const l=locOf(i);cnt[l]=(cnt[l]||0)+1;if(q&&match(i,q))hit[l]=1;if(cart.some(c=>c.id===i.id))inc[l]=1});
@@ -740,9 +761,11 @@ function renderMap(){
   h=h.replace('<rect class="z','<rect class="z')
   h+=Object.entries(BAYS).map(([l,[x,y]])=>{const n=cnt[l]||0;const c=['bay',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
     return `<g class="${c}" data-loc="${l}"><rect x="${x-23}" y="${y-20}" width="46" height="40" rx="5"/><text x="${x}" y="${y-3}">${l}</text><text class="bc" x="${x}" y="${y+14}">${n?n:'—'}</text></g>`}).join('');
-  $('#ymap').innerHTML=h;
+  if(mapEdit){h+=ZONES.map(([z,x,y,w,hh])=>`<rect class="zedit" data-zk="${z}|${x}|${y}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="4"/><rect class="zhandle" data-zh="${z}|${x}|${y}" x="${x+w-14}" y="${y+hh-14}" width="14" height="14" rx="2"/>`).join('');
+    h+=Object.entries(BAYS).map(([l,[x,y]])=>`<g class="bay bedit" data-loc="${l}"><rect x="${x-23}" y="${y-20}" width="46" height="40" rx="5"/><text x="${x}" y="${y+5}">${l}</text></g>`).join('')}
+  $('#ymap').innerHTML=h;$('#ymap').classList.toggle('editing',mapEdit);mapEditBar();if(mapEdit){mapDrag();return}
   {const ZN={A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',Y:'Outdoor'};const zc=z=>Object.keys(BAYS).filter(l=>l.startsWith(z+'-')).reduce((a,l)=>a+(cnt[l]||0),0);
-   $('#zbar').innerHTML=`<button type="button" data-zb="" aria-pressed="${!mZone}">Map</button>`+ZONES.map(([z])=>`<button type="button" data-zb="${z}" aria-pressed="${mZone===z}">${ZN[z]}<small>${zc(z)||''}</small></button>`).join('');
+   $('#zbar').innerHTML=`<button type="button" data-zb="" aria-pressed="${!mZone}">Map</button>`+[...new Set(ZONES.map(x=>x[0]))].map((z)=>`<button type="button" data-zb="${z}" aria-pressed="${mZone===z}">${ZN[z]}<small>${zc(z)||''}</small></button>`).join('');
    $$('#zbar [data-zb]').forEach(b=>b.onclick=()=>{mZone=b.dataset.zb;renderMap()});
    const zp=$('#zpanel');zp.hidden=!mZone;$('#mapwrap').classList.toggle('zmode',!!mZone);$('#ymap').style.display=mZone?'none':'';if($('#maphint'))$('#maphint').textContent=mZone?'Tap a rack to see its items.':'Tap a rack, or pick a zone above for big buttons.';
    if(mZone){const L=Object.keys(BAYS).filter(l=>l.startsWith(mZone+'-')).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
@@ -1662,7 +1685,8 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
     $('#logoIn').onchange=async e=>{const f=e.target.files[0];if(!f)return;const as=await window.claude?.use?.('assets');if(!as){toast('Logo upload is not available.');return}
       try{const r=await as.upload(f);await db.doc('config/brand').set({logo:r.url,logoId:r.id});toast('Logo updated')}catch(err){toast('Could not upload: '+(err.message||err.code))}}}
   db.doc('config/crew').onSnapshot(s=>{crew=(s.data()?.members)||[];renderCrew();if(!curUser)showLogin();else setUser(curUser)},()=>{});
-  db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()},()=>{});
+  db.doc('config/yardmap').onSnapshot(s=>{const d=s.data()||{};if(mapEdit)return;applyMapCfg(d);renderMap()},()=>{});
+db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()},()=>{});
   db.doc('config/perms').onSnapshot(s=>{perms=s.data()||{roles:{},grants:[]};if(curUser)setUser(curUser);renderPerms()},()=>{});
   setInterval(()=>{if(curUser)setUser(curUser)},60e3);
   db.doc('config/security').onSnapshot(async s=>{const d=s.data()||{};officePinH=d.officePinH||'';officePin=officePinH||d.officePin||'';ownerPinH=d.ownerPinH||'';if(d.officePin&&isOwner(curUser)){try{await db.doc('config/security').update({officePinH:officePinH||await sha(d.officePin),officePin:null})}catch(e){}}renderCrew()},()=>{});
@@ -1681,6 +1705,8 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
 @media (max-width:600px){.logo{height:46px;padding:3px 8px;min-width:84px}.logo img{height:40px;max-width:130px}}
 .elundo{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9999;background:#222;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:14px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:92vw}.elundo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.elundo button{background:none;border:0;color:#f6a04d;font-weight:800;font-size:15px}
 .cartpop{position:fixed;left:8px;right:8px;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:520px;margin:0 auto;max-height:55vh;overflow:auto;z-index:9998;background:var(--panel,#3a3532);border:1px solid var(--line,#555);border-radius:14px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.5)}.cph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.cpr{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line,#555)}.cpr>div{flex:1;min-width:0}.cpr small{display:block;opacity:.7}.cpr .thumb{width:32px;height:32px}.cprm{width:34px;height:34px;border-radius:50%;border:1px solid var(--line,#555);background:none;color:var(--bad,#e66);font-size:18px;flex:none}.cbview{font-size:12px;opacity:.8;margin-left:4px}@media (max-width:600px){.cbview{display:none}}
+#ymap.editing .bay:not(.bedit),#ymap.editing .zl{display:none}#ymap.editing{touch-action:none}#ymap .zedit{fill:rgba(242,106,27,.08);stroke:#f26a1b;stroke-dasharray:6 4;cursor:move}#ymap .zhandle{fill:#f26a1b;cursor:nwse-resize}#ymap .bedit{cursor:grab}#ymap .bedit rect{fill:#3a3532;stroke:#f6a04d;stroke-width:2}
+.mapedit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.mapedit span{flex:1 1 100%;font-size:13px}
 </style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
