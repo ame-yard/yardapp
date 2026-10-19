@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='3.94',APP_DATE='2026-10-15';
+const APP_VERSION='3.95',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1146,7 +1146,7 @@ function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=i
        <div class="ainfo"><b>${esc(i.name)}</b><small>${esc([i.size&&i.size!=='-'?i.size:'',i.mfgr].filter(Boolean).join(' · '))}</small><small class="mono">${esc(i.loc)} ${esc(i.level||'')} · list ${esc(qtyTxt(i))} ${esc(i.unit)}</small>${i.issue?`<small class="awarn">${IC2.alert} ${esc(i.issue)}</small>`:''}${i.verifiedAt?`<small class="aok">✓ ${esc(i.verifiedBy||'')} · ${fmtD(i.verifiedAt)}</small>`:''}</div>
        <div class="actl"><div class="step"><button data-ad="-1">−</button><input data-an inputmode="numeric" value="${d.n}"><button data-ad="1">+</button></div>
          <select data-ac>${['Good','Mixed','Needs Check','Bad'].map(c=>`<option ${c===d.c?'selected':''}>${c}</option>`).join('')}</select>
-         <button class="btn pri" data-asave>${ch?'Save':'✓ Correct'}</button></div></div>`}).join(''):`<div class="empty">${audOnly?'Everything here is verified.':'Pick a rack or category.'}</div>`}`;
+         ${ch?'<button class="btn" data-areset title="Undo my changes on this row">Reset</button>':''}<button class="btn pri" data-asave>${ch?'Save':'✓ Correct'}</button></div></div>`}).join(''):`<div class="empty">${audOnly?'Everything here is verified.':'Pick a rack or category.'}</div>`}`;
   $('#audOnly').onclick=()=>{audOnly=!audOnly;LS.set('audOnly',audOnly);renderYard()};
   $$('#ylist .arow').forEach(r=>{const id=r.dataset.id,it=byId(id);const get=()=>audDraft[id]||(audDraft[id]={n:Number(it.qty)||0,c:it.cond||'Good'});
     r.querySelectorAll('[data-ad]').forEach(b=>b.onclick=()=>{const d=get();d.n=Math.max(0,d.n+Number(b.dataset.ad));renderYard()});
@@ -1154,10 +1154,15 @@ function renderAudit(list){const done=items.filter(i=>i.verifiedAt).length,tot=i
     r.querySelector('[data-an]').onfocus=e=>e.target.select();
     r.querySelector('[data-ac]').onchange=e=>{get().c=e.target.value;renderYard()};
     r.querySelector('[data-aph]').onclick=()=>{pickPhoto(id)};
+    {const rs=r.querySelector('[data-areset]');if(rs)rs.onclick=()=>{delete audDraft[id];renderYard()}}
     r.querySelector('[data-asave]').onclick=async e=>{e.target.disabled=true;const d=get(),now=new Date().toISOString(),before=Number(it.qty)||0;
-      const u={qty:d.n,cond:d.c,verifiedAt:now,verifiedBy:curUser,issue:'',qtyNote:'',updatedAt:now,updatedBy:curUser};
+      const u={qty:d.n,cond:d.c,verifiedAt:now,verifiedBy:curUser,issue:'',qtyNote:'',updatedAt:now,updatedBy:curUser};const prev={qty:it.qty,cond:it.cond||'Good',verifiedAt:it.verifiedAt||'',verifiedBy:it.verifiedBy||'',issue:it.issue||'',qtyNote:it.qtyNote||''};
       try{await writeItem(id,u);if(d.n!==before||d.c!==(it.cond||'Good'))await db.collection('logs').add({ts:now,action:'ADJUST',itemId:id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:d.n,before,after:d.n,job:'',by:curUser,note:'Yard audit'+(d.c!==(it.cond||'Good')?' — condition '+d.c:''),cond:d.c});
-        delete audDraft[id];toast('Saved: '+it.name)}catch(err){toast('Could not save: '+(err.message||err.code));e.target.disabled=false}}})}
+        delete audDraft[id];audUndo(it,prev,d,before)}catch(err){toast('Could not save: '+(err.message||err.code));e.target.disabled=false}}})}
+function audUndo(it,prev,d,before){let u=document.getElementById('elUndoBar');if(u)u.remove();u=document.createElement('div');u.id='elUndoBar';u.className='elundo';
+  u.innerHTML=`<span>Saved: ${esc(it.name)}${d.n!==before?' · '+before+' → '+d.n:''}</span><button type="button">Undo</button>`;document.body.appendChild(u);const t=setTimeout(()=>u.remove(),10000);
+  u.querySelector('button').onclick=async()=>{clearTimeout(t);u.remove();const now=new Date().toISOString();
+    try{await writeItem(it.id,{...prev,updatedAt:now,updatedBy:curUser});if(d.n!==before||d.c!==prev.cond)await db.collection('logs').add({ts:now,action:'ADJUST',itemId:it.id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n:before,before:d.n,after:before,job:'',by:curUser,note:'Yard audit undone',cond:prev.cond});toast('Undone: '+it.name);renderYard()}catch(e){toast('Could not undo: '+(e.message||e.code))}}}
 function renderCartBar(){const n=cart.reduce((a,c)=>a+c.n,0);$('#cartbar').hidden=!cart.length||$('#tab-yard').hidden||act==='AUDIT';document.body.classList.toggle('hascart',!$('#cartbar').hidden);
   $('#cbCount').textContent=cart.length;$('#cbLabel').textContent=(cart.length===1?'item':'items')+(act==='ADJUST'||innerWidth<600?'':` · ${n} pcs`);$('#cbMode').textContent=ACTNAME[act]}
 function renderCart(){renderCartBar()}
