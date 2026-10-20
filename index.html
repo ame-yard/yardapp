@@ -6,7 +6,7 @@ html.boot section[id^=tab-]{visibility:hidden}
 <script>document.documentElement.classList.add('boot');setTimeout(()=>document.documentElement.classList.remove('boot'),4000)</script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=403"></script>
+<script src="msbackend.js?v=411"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.10',APP_DATE='2026-10-15';
+const APP_VERSION='4.11',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1741,6 +1741,7 @@ db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()}
 .card .cstep{position:absolute;top:8px;left:8px;z-index:4;display:flex;align-items:center;gap:0;background:var(--hi,#f26a1b);color:var(--hi-ink,#1a1a1a);border-radius:20px;height:36px;box-shadow:0 2px 8px rgba(0,0,0,.35)}.card .cstep b{min-width:28px;text-align:center;font-family:var(--display);font-size:19px}.card .cstep .cs-b{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;cursor:pointer;border-radius:50%}.card .cstep .cs-b:active{background:rgba(0,0,0,.18)}
 .listview .card .cfoot{flex-direction:row!important;align-items:center!important;gap:6px!important;white-space:nowrap;margin-right:44px!important;align-self:center}.listview .card .cfoot .cqty{font-weight:700}.listview .card .cinfo{top:50%;bottom:auto;transform:translateY(-50%)}
 .listview .card .oosband{right:52px!important;left:auto!important}@media (max-width:600px){.listview .card .cfoot{flex-direction:column!important;align-items:flex-end!important;gap:2px!important;margin-right:40px!important}.listview .card .oosband{display:none}}
+.card .cfoot{padding-right:38px;box-sizing:border-box}.card.in .ptop>span:first-child{visibility:hidden}
 </style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
@@ -1763,7 +1764,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="safety.js?v=409"></script>
 <script src="deliv.js?v=404"></script>
 <script src="admin.js?v=388"></script>
-<script src="lab.js?v=410"></script>
+<script src="lab.js?v=411"></script>
 <script src="scan.js?v=399"></script>
 <script>
 /* auto-detect a newer app version */

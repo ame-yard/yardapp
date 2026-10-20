@@ -86,7 +86,7 @@ async function ensure(c){
 }
 /* write with optimistic concurrency (If-Match on file eTag) */
 const queue={};
-function write(c,fn){
+function write(c,fn){if(window.__ameSandbox){const docs=JSON.parse(JSON.stringify((store[c]||{docs:{}}).docs||{}));fn(docs);store[c]={etag:null,docs};setTimeout(()=>emit(c),0);return Promise.resolve()}
   queue[c]=(queue[c]||Promise.resolve()).then(()=>doWrite(c,fn));
   return queue[c];
 }
@@ -113,7 +113,7 @@ async function doWrite(c,fn){
 }
 let knownEtags={};
 async function poll(){
-  if(pending||document.hidden)return;
+  if(pending||document.hidden||window.__ameSandbox)return;
   try{
     const m=await listEtags();
     for(const c of Object.keys(m)){
@@ -169,7 +169,7 @@ async function seedIfEmpty(){
 }
 
 /* ---------- photos ---------- */
-const assets={upload:async blob=>{
+const assets={upload:async blob=>{if(window.__ameSandbox){const u=URL.createObjectURL(blob);return{url:u,id:'sandbox'}}
   const id=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   const p='photos/'+id+'.jpg';
   const r=await gfetch(pathUrl(p)+':/content',{method:'PUT',headers:{'Content-Type':blob.type||'image/jpeg'},body:blob});

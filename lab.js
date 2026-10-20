@@ -67,6 +67,28 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 </style>`);
 const ICON_T='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><path d="M17 15l3 3-3 3"/></svg>';
 const ICON_V='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>';
-AME.register({id:'ytest',name:'Inventory (Test)',desc:'Big-text preview · sample items only · not saved',allow:own,tabs:['ytest'],section:'tab-ytest',icon:ICON_T,open:()=>{showTab('ytest');tRender()},onShow:tRender});
+/* Practice mode: the real Yard screens, big text, nothing saved (writes stay on this device until you leave) */
+let prOn=false;
+function prBar(){let b=document.getElementById('prBar');if(!prOn){if(b)b.remove();return}if(!b){b=document.createElement('div');b.id='prBar';document.body.appendChild(b)}
+  b.innerHTML=`<b>PRACTICE</b><span>Nothing is saved</span><div class="prz">${Object.entries(ZS).map(([k,v])=>`<button data-pz="${k}" aria-pressed="${k===tz}">${k==='md'?'A':k==='lg'?'A+':'A++'}</button>`).join('')}</div><button class="prx" data-px>Exit</button>`;
+  b.querySelectorAll('[data-pz]').forEach(x=>x.onclick=()=>{tz=x.dataset.pz;try{localStorage.setItem('ytestZ',tz)}catch(e){}prApply();prBar()});b.querySelector('[data-px]').onclick=()=>AME.home()}
+function prApply(){document.body.style.setProperty('--pz',ZS[tz].s);document.body.classList.toggle('bigui',prOn&&tz!=='md');document.body.classList.toggle('bigxl',prOn&&tz==='xl')}
+function prEnter(){if(prOn)return;prOn=true;window.__ameSandbox=true;try{cart=[];}catch(e){}document.body.classList.add('practice');prApply();prBar()}
+async function prExit(){if(!prOn)return;prOn=false;document.body.classList.remove('practice','bigui','bigxl');prBar();try{cart=[];}catch(e){}window.__ameSandbox=false;try{const d=await window.claude.use('db');await d.refresh()}catch(e){}try{render()}catch(e){}toast('Practice ended — real data reloaded')}
+{const _o=AME.open.bind(AME),_h=AME.home.bind(AME);AME.open=function(id,...r){if(id!=='ytest'&&prOn)prExit();return _o(id,...r)};AME.home=function(...r){if(prOn)prExit();return _h(...r)}}
+AME.register({id:'ytest',name:'Inventory (Test)',desc:'Practice the real Yard screens in big text · nothing is saved',allow:own,tabs:['yard'],section:null,icon:ICON_T,open:()=>{prEnter();showTab('yard');try{yardStart()}catch(e){}try{render()}catch(e){}}});
+document.head.insertAdjacentHTML('beforeend',`<style>
+#prBar{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 6px);z-index:99990;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:999px;background:#1d6b3a;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.45);font-size:13px;white-space:nowrap;max-width:calc(100vw - 16px)}
+#prBar b{letter-spacing:.08em}#prBar span{opacity:.85}#prBar .prz{display:flex;gap:2px;background:rgba(0,0,0,.25);border-radius:999px;padding:2px}
+#prBar .prz button{border:0;background:none;color:#fff;font-weight:800;min-width:34px;height:30px;border-radius:999px}#prBar .prz button[aria-pressed=true]{background:#fff;color:#1d6b3a}
+#prBar .prx{border:0;background:#fff;color:#1d6b3a;font-weight:800;height:30px;padding:0 12px;border-radius:999px}
+@media(max-width:420px){#prBar span{display:none}}
+body.practice header.top{padding-top:44px}
+body.bigui .ysrow{flex-wrap:wrap}body.bigui .ysrow #ysearch{flex:1 1 100%;min-width:0}
+@media(max-width:700px){body.bigui #ylist.cards:not(.listview){grid-template-columns:1fr!important}}
+body.bigui #cartbar .cb-in{font-size:calc(15px*var(--pz))}body.bigui #cartbar .cb-in .btn,body.bigui #cartbar .cb-in .go{font-size:calc(14px*var(--pz));min-height:calc(44px*var(--pz))}body.bigui #cartbar #cbCount{font-size:calc(22px*var(--pz))}body.bigui #cartbar .cb-in{flex-wrap:wrap;row-gap:8px}body.bigui #cartbar .cb-in>div{flex:1 1 auto;min-width:0}body.bigui #cbGo{flex:1 1 100%!important;width:100%!important}
+body.bigui #saveBtn,body.bigui #syncBtn{white-space:nowrap}body.bigxl #actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}body.bigui #actions .act b,body.bigui #actions .act{overflow-wrap:anywhere}body.bigui .listview .card .cbody{display:flex!important;flex-direction:column;align-items:flex-start!important;text-align:left;min-width:0;padding-right:52px!important;box-sizing:border-box}body.bigui .listview .card .csub{text-align:left!important;align-self:flex-start}body.bigui .listview .card .cname{display:block!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;max-height:none!important;height:auto!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}body.bigui .listview .card .cfoot{grid-column:auto!important;grid-row:auto!important;flex-direction:row!important;align-items:center!important;margin:4px 0 0 0!important;padding-right:0}body.bigui #dlgRoot .dlg{max-width:calc((100vw - 16px) / var(--pz))!important;width:calc((100vw - 16px) / var(--pz))!important;box-sizing:border-box}body.bigui #dlgRoot .dlg .fields{grid-template-columns:1fr!important}body.bigui #dlgRoot .dlg select,body.bigui #dlgRoot .dlg input{max-width:100%;box-sizing:border-box}body.practice #dlgRoot .scrim{padding-top:52px}
+body.bigui #tab-yard,body.bigui #dlgRoot .dlg,body.bigui #camOv,body.bigui .cartpop,body.bigui #elUndoBar{zoom:var(--pz)}
+</style>`);
 AME.register({id:'vlog',name:'Version log',desc:'Every app update, newest first',allow:own,tabs:['vlog'],section:'tab-vlog',icon:ICON_V,open:()=>{showTab('vlog');vRender()},onShow:vRender});
 })();
