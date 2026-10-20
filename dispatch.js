@@ -153,7 +153,7 @@ function leaveDlg(l,who){const nw=!l;l=l||{n:who||'',type:'Vacation',from:date,t
   const d=dlg(`<h3>${nw?'Add time off':'Time off'}</h3>
    <label class="f wide">Person<input id="lvN" list="lvNL" value="${E(l.n?short(l.n):'')}" autocomplete="off" placeholder="Type a name…"><datalist id="lvNL">${L.map(p=>`<option value="${E(short(p.name))}">${E(p.lv||'')}</option>`).join('')}</datalist></label>
    <label class="f wide">Type<select id="lvT">${LT.map(t=>`<option ${t===l.type?'selected':''}>${t}</option>`).join('')}</select></label>
-   <div style="display:flex;gap:10px"><label class="f" style="flex:1">From<input type="date" id="lvF" value="${E(l.from)}"></label><label class="f" style="flex:1">To<input type="date" id="lvTo" value="${E(l.to||l.from)}"></label></div>
+   <div class="f2col"><label class="f">From<input type="date" id="lvF" value="${E(l.from)}"></label><label class="f">To<input type="date" id="lvTo" value="${E(l.to||l.from)}"></label></div>
    <label class="f wide">Note<input id="lvO" value="${E(l.note||'')}" placeholder="optional"></label>
    <p class="muted" style="font-size:13px">They’re taken off any job on these days and won’t show as free to dispatch.</p>
    <div class="bar">${nw?'':'<button class="btn dng" id="lvD">Delete</button>'}<button class="btn" id="lvC">Cancel</button><button class="go" id="lvS" style="width:auto">Save</button></div>`);
@@ -284,7 +284,7 @@ function siteDlg(s){const nw=!s;s=s||{status:'Active',start:date,isNew:true,crew
    <label class="f wide">Job name<input id="seM" value="${E(s.name||'')}"></label>
    <label class="f wide">Roof system<select id="seY">${[...new Set([...S.map(x=>(x.sys||'').trim()).filter(Boolean),...SYS,s.sys||''].filter(Boolean))].sort((a,b)=>a.localeCompare(b)).map(x=>`<option ${x===s.sys?'selected':''}>${E(x)}</option>`).join('')}<option value="" ${s.sys?'':'selected'}>—</option><option value="__new">+ New…</option></select></label>
    <label class="f wide">PIC<select id="seP"><option value="">—</option>${pics.map(p=>`<option ${p===s.pic?'selected':''}>${E(p)}</option>`).join('')}</select></label>
-   <div style="display:flex;gap:10px"><label class="f" style="flex:1">Start<input type="date" id="seS" value="${E(s.start||'')}"></label><label class="f" style="flex:1">End <small class="muted">(blank = ongoing)</small><input type="date" id="seE" value="${E(s.end||'')}"></label></div>
+   <div class="f2col"><label class="f">Start<input type="date" id="seS" value="${E(s.start||'')}"></label><label class="f">Finish<input type="date" id="seE" value="${E(s.end||'')}"></label></div><small class="muted" style="display:block;margin:-4px 0 8px">Leave Finish blank if the end date isn’t set yet.</small>
    <label class="f wide">Status<select id="seT">${['Active','On hold','Done'].map(x=>`<option ${x===(s.status||'Active')?'selected':''}>${x}</option>`).join('')}</select></label>
    <label class="chk"><input type="checkbox" id="seW" ${s.isNew?'checked':''}> New project</label>
    <div class="bar">${!nw&&isOwner(curUser)?'<button class="btn dng" id="seD">Delete</button>':''}<button class="btn" id="seC">Cancel</button><button class="go" id="seO" style="width:auto">Save</button></div>`);
@@ -438,6 +438,6 @@ body.gfull #tab-dsp{position:fixed;inset:0;z-index:9990;background:#2b2724;paddi
 .dsprow{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line,#555);border-radius:10px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsprow.on{border-color:#3fb950;background:rgba(63,185,80,.1)}.dsprow em{font-style:normal;font-size:11px;font-weight:700;opacity:.75}
 .dsprev{overflow:auto;background:#fff;color:#000;padding:8px;border-radius:8px;margin:6px 0}.dscontact{display:flex;gap:8px;flex-wrap:wrap}
 .dsstaff{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-bottom:30px}.dssrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line,#555);border-radius:12px;cursor:pointer}.dssn{flex:1;min-width:0;display:flex;flex-direction:column}.dssn b,.dssn small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dslv{font-style:normal;font-size:11px;font-weight:700;opacity:.8;flex:none}.dssc{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex:none;font-size:12px;user-select:text;-webkit-user-select:text;max-width:46%;text-align:right}.dssc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.dsem{opacity:.7}.dsinfo{flex-direction:column;gap:4px;user-select:text;-webkit-user-select:text}.dsinfo b{display:inline-block;width:52px;font-size:12px;opacity:.7}.dssc .btn{padding:6px 8px;line-height:0}
-.dlg label.f{min-width:0}.dlg input[type=date]{min-width:0;width:100%;box-sizing:border-box}label.chk{display:flex;align-items:center;gap:8px;margin:6px 0}
+.dlg label.f{min-width:0}.dlg input[type=date]{min-width:0;width:100%;box-sizing:border-box}.f2col{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}.f2col label.f{margin:0}label.chk{display:flex;align-items:center;gap:8px;margin:6px 0}
 </style>`);
 })();
