@@ -23,10 +23,11 @@ const sunOf=x=>addD(monOf(x),6);
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 const addD=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function dowOf(x){return (new Date(x+'T12:00:00').getDay()+6)%7}
-let dsDay=-1;function curDow(){if(dsDay<0)dsDay=(date===monOf(today())?dowOf(today()):0);return dsDay}
-function cd(){return addD(date,curDow())}
+let dsSel='wk';/* 'wk' = whole week, or a weekday index 0..6 */function curSel(){return dsSel}
+function cd(){return dsSel==='wk'?'wk':addD(date,dsSel)}
+const dLabelOf=d=>d==='wk'?'Whole week':dLabel(d);
 const DOWN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const code=s=>s.slice(2,4)+s.slice(5,7)+s.slice(8,10);
+const code=s=>{s=(s==='wk'?monOf(date):s);return s.slice(2,4)+s.slice(5,7)+s.slice(8,10)};
 const wkLabel=s=>{const a=new Date(s+'T12:00:00'),b=new Date(sunOf(s)+'T12:00:00');const f=x=>x.toLocaleDateString('en-US',{month:'short',day:'numeric'});return f(a)+' – '+f(b)};
 const dLabel=s=>new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 const canEdit=()=>{try{return !!(isAdmin||(typeof can==='function'&&can('DISPATCH')))}catch(e){return false}};
@@ -52,7 +53,7 @@ window.ameStaff=()=>STAFF;window.ameStaffFind=person;
 
 /* ---------- time off ---------- */
 const LT=['Time off','Vacation','Sick','Personal','Injury','Other'];
-const offOn=(n,d)=>LEAVE.find(l=>l.n===n&&l.from<=d&&(l.to||l.from)>=d);
+const offOn=(n,d)=>d==='wk'?LEAVE.find(l=>l.n===n&&l.from<=sunOf(date)&&(l.to||l.from)>=monOf(date)):LEAVE.find(l=>l.n===n&&l.from<=d&&(l.to||l.from)>=d);
 const offList=d=>LEAVE.filter(l=>l.from<=sunOf(d)&&(l.to||l.from)>=monOf(d));
 /* ---------- day model ---------- */
 const dated=s=>!!s.start&&s.start>='2024';
@@ -61,16 +62,20 @@ const sortCrew=c=>[...c].sort((a,b)=>lvRank(lvOf(a.n))-lvRank(lvOf(b.n)));
 /* d is a specific DAY (YYYY-MM-DD). Crew is stored per day under dday/<monday>.days[d].rows;
    a day with no explicit crew for a site inherits from the most recent earlier day that week,
    then from legacy week-level rows (back-compat), then the site's default crew/assignment. */
-function rowsFor(d){const mon=monOf(d);const wk=DAY[mon]||{};const legacy=wk.rows||{};const dm=wk.days||{};const dw=dowOf(d);
-  const pick=sid=>{for(let k=dw;k>=0;k--){const dd=addD(mon,k);const r=dm[dd]&&dm[dd].rows&&dm[dd].rows[sid];if(r&&r.crew)return{crew:r.crew,note:r.note,own:dd===d};}const lr=legacy[sid];if(lr&&lr.crew)return{crew:lr.crew,note:lr.note,own:false};return null;};
-  const offAt=sid=>{const r=dm[d]&&dm[d].rows&&dm[d].rows[sid];return r&&r.off!=null?r.off:(legacy[sid]&&legacy[sid].off!=null?legacy[sid].off:null)};
+function rowsFor(d){const week=d==='wk';const mon=week?monOf(date):monOf(d);const wk=DAY[mon]||{};const legacy=wk.rows||{};const dm=wk.days||{};const dw=week?6:dowOf(d);
+  const pick=sid=>{if(!week){for(let k=dw;k>=0;k--){const dd=addD(mon,k);const r=dm[dd]&&dm[dd].rows&&dm[dd].rows[sid];if(r&&r.crew)return{crew:r.crew,note:r.note,own:dd===d};}}const lr=legacy[sid];if(lr&&lr.crew)return{crew:lr.crew,note:lr.note,own:week};return null;};
+  const offAt=sid=>{if(!week){const r=dm[d]&&dm[d].rows&&dm[d].rows[sid];if(r&&r.off!=null)return r.off;}return legacy[sid]&&legacy[sid].off!=null?legacy[sid].off:null};
   return S.filter(s=>{const o=offAt(s._id);return o!=null?!o:activeOn(s,mon)}).sort((a,b)=>jno(a.no).localeCompare(jno(b.no),undefined,{numeric:true}))
-    .map(s=>{const p=pick(s._id);const uniq=L=>L.reduce((o,a)=>o.some(x=>x.n===a.n)?o:[...o,{n:a.n,...(a.t?{t:a.t}:{})}],[]);let asg=null;if(s.asg&&s.asg.length){const wk2=uniq(s.asg.filter(a=>a.from<=d&&a.to>=d));asg=wk2.length?wk2:uniq(s.asg)}return {s,crew:sortCrew((p&&p.crew)||asg||s.crew||[]),note:(p&&p.note!=null)?p.note:(s.note||''),own:!!(p&&p.own)}})}
+    .map(s=>{const p=pick(s._id);const uniq=L=>L.reduce((o,a)=>o.some(x=>x.n===a.n)?o:[...o,{n:a.n,...(a.t?{t:a.t}:{})}],[]);let asg=null;if(s.asg&&s.asg.length){const wk2=uniq(s.asg.filter(a=>week?(a.from<=sunOf(mon)&&a.to>=monOf(mon)):(a.from<=d&&a.to>=d)));asg=wk2.length?wk2:uniq(s.asg)}return {s,crew:sortCrew((p&&p.crew)||asg||s.crew||[]),note:(p&&p.note!=null)?p.note:(s.note||''),own:!!(p&&p.own)}})}
 function whereIs(d,n){return rowsFor(d).filter(r=>r.crew.some(c=>c.n===n)).map(r=>r.s)}
-async function saveRow(d,site,crew,extra,keepDef){const mon=monOf(d);const day=DAY[mon]||{};const days={...(day.days||{})};const dd={...(days[d]||{})};const rows={...(dd.rows||{})};rows[site._id]={...(rows[site._id]||{}),crew,...(extra||{})};dd.rows=rows;days[d]=dd;
+async function saveRow(d,site,crew,extra,keepDef){
+  if(d==='wk'){const mon=monOf(date);const day=DAY[mon]||{};const rows={...(day.rows||{})};rows[site._id]={...(rows[site._id]||{}),crew,...(extra||{})};
+    await db.doc('dday/'+mon).set({...day,rows,rev:(day.rev||0),editAt:new Date().toISOString(),editBy:curUser});
+    if(sunOf(mon)>=today()&&!keepDef)await db.doc('dsites/'+site._id).update({crew,updated:new Date().toISOString()}).catch(()=>{});return}
+  const mon=monOf(d);const day=DAY[mon]||{};const days={...(day.days||{})};const dd={...(days[d]||{})};const rows={...(dd.rows||{})};rows[site._id]={...(rows[site._id]||{}),crew,...(extra||{})};dd.rows=rows;days[d]=dd;
   await db.doc('dday/'+mon).set({...day,days,rev:(day.rev||0),editAt:new Date().toISOString(),editBy:curUser});
   if(sunOf(mon)>=today()&&!keepDef)await db.doc('dsites/'+site._id).update({crew,updated:new Date().toISOString()}).catch(()=>{})}
-const changed=d=>{const day=DAY[monOf(d)];if(!day||!day.sent)return false;return JSON.stringify(snap(d))!==JSON.stringify(day.sent.snap||{})};
+const changed=d=>{const day=DAY[d==='wk'?monOf(date):monOf(d)];if(!day||!day.sent)return false;return JSON.stringify(snap(d))!==JSON.stringify(day.sent.snap||{})};
 const snap=d=>{const o={};rowsFor(d).forEach(r=>o[r.s._id]=r.crew.map(c=>(c.t||'')+'|'+c.n));return o};
 
 /* ---------- render ---------- */
@@ -86,8 +91,8 @@ function render(){if(!sec)return;if(dsDrag&&Date.now()-dsDrag<15000)return;/* ne
   const prevSent=sent&&sent.snap||{};
   sec.innerHTML=`<div class="mplhead"><h2>Dispatch</h2>${ed?`<span class="mtop"><button class="btn pri" id="dsSend">${sent?(ch?'Send update':'Sent ✓'):'Send dispatch'}</button></span>`:''}</div>${seg}
    <div class="dsdate"><button class="btn" data-dd="-7" aria-label="Previous week">‹</button><label><input type="date" id="dsD" value="${date}"><b>${wkLabel(date)}</b><small class="muted">${code(date)} Dispatch · Mon–Sun</small></label><button class="btn" data-dd="7" aria-label="Next week">›</button>${date!==monOf(today())?'<button class="btn small" id="dsToday">This week</button>':''}</div>
-   <div class="dsdays">${DOWN.map((lab,i)=>{const dd=addD(date,i);const isToday=dd===today();return `<button type="button" class="dsday${i===curDow()?' on':''}${isToday?' today':''}" data-dw="${i}" title="${dLabel(dd)}"><b>${lab}</b><small>${new Date(dd+'T12:00:00').getDate()}</small></button>`}).join('')}</div>
-   <div class="dsstat"><span class="pill dsdaypill">${dLabel(cd())}</span>${sent?`<span class="pill ${ch?'p-needs':'p-good'}">${ch?'Changed since sent':'Sent'}</span><small class="muted">${E(sent.by)} · ${E(fmtD(sent.at))} ${new Date(sent.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}${sent.rev>1?' · revision '+sent.rev:''}</small>`:'<span class="pill">Not sent yet</span>'}<small class="muted" style="margin-left:auto">${rows.length} job${rows.length===1?'':'s'} · ${total} people</small></div>
+   <div class="dsdays"><button type="button" class="dsday dsweek${curSel()==='wk'?' on':''}" data-dw="wk" title="Whole week"><b>Week</b><small>all</small></button>${DOWN.map((lab,i)=>{const dd=addD(date,i);const isToday=dd===today();return `<button type="button" class="dsday dsd${i}${curSel()===i?' on':''}${isToday?' today':''}" data-dw="${i}" title="${dLabel(dd)}"><b>${lab}</b><small>${new Date(dd+'T12:00:00').getDate()}</small></button>`}).join('')}</div>
+   <div class="dsstat"><span class="pill dsdaypill">${dLabelOf(cd())}</span>${sent?`<span class="pill ${ch?'p-needs':'p-good'}">${ch?'Changed since sent':'Sent'}</span><small class="muted">${E(sent.by)} · ${E(fmtD(sent.at))} ${new Date(sent.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}${sent.rev>1?' · revision '+sent.rev:''}</small>`:'<span class="pill">Not sent yet</span>'}<small class="muted" style="margin-left:auto">${rows.length} job${rows.length===1?'':'s'} · ${total} people</small></div>
    <div class="dsbar"><input id="dsQ" class="search" placeholder="Find a person or job…" value="${E(q)}"><div class="viewseg dslay">${[['cards','Board'],['compact','Compact'],['table','Table']].map(([k,l])=>`<button data-lay="${k}" aria-pressed="${dlay===k}">${l}</button>`).join('')}</div><select id="dsPMsel" class="dspmsel" title="Show / sort by PM">${(()=>{const pics=[...new Set(rows.map(r=>r.s.pic).filter(Boolean))].sort();return `<option value="">All PMs</option><option value="__grp" ${dpm==='__grp'?'selected':''}>Group by PM</option>`+pics.map(p=>`<option value="${E(p)}" ${dpm===p?'selected':''}>${E(p)}</option>`).join('')})()}</select><button type="button" class="btn" id="dsPdf" title="Save or print as PDF"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 14h6M9 18h4"/></svg>PDF</button></div>
    <div class="dswrap"><div class="dsmain">${dlay!=='cards'?altView(rows,ed):''}<div id="dsRows" class="${dpm==='__grp'?'grouped':''}" ${dlay!=='cards'?'hidden':''}>${(()=>{let br=rows.slice();if(dpm&&dpm!=='__grp')br=br.filter(r=>r.s.pic===dpm);if(dpm==='__grp'){br.sort((a,b)=>(a.s.pic||'~zz').localeCompare(b.s.pic||'~zz')||jno(a.s.no).localeCompare(jno(b.s.no),undefined,{numeric:true}))}else{const ord=dordGet();if(ord.length)br.sort((a,b)=>{const ia=ord.indexOf(a.s._id),ib=ord.indexOf(b.s._id);return (ia<0?9999:ia)-(ib<0?9999:ib)})}return (br.length?'':`<div class="panel muted">No jobs here.</div>`)+br.map((r,bi)=>{const s=r.s;const was=prevSent[s._id];const grpHdr=(dpm==='__grp'&&(bi===0||br[bi-1].s.pic!==s.pic))?`<div class="dspmh" style="--c:${s.pic?picCol(s.pic):'#888'}">${E(s.pic||'No PM')}</div>`:'';
      return grpHdr+`<div class="panel dscard" data-site="${s._id}" style="--pc:${s.pic?picCol(s.pic):'#6b6460'}"><div class="dsh">${ed&&dpm!=='__grp'?`<button type="button" class="dsgrip" data-grip="${s._id}" title="Drag to reorder" aria-label="Reorder"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></button>`:''}<b class="dsno">${E(jno(s.no))}</b><button type="button" class="dsnm dsopen" data-sopen="${s._id}" title="${ed?'Edit this job & schedule':'Job details'}">${E(s.name||'')}</button><span class="dscnt" title="Crew size">${r.crew.length}</span>${ed?`${r.crew.length?`<button type="button" class="dsib" data-sms="${s._id}" title="Text this crew" aria-label="Text crew"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.9-.9L3 20l1.3-3.9A8.5 8.5 0 1 1 21 11.5z"/></svg></button>`:''}<button type="button" class="dsib" data-note="${s._id}" title="${r.note?'Edit note':'Add note'}" aria-label="Note"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></button><button type="button" class="dsib add" data-add="${s._id}" title="Add people" aria-label="Add people">+</button>`:''}</div>
@@ -100,9 +105,9 @@ function render(){if(!sec)return;if(dsDrag&&Date.now()-dsDrag<15000)return;/* ne
    ${!STAFF.length?`<div class="panel muted">No staff list yet.${ed?' Open <b>Staff</b> and import the Field Employees Contact workbook.':''}</div>`:''}`;
   bindCommon();
   const go=n=>{date=addD(date,n);render()};sec.querySelectorAll('[data-dd]').forEach(b=>b.onclick=()=>go(+b.dataset.dd));
-  sec.querySelectorAll('[data-dw]').forEach(b=>b.onclick=()=>{dsDay=+b.dataset.dw;render();scrollTo({top:0})});
-  {const t=sec.querySelector('#dsToday');if(t)t.onclick=()=>{date=monOf(today());dsDay=dowOf(today());render()}}
-  sec.querySelector('#dsD').onchange=e=>{if(e.target.value){dsDay=dowOf(e.target.value);date=monOf(e.target.value);render()}};
+  sec.querySelectorAll('[data-dw]').forEach(b=>b.onclick=()=>{dsSel=b.dataset.dw==='wk'?'wk':+b.dataset.dw;render();scrollTo({top:0})});
+  {const t=sec.querySelector('#dsToday');if(t)t.onclick=()=>{date=monOf(today());render()}}
+  sec.querySelector('#dsD').onchange=e=>{if(e.target.value){dsSel=dowOf(e.target.value);date=monOf(e.target.value);render()}};
   const qi=sec.querySelector('#dsQ');qi.oninput=()=>{q=qi.value;filt()};filt();
   sec.querySelectorAll('[data-lay]').forEach(b=>b.onclick=()=>{dlay=b.dataset.lay;try{localStorage.setItem('dsLay',dlay)}catch(e){}render()});
   sec.querySelector('#dsPdf').onclick=()=>printPDF(cd());
@@ -457,7 +462,10 @@ AME.nav&&(AME.nav.dsp={get:()=>({view,date}),set:o=>{view=o.view;date=o.date;ren
 const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="dsp"]');if(b)b.hidden=!AME.allowed(AME.mod('dsp'))};
 document.head.insertAdjacentHTML('beforeend',`<style>
 .dsdate{display:flex;align-items:center;gap:8px;margin-bottom:8px}.dsdate label{position:relative;display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;cursor:pointer}.dsdate label b{font-size:18px}.dsdate input[type=date]{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}.dsdate>.btn{min-width:44px;font-size:20px;padding:6px 10px}
-.dsdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:0 0 10px;max-width:520px}
+.dsdays{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:0 0 10px;max-width:580px}
+.dsday.dsweek:not(.on){color:var(--hi,#f47b20);border-color:var(--hi,#f47b20)}.dsday.dsweek:not(.on) small{color:var(--hi,#f47b20);opacity:.8}
+.dsday.dsd5:not(.on){color:#5b9bff;border-color:#3a5a8c}.dsday.dsd5:not(.on) small{color:#5b9bff}
+.dsday.dsd6:not(.on){color:#ff7a7a;border-color:#8c3a3a}.dsday.dsd6:not(.on) small{color:#ff7a7a}
 .dsday{display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 2px;border:1px solid var(--line,#555);border-radius:10px;background:transparent;color:inherit;cursor:pointer;position:relative;min-height:48px;justify-content:center}
 .dsday b{font-size:12px;font-weight:700;letter-spacing:.02em}.dsday small{font-size:15px;font-weight:600;opacity:.85}
 .dsday.on{background:var(--hi,#f47b20);border-color:var(--hi,#f47b20);color:#fff}.dsday.on small{opacity:1}
