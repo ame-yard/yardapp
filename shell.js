@@ -118,3 +118,11 @@ const hook=()=>{const a=document.getElementById('tab-admin');if(a)[...a.children
 new MutationObserver(hook).observe(document.body,{childList:true,subtree:true});hook();
 document.head.insertAdjacentHTML('beforeend','<style>.srt-drag{opacity:.85;transform:scale(1.03);box-shadow:0 10px 28px rgba(0,0,0,.5)!important;outline:2px dashed var(--hi,#f26a1b);z-index:5;position:relative}.srt-on{user-select:none;-webkit-user-select:none}.srt-on *{cursor:grabbing!important}#tab-home .apptile,#tab-admin>.panel{-webkit-touch-callout:none}</style>');
 })();
+
+/* ---- swipe left on a row to remove (phones) ---- */
+window.ameSwipe=function(el,label,onGo){let x0=null,y0=0,dx=0,lock=null;el.style.touchAction='pan-y';
+  el.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;lock=null;el.style.transition='none'},{passive:true});
+  el.addEventListener('touchmove',e=>{if(x0===null)return;const mx=e.touches[0].clientX-x0,my=e.touches[0].clientY-y0;if(lock===null&&Math.abs(mx)+Math.abs(my)>10)lock=Math.abs(mx)>Math.abs(my)?'x':'y';if(lock!=='x')return;if(e.cancelable)e.preventDefault();dx=Math.min(0,mx);el.style.transform=`translateX(${dx}px)`;el.classList.toggle('swipe-go',dx<-90);el.dataset.swl=label||'Remove'},{passive:false});
+  el.addEventListener('touchend',async()=>{if(x0===null)return;x0=null;el.style.transition='transform .2s';if(lock==='x'){el.__swiped=1;setTimeout(()=>el.__swiped=0,400)}const go=dx<-90;el.style.transform='';el.classList.remove('swipe-go');if(go)await onGo()});
+  el.addEventListener('click',e=>{if(el.__swiped){e.stopImmediatePropagation();e.preventDefault()}},true)};
+document.head.insertAdjacentHTML('beforeend','<style>.swipe-go{box-shadow:inset -6px 0 0 #e5534b;background:linear-gradient(90deg,transparent 55%,rgba(229,83,75,.35))!important}</style>');
