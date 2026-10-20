@@ -17,6 +17,10 @@ function monOf(x){const d=new Date(x+'T12:00:00');d.setDate(d.getDate()-((d.getD
 const sunOf=x=>addD(monOf(x),6);
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 const addD=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function dowOf(x){return (new Date(x+'T12:00:00').getDay()+6)%7}
+let dsDay=-1;function curDow(){if(dsDay<0)dsDay=(date===monOf(today())?dowOf(today()):0);return dsDay}
+function cd(){return addD(date,curDow())}
+const DOWN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const code=s=>s.slice(2,4)+s.slice(5,7)+s.slice(8,10);
 const wkLabel=s=>{const a=new Date(s+'T12:00:00'),b=new Date(sunOf(s)+'T12:00:00');const f=x=>x.toLocaleDateString('en-US',{month:'short',day:'numeric'});return f(a)+' – '+f(b)};
 const dLabel=s=>new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
@@ -43,39 +47,45 @@ window.ameStaff=()=>STAFF;window.ameStaffFind=person;
 
 /* ---------- time off ---------- */
 const LT=['Time off','Vacation','Sick','Personal','Injury','Other'];
-const offOn=(n,d)=>LEAVE.find(l=>l.n===n&&l.from<=sunOf(d)&&(l.to||l.from)>=monOf(d));
+const offOn=(n,d)=>LEAVE.find(l=>l.n===n&&l.from<=d&&(l.to||l.from)>=d);
 const offList=d=>LEAVE.filter(l=>l.from<=sunOf(d)&&(l.to||l.from)>=monOf(d));
 /* ---------- day model ---------- */
 const dated=s=>!!s.start&&s.start>='2024';
 const activeOn=(s,d)=>{const m=monOf(d),u=sunOf(d);return (s.status||'Active')==='Active'&&dated(s)&&s.start<=u&&(!s.end||s.end>=m)&&(!s.asg||!s.asg.length||s.asg.some(a=>a.from<=u&&a.to>=m))};
 const sortCrew=c=>[...c].sort((a,b)=>lvRank(lvOf(a.n))-lvRank(lvOf(b.n)));
-function rowsFor(d){const day=DAY[d]||{};const R=day.rows||{};
-  return S.filter(s=>R[s._id]?!R[s._id].off:activeOn(s,d)).sort((a,b)=>jno(a.no).localeCompare(jno(b.no),undefined,{numeric:true}))
-    .map(s=>{const r=R[s._id];const uniq=L=>L.reduce((o,a)=>o.some(x=>x.n===a.n)?o:[...o,{n:a.n,...(a.t?{t:a.t}:{})}],[]);let asg=null;if(s.asg&&s.asg.length){const wk=uniq(s.asg.filter(a=>a.from<=sunOf(d)&&a.to>=monOf(d)));asg=wk.length?wk:uniq(s.asg)}return {s,crew:sortCrew((r&&r.crew)||asg||s.crew||[]),note:(r&&r.note!=null)?r.note:(s.note||''),own:!!r}})}
+/* d is a specific DAY (YYYY-MM-DD). Crew is stored per day under dday/<monday>.days[d].rows;
+   a day with no explicit crew for a site inherits from the most recent earlier day that week,
+   then from legacy week-level rows (back-compat), then the site's default crew/assignment. */
+function rowsFor(d){const mon=monOf(d);const wk=DAY[mon]||{};const legacy=wk.rows||{};const dm=wk.days||{};const dw=dowOf(d);
+  const pick=sid=>{for(let k=dw;k>=0;k--){const dd=addD(mon,k);const r=dm[dd]&&dm[dd].rows&&dm[dd].rows[sid];if(r&&r.crew)return{crew:r.crew,note:r.note,own:dd===d};}const lr=legacy[sid];if(lr&&lr.crew)return{crew:lr.crew,note:lr.note,own:false};return null;};
+  const offAt=sid=>{const r=dm[d]&&dm[d].rows&&dm[d].rows[sid];return r&&r.off!=null?r.off:(legacy[sid]&&legacy[sid].off!=null?legacy[sid].off:null)};
+  return S.filter(s=>{const o=offAt(s._id);return o!=null?!o:activeOn(s,mon)}).sort((a,b)=>jno(a.no).localeCompare(jno(b.no),undefined,{numeric:true}))
+    .map(s=>{const p=pick(s._id);const uniq=L=>L.reduce((o,a)=>o.some(x=>x.n===a.n)?o:[...o,{n:a.n,...(a.t?{t:a.t}:{})}],[]);let asg=null;if(s.asg&&s.asg.length){const wk2=uniq(s.asg.filter(a=>a.from<=d&&a.to>=d));asg=wk2.length?wk2:uniq(s.asg)}return {s,crew:sortCrew((p&&p.crew)||asg||s.crew||[]),note:(p&&p.note!=null)?p.note:(s.note||''),own:!!(p&&p.own)}})}
 function whereIs(d,n){return rowsFor(d).filter(r=>r.crew.some(c=>c.n===n)).map(r=>r.s)}
-async function saveRow(d,site,crew,extra,keepDef){const day=DAY[d]||{};const rows={...(day.rows||{})};rows[site._id]={...(rows[site._id]||{}),crew,...(extra||{})};
-  await db.doc('dday/'+d).set({...day,rows,rev:(day.rev||0),editAt:new Date().toISOString(),editBy:curUser});
-  if(sunOf(d)>=today()&&!keepDef)await db.doc('dsites/'+site._id).update({crew,updated:new Date().toISOString()}).catch(()=>{})}
-const changed=d=>{const day=DAY[d];if(!day||!day.sent)return false;return JSON.stringify(snap(d))!==JSON.stringify(day.sent.snap||{})};
+async function saveRow(d,site,crew,extra,keepDef){const mon=monOf(d);const day=DAY[mon]||{};const days={...(day.days||{})};const dd={...(days[d]||{})};const rows={...(dd.rows||{})};rows[site._id]={...(rows[site._id]||{}),crew,...(extra||{})};dd.rows=rows;days[d]=dd;
+  await db.doc('dday/'+mon).set({...day,days,rev:(day.rev||0),editAt:new Date().toISOString(),editBy:curUser});
+  if(sunOf(mon)>=today()&&!keepDef)await db.doc('dsites/'+site._id).update({crew,updated:new Date().toISOString()}).catch(()=>{})}
+const changed=d=>{const day=DAY[monOf(d)];if(!day||!day.sent)return false;return JSON.stringify(snap(d))!==JSON.stringify(day.sent.snap||{})};
 const snap=d=>{const o={};rowsFor(d).forEach(r=>o[r.s._id]=r.crew.map(c=>(c.t||'')+'|'+c.n));return o};
 
 /* ---------- render ---------- */
 function render(){if(!sec)return;const ed=canEdit();
   const seg=`<div class="viewseg" style="margin-bottom:12px">${[['day','Dispatch'],['gantt','Schedule'],['sites','Jobs'],['staff','Staff']].map(([k,l])=>`<button data-dv="${k}" aria-pressed="${view===k}">${l}</button>`).join('')}</div>`;
   if(view!=='gantt')document.body.classList.remove('gfull');if(view==='gantt')return renderGantt(seg,ed);if(view==='sites')return renderSites(seg,ed);if(view==='staff')return renderStaff(seg,ed);
-  const rows=rowsFor(date);const day=DAY[date]||{};const sent=day.sent;const ch=changed(date);
+  const rows=rowsFor(cd());const day=DAY[date]||{};const sent=day.sent;const ch=changed(cd());
   const used=new Set(rows.flatMap(r=>r.crew.map(c=>c.n)));const dup=new Set();{const seen=new Set();rows.forEach(r=>r.crew.forEach(c=>{if(seen.has(c.n))dup.add(c.n);seen.add(c.n)}))}
-  const OFF=offList(date);const free=STAFF.filter(p=>p.st==='Active'&&p.cls!=='Office'&&!used.has(p.name)&&!offOn(p.name,date)).sort((a,b)=>prRank(a.name)-prRank(b.name)||lvRank(a.lv)-lvRank(b.lv)||a.name.localeCompare(b.name));
+  const OFF=offList(date);const free=STAFF.filter(p=>p.st==='Active'&&p.cls!=='Office'&&!used.has(p.name)&&!offOn(p.name,cd())).sort((a,b)=>prRank(a.name)-prRank(b.name)||lvRank(a.lv)-lvRank(b.lv)||a.name.localeCompare(b.name));
   const total=rows.reduce((a,r)=>a+r.crew.length,0);
   const prevSent=sent&&sent.snap||{};
   sec.innerHTML=`<div class="mplhead"><h2>Dispatch</h2>${ed?`<span class="mtop"><button class="btn pri" id="dsSend">${sent?(ch?'Send update':'Sent ✓'):'Send dispatch'}</button></span>`:''}</div>${seg}
    <div class="dsdate"><button class="btn" data-dd="-7" aria-label="Previous week">‹</button><label><input type="date" id="dsD" value="${date}"><b>${wkLabel(date)}</b><small class="muted">${code(date)} Dispatch · Mon–Sun</small></label><button class="btn" data-dd="7" aria-label="Next week">›</button>${date!==monOf(today())?'<button class="btn small" id="dsToday">This week</button>':''}</div>
-   <div class="dsstat">${sent?`<span class="pill ${ch?'p-needs':'p-good'}">${ch?'Changed since sent':'Sent'}</span><small class="muted">${E(sent.by)} · ${E(fmtD(sent.at))} ${new Date(sent.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}${sent.rev>1?' · revision '+sent.rev:''}</small>`:'<span class="pill">Not sent yet</span>'}<small class="muted" style="margin-left:auto">${rows.length} job${rows.length===1?'':'s'} · ${total} people</small></div>
+   <div class="dsdays">${DOWN.map((lab,i)=>{const dd=addD(date,i);const isToday=dd===today();const offN=LEAVE.filter(l=>l.from<=dd&&(l.to||l.from)>=dd).length;return `<button type="button" class="dsday${i===curDow()?' on':''}${isToday?' today':''}" data-dw="${i}" title="${dLabel(dd)}"><b>${lab}</b><small>${new Date(dd+'T12:00:00').getDate()}</small>${offN?`<em class="dsdoff" title="${offN} off">${offN}</em>`:''}</button>`}).join('')}</div>
+   <div class="dsstat"><span class="pill dsdaypill">${dLabel(cd())}</span>${sent?`<span class="pill ${ch?'p-needs':'p-good'}">${ch?'Changed since sent':'Sent'}</span><small class="muted">${E(sent.by)} · ${E(fmtD(sent.at))} ${new Date(sent.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}${sent.rev>1?' · revision '+sent.rev:''}</small>`:'<span class="pill">Not sent yet</span>'}<small class="muted" style="margin-left:auto">${rows.length} job${rows.length===1?'':'s'} · ${total} people</small></div>
    <div class="dsbar"><input id="dsQ" class="search" placeholder="Find a person or job…" value="${E(q)}"><div class="viewseg dslay">${[['cards','Board'],['compact','Compact'],['table','Table'],['people','People'],['fm','Foreman'],['pm','PM']].map(([k,l])=>`<button data-lay="${k}" aria-pressed="${dlay===k}">${l}</button>`).join('')}</div><select id="dsPMsel" class="dspmsel" title="Show / sort by PM">${(()=>{const pics=[...new Set(rows.map(r=>r.s.pic).filter(Boolean))].sort();return `<option value="">All PMs</option><option value="__grp" ${dpm==='__grp'?'selected':''}>Group by PM</option>`+pics.map(p=>`<option value="${E(p)}" ${dpm===p?'selected':''}>${E(p)}</option>`).join('')})()}</select><button type="button" class="btn" id="dsPdf" title="Save or print as PDF"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 14h6M9 18h4"/></svg>PDF</button></div>
    <div class="dswrap"><div class="dsmain">${dlay!=='cards'?altView(rows,ed):''}<div id="dsRows" class="${dpm==='__grp'?'grouped':''}" ${dlay!=='cards'?'hidden':''}>${(()=>{let br=rows.slice();if(dpm&&dpm!=='__grp')br=br.filter(r=>r.s.pic===dpm);if(dpm==='__grp'){br.sort((a,b)=>(a.s.pic||'~zz').localeCompare(b.s.pic||'~zz')||jno(a.s.no).localeCompare(jno(b.s.no),undefined,{numeric:true}))}else{const ord=dordGet();if(ord.length)br.sort((a,b)=>{const ia=ord.indexOf(a.s._id),ib=ord.indexOf(b.s._id);return (ia<0?9999:ia)-(ib<0?9999:ib)})}return (br.length?'':`<div class="panel muted">No jobs here.</div>`)+br.map((r,bi)=>{const s=r.s;const was=prevSent[s._id];const grpHdr=(dpm==='__grp'&&(bi===0||br[bi-1].s.pic!==s.pic))?`<div class="dspmh" style="--c:${s.pic?picCol(s.pic):'#888'}">${E(s.pic||'No PM')}</div>`:'';
      return grpHdr+`<div class="panel dscard" data-site="${s._id}" style="--pc:${s.pic?picCol(s.pic):'#6b6460'}"><div class="dsh">${ed&&dpm!=='__grp'?`<button type="button" class="dsgrip" data-grip="${s._id}" title="Drag to reorder" aria-label="Reorder"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></button>`:''}<b class="dsno">${E(jno(s.no))}</b><button type="button" class="dsnm dsopen" data-sopen="${s._id}" title="${ed?'Edit this job & schedule':'Job details'}">${E(s.name||'')}</button><span class="dscnt" title="Crew size">${r.crew.length}</span>${ed?`${r.crew.length?`<button type="button" class="dsib" data-sms="${s._id}" title="Text this crew" aria-label="Text crew"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.9-.9L3 20l1.3-3.9A8.5 8.5 0 1 1 21 11.5z"/></svg></button>`:''}<button type="button" class="dsib" data-note="${s._id}" title="${r.note?'Edit note':'Add note'}" aria-label="Note"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></button><button type="button" class="dsib add" data-add="${s._id}" title="Add people" aria-label="Add people">+</button>`:''}</div>
       <div class="dsmeta">${s.pic?`<span class="dspic" style="--c:${picCol(s.pic)}">${E(s.pic)}</span>`:''}${s.sys?`<span>${E(s.sys)}</span>`:''}${s.isNew?'<span class="dsnew">NEW</span>':''}</div>
-      ${r.note?`<p class="dsnote">${E(r.note)}</p>`:''}<div class="dscrew dslist">${r.crew.map(c=>{const l=lvOf(c.n);const nw=sent&&was&&!was.some(x=>x.split('|')[1]===c.n);return `<button type="button" class="dschip${['FM','SFM'].includes(l)?' fm':''}${dup.has(c.n)?' dup':''}${nw?' nw':''}${offOn(c.n,date)?' off':''}" data-cn="${E(c.n)}" ${ed?'':'disabled'}><i>${E(c.t||'')}</i><span class="cn">${dot(c.n)}${E(short(c.n))}</span>${l?`<em>${E(l)}</em>`:''}${offOn(c.n,date)?`<em class="offb">${E(offOn(c.n,date).type||'Off')}</em>`:''}</button>`}).join('')||`<div class="dsempty"${ed?` data-add="${s._id}" role="button"`:''}>${ed?'Tap to add people (type a name)':'No crew yet'}</div>`}${ed&&r.crew.length?`<button type="button" class="dschip addp" data-add="${s._id}"><span class="cn">+ Add person</span></button>`:''}</div>
+      ${r.note?`<p class="dsnote">${E(r.note)}</p>`:''}<div class="dscrew dslist">${r.crew.map(c=>{const l=lvOf(c.n);const nw=sent&&was&&!was.some(x=>x.split('|')[1]===c.n);return `<button type="button" class="dschip${['FM','SFM'].includes(l)?' fm':''}${dup.has(c.n)?' dup':''}${nw?' nw':''}${offOn(c.n,cd())?' off':''}" data-cn="${E(c.n)}" ${ed?'':'disabled'}><i>${E(c.t||'')}</i><span class="cn">${dot(c.n)}${E(short(c.n))}</span>${l?`<em>${E(l)}</em>`:''}${offOn(c.n,cd())?`<em class="offb">${E(offOn(c.n,cd()).type||'Off')}</em>`:''}</button>`}).join('')||`<div class="dsempty"${ed?` data-add="${s._id}" role="button"`:''}>${ed?'Tap to add people (type a name)':'No crew yet'}</div>`}${ed&&r.crew.length?`<button type="button" class="dschip addp" data-add="${s._id}"><span class="cn">+ Add person</span></button>`:''}</div>
       ${sent&&was?(()=>{const gone=was.map(x=>x.split('|')[1]).filter(n=>!r.crew.some(c=>c.n===n));return gone.length?`<small class="dsgone">Removed since sent: ${gone.map(n=>E(short(n))).join(', ')}</small>`:''})():''}
 </div>`}).join('')})()}</div>
    </div><aside class="dsside"><div class="prleg">${PRI.slice(1).map(([k,l,c])=>`<span><b class="prd" style="--p:${c}"></b>${l}</span>`).join('')}<span><b class="prd none"></b>None</span></div><div class="panel dsoff"><div class="dsoffh"><b>Time off</b><span class="muted">${OFF.length?OFF.length+' off this week':'Nobody off'}</span>${ed?'<button type="button" class="btn small" id="dsLv" style="margin-left:auto">+ Time off</button>':''}</div>${OFF.length?`<div class="dscrew" style="margin-top:8px">${OFF.map(l=>`<button type="button" class="dschip off" data-lv="${l._id}" ${ed?'':'disabled'}>${E(short(l.n))}<em class="offb">${E(l.type||'Off')}</em><small class="muted">${l.to&&l.to!==l.from?E(fmtD(l.from))+'–'+E(fmtD(l.to)):''}</small></button>`).join('')}</div>`:''}</div>
@@ -83,11 +93,12 @@ function render(){if(!sec)return;const ed=canEdit();
    ${!STAFF.length?`<div class="panel muted">No staff list yet.${ed?' Open <b>Staff</b> and import the Field Employees Contact workbook.':''}</div>`:''}`;
   bindCommon();
   const go=n=>{date=addD(date,n);render()};sec.querySelectorAll('[data-dd]').forEach(b=>b.onclick=()=>go(+b.dataset.dd));
-  {const t=sec.querySelector('#dsToday');if(t)t.onclick=()=>{date=monOf(today());render()}}
-  sec.querySelector('#dsD').onchange=e=>{if(e.target.value){date=monOf(e.target.value);render()}};
+  sec.querySelectorAll('[data-dw]').forEach(b=>b.onclick=()=>{dsDay=+b.dataset.dw;render();scrollTo({top:0})});
+  {const t=sec.querySelector('#dsToday');if(t)t.onclick=()=>{date=monOf(today());dsDay=dowOf(today());render()}}
+  sec.querySelector('#dsD').onchange=e=>{if(e.target.value){dsDay=dowOf(e.target.value);date=monOf(e.target.value);render()}};
   const qi=sec.querySelector('#dsQ');qi.oninput=()=>{q=qi.value;filt()};filt();
   sec.querySelectorAll('[data-lay]').forEach(b=>b.onclick=()=>{dlay=b.dataset.lay;try{localStorage.setItem('dsLay',dlay)}catch(e){}render()});
-  sec.querySelector('#dsPdf').onclick=()=>printPDF(date);
+  sec.querySelector('#dsPdf').onclick=()=>printPDF(cd());
   sec.querySelectorAll('[data-cjob]').forEach(b=>b.onclick=()=>{q=S.find(x=>x._id===b.dataset.cjob).no;dlay='cards';render()});
   if(window.ameSwipe&&!('ontouchstart' in window)){}
   {let x0=null;const R=sec.querySelector('#dsRows');R.addEventListener('touchstart',e=>{if(e.target.closest('.dschip'))return;x0=e.touches[0].clientX},{passive:true});R.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>90)go(dx<0?7:-7)})}
@@ -106,20 +117,20 @@ function render(){if(!sec)return;const ed=canEdit();
   sec.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>b._dr?(b._dr=0):chipMenu(S.find(s=>s._id===b.closest('[data-site]').dataset.site),b.dataset.cn));
   sec.querySelectorAll('[data-free]').forEach(b=>b.onclick=()=>b._dr?(b._dr=0):toJob(b.dataset.free));
   dragSetup();
-  sec.querySelectorAll('[data-note]').forEach(b=>b.onclick=async()=>{const s=S.find(x=>x._id===b.dataset.note);const r=rowsFor(date).find(x=>x.s._id===s._id);const v=prompt('Note for '+jno(s.no)+' for '+wkLabel(date)+' (shows in the dispatch):',r.note||'');if(v==null)return;await saveRow(date,s,r.crew,{note:v.trim()})})}
+  sec.querySelectorAll('[data-note]').forEach(b=>b.onclick=async()=>{const s=S.find(x=>x._id===b.dataset.note);const r=rowsFor(cd()).find(x=>x.s._id===s._id);const v=prompt('Note for '+jno(s.no)+' for '+wkLabel(date)+' (shows in the dispatch):',r.note||'');if(v==null)return;await saveRow(cd(),s,r.crew,{note:v.trim()})})}
 /* other ways to look at the day */
 function altView(rows,ed){
   if(dlay==='compact')return `<div class="dscomp"><div class="dscrow dschead"><span>Job #</span><span>Job name</span><span>PIC</span><span>Foreman</span><span>Crew</span><span>New</span></div>${rows.map(r=>{const s=r.s;const fm=r.crew.filter(c=>['FM','SFM'].includes(lvOf(c.n)));return `<button type="button" class="dscrow" data-cjob="${s._id}" style="--pc:${s.pic?picCol(s.pic):'#6b6460'}"><b class="dsno">${E(jno(s.no))}</b><span class="dsnm">${E(s.name||'')}</span><span class="dscpic">${E(s.pic||'')}</span><span class="dscfm">${fm.map(c=>E((c.t?c.t+' ':'')+short(c.n))).join(', ')||'<span class="muted">No FM</span>'}</span><span class="dscnt">${r.crew.length}</span><span>${s.isNew?'<span class="dsnew">NEW</span>':''}</span></button>`}).join('')||'<div class="panel muted">No jobs on this day.</div>'}</div>`;
-  if(dlay==='table')return `<div class="dsprev dstable">${brandHead(date,(document.getElementById('logoImg')||{}).src||LOGO_URL)}${tableHTML(date)}</div>`;
+  if(dlay==='table')return `<div class="dsprev dstable">${brandHead(date,(document.getElementById('logoImg')||{}).src||LOGO_URL)}${tableHTML(cd())}</div>`;
   const jobRow=r=>{const s=r.s;const fm=r.crew.filter(c=>['FM','SFM'].includes(lvOf(c.n)));return `<button type="button" class="dscrow" data-cjob="${s._id}" style="--pc:${s.pic?picCol(s.pic):'#6b6460'}"><b class="dsno">${E(jno(s.no))}</b><span class="dsnm">${E(s.name||'')}</span><span class="dscpic">${E(s.pic||'')}</span><span class="dscfm">${fm.map(c=>E(short(c.n))).join(', ')||'<span class="muted">No FM</span>'}</span><span class="dscnt">${r.crew.length}</span><span>${s.isNew?'<span class="dsnew">NEW</span>':''}</span></button>`};
   if(dlay==='people'){const onJob={};rows.forEach(r=>r.crew.forEach(c=>{(onJob[c.n]=onJob[c.n]||[]).push(r.s)}));
     const field=STAFF.filter(p=>p.st==='Active'&&p.cls!=='Office');
-    const grp=p=>offOn(p.name,date)?2:(onJob[p.name]?0:1);
+    const grp=p=>offOn(p.name,cd())?2:(onJob[p.name]?0:1);
     field.sort((a,b)=>grp(a)-grp(b)||prRank(a.name)-prRank(b.name)||lvRank(a.lv)-lvRank(b.lv)||short(a.name).localeCompare(short(b.name)));
-    const cell=p=>{const o=offOn(p.name,date);if(o)return `<span class="dspj" style="border-left-color:#ff6b6b"><em class="offb" style="background:#ff6b6b;color:#1d1a18;border-radius:4px;padding:1px 7px;font-size:10px;font-style:normal;font-weight:700">${E(o.type||'Off')}</em></span>`;
+    const cell=p=>{const o=offOn(p.name,cd());if(o)return `<span class="dspj" style="border-left-color:#ff6b6b"><em class="offb" style="background:#ff6b6b;color:#1d1a18;border-radius:4px;padding:1px 7px;font-size:10px;font-style:normal;font-weight:700">${E(o.type||'Off')}</em></span>`;
       const js=onJob[p.name];if(js)return js.map(s=>`<span class="dspj" data-cjob="${s._id}" style="--pc:${s.pic?picCol(s.pic):'#6b6460'};cursor:pointer"><b>${E(jno(s.no))}</b> ${E(s.name||'')}</span>`).join(' ');
       return `<span class="dspj" style="border-left-color:transparent;opacity:.45">Free</span>`};
-    const n=field.length,onN=field.filter(p=>onJob[p.name]&&!offOn(p.name,date)).length,freeN=field.filter(p=>!onJob[p.name]&&!offOn(p.name,date)).length,offN=field.filter(p=>offOn(p.name,date)).length;
+    const n=field.length,onN=field.filter(p=>onJob[p.name]&&!offOn(p.name,cd())).length,freeN=field.filter(p=>!onJob[p.name]&&!offOn(p.name,cd())).length,offN=field.filter(p=>offOn(p.name,cd())).length;
     return `<div class="dsrostat muted" style="font-size:12px;margin:0 0 8px">${onN} on jobs · ${freeN} free · ${offN} off · ${n} total</div><div class="dspeople">${field.map(p=>`<div class="dspr">${dot(p.name)}<span class="cn">${E(short(p.name))}</span><em>${E(p.lv||'')}</em>${cell(p)}</div>`).join('')||'<div class="panel muted">No field staff yet. Add people in the Staff tab.</div>'}</div>`}
   if(dlay==='fm'){const G={};rows.forEach(r=>{const fms=r.crew.filter(c=>['FM','SFM'].includes(lvOf(c.n)));const keys=fms.length?[...new Set(fms.map(c=>c.n))]:['~none'];keys.forEach(k=>{(G[k]=G[k]||[]).push(r)})});
     const keys=Object.keys(G).sort((a,b)=>(a==='~none'?1:0)-(b==='~none'?1:0)||short(a).localeCompare(short(b)));
@@ -143,8 +154,8 @@ function dragSetup(){sec.querySelectorAll('[data-cn],[data-free]').forEach(ch=>{
       const H=innerHeight;if(ev.clientY<70)scrollBy(0,-12);else if(ev.clientY>H-70)scrollBy(0,12)};
     const tmv=ev=>{if(on)ev.preventDefault()};
     const up=async ev=>{const t=on&&hit(ev.clientX,ev.clientY);const was=on;cleanup();if(!was)return;setTimeout(()=>ch._dr=0,350);
-      if(!t)return;if(t.classList.contains('dsside')){if(from){const s=S.find(x=>x._id===from.dataset.site);const r=rowsFor(date).find(x=>x.s._id===s._id);await saveRow(date,s,r.crew.filter(c=>c.n!==n));toast(short(n)+' taken off '+jno(s.no))}return}
-      const to=S.find(x=>x._id===t.dataset.site);if(!to||(from&&from.dataset.site===to._id))return;const o=offOn(n,date);if(o&&!confirm(short(n)+' is off ('+(o.type||'time off')+'). Add anyway?'))return;await moveTo(n,to);toast(short(n)+' → '+jno(to.no))};
+      if(!t)return;if(t.classList.contains('dsside')){if(from){const s=S.find(x=>x._id===from.dataset.site);const r=rowsFor(cd()).find(x=>x.s._id===s._id);await saveRow(cd(),s,r.crew.filter(c=>c.n!==n));toast(short(n)+' taken off '+jno(s.no))}return}
+      const to=S.find(x=>x._id===t.dataset.site);if(!to||(from&&from.dataset.site===to._id))return;const o=offOn(n,cd());if(o&&!confirm(short(n)+' is off ('+(o.type||'time off')+'). Add anyway?'))return;await moveTo(n,to);toast(short(n)+' → '+jno(to.no))};
     function cleanup(){clearTimeout(tm);removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',cleanup);removeEventListener('touchmove',tmv);gh&&gh.remove();tgt&&tgt.classList.remove('droph');ch.classList.remove('dragsrc');document.body.classList.remove('dsdragging');on=false}
     addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',()=>{if(!on)cleanup()});addEventListener('touchmove',tmv,{passive:false});
     if(e.pointerType!=='mouse')tm=setTimeout(()=>{start();try{navigator.vibrate&&navigator.vibrate(15)}catch(x){}},320)})})}
@@ -155,26 +166,26 @@ function bindCommon(){sec.querySelectorAll('[data-dv]').forEach(b=>b.onclick=()=
 
 /* ---------- crew editing ---------- */
 function dlg(html){document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg">${html}</div></div>`;return document.querySelector('#dlgRoot .dlg')}
-async function moveTo(n,site,tag){const rows=rowsFor(date);for(const r of rows){if(r.s._id!==site._id&&r.crew.some(c=>c.n===n))await saveRow(date,r.s,r.crew.filter(c=>c.n!==n))}
-  const r=rows.find(x=>x.s._id===site._id);const crew=(r?r.crew:[]).filter(c=>c.n!==n);const old=r&&r.crew.find(c=>c.n===n);crew.push({n,t:tag!=null?tag:(old&&old.t)||''});await saveRow(date,site,sortCrew(crew))}
+async function moveTo(n,site,tag){const rows=rowsFor(cd());for(const r of rows){if(r.s._id!==site._id&&r.crew.some(c=>c.n===n))await saveRow(cd(),r.s,r.crew.filter(c=>c.n!==n))}
+  const r=rows.find(x=>x.s._id===site._id);const crew=(r?r.crew:[]).filter(c=>c.n!==n);const old=r&&r.crew.find(c=>c.n===n);crew.push({n,t:tag!=null?tag:(old&&old.t)||''});await saveRow(cd(),site,sortCrew(crew))}
 function pick(site){let t='';let lv='';const d=dlg(`<h3>Add to ${E(jno(site.no))} · ${E(site.name||'')}</h3><input id="pkQ" class="search" placeholder="Search name…" autocomplete="off"><div class="viewseg" id="pkL" style="margin:8px 0;flex-wrap:wrap">${['','FM','JM','A'].map(k=>`<button data-l="${k}" aria-pressed="${k===''}">${k||'All'}${k==='A'?'pprentice':''}</button>`).join('')}</div><div id="pkList" class="dspick"></div><div class="bar"><button class="btn" id="pkC">Done</button></div>`);
-  const draw=()=>{const rows=rowsFor(date);const at=n=>rows.filter(r=>r.crew.some(c=>c.n===n)).map(r=>r.s);const here=new Set((rows.find(r=>r.s._id===site._id)||{crew:[]}).crew.map(c=>c.n));
+  const draw=()=>{const rows=rowsFor(cd());const at=n=>rows.filter(r=>r.crew.some(c=>c.n===n)).map(r=>r.s);const here=new Set((rows.find(r=>r.s._id===site._id)||{crew:[]}).crew.map(c=>c.n));
     const L=STAFF.filter(p=>p.cls!=='Office'&&p.st!=='Inactive'&&(!t||p.name.toLowerCase().includes(t)||(p.short||'').toLowerCase().includes(t))&&(!lv||(lv==='FM'?['FM','SFM'].includes(p.lv):lv==='A'?/^A\d/.test(p.lv||''):p.lv===lv)))
       .sort((a,b)=>(a.st==='Active'?0:1)-(b.st==='Active'?0:1)||(at(a.name).length?1:0)-(at(b.name).length?1:0)||prRank(a.name)-prRank(b.name)||lvRank(a.lv)-lvRank(b.lv)||a.name.localeCompare(b.name));
-    d.querySelector('#pkList').innerHTML=L.map(p=>{const w=at(p.name);const h=here.has(p.name);return `<button type="button" class="dsprow${h?' on':''}" data-pn="${E(p.name)}">${dot(p.name)}<b>${E(short(p.name))}</b><em>${E(p.lv||'')}</em>${p.st!=='Active'?`<small class="muted">${E(p.st)}</small>`:''}<small class="muted" style="margin-left:auto">${offOn(p.name,date)?'<b style="color:#ff8a80">Off · '+E(offOn(p.name,date).type||'')+'</b> ':''}${h?'On this job ✓':w.length?'On '+E(w.map(s=>jno(s.no)).join(', ')):'Free'}</small></button>`}).join('')||'<p class="muted">Nobody found. Check the Staff tab.</p>';
-    d.querySelectorAll('[data-pn]').forEach(b=>b.onclick=async()=>{const n=b.dataset.pn;if(here.has(n)){const r=rowsFor(date).find(x=>x.s._id===site._id);await saveRow(date,site,r.crew.filter(c=>c.n!==n))}else{const o=offOn(n,date);if(o&&!confirm(short(n)+' is off ('+(o.type||'time off')+') on this day. Add anyway?'))return;const w=at(n);if(w.length&&!confirm(short(n)+' is on '+w.map(s=>jno(s.no)).join(', ')+'. Move to '+jno(site.no)+'?'))return;await moveTo(n,site)}setTimeout(draw,150)})};
+    d.querySelector('#pkList').innerHTML=L.map(p=>{const w=at(p.name);const h=here.has(p.name);return `<button type="button" class="dsprow${h?' on':''}" data-pn="${E(p.name)}">${dot(p.name)}<b>${E(short(p.name))}</b><em>${E(p.lv||'')}</em>${p.st!=='Active'?`<small class="muted">${E(p.st)}</small>`:''}<small class="muted" style="margin-left:auto">${offOn(p.name,cd())?'<b style="color:#ff8a80">Off · '+E(offOn(p.name,cd()).type||'')+'</b> ':''}${h?'On this job ✓':w.length?'On '+E(w.map(s=>jno(s.no)).join(', ')):'Free'}</small></button>`}).join('')||'<p class="muted">Nobody found. Check the Staff tab.</p>';
+    d.querySelectorAll('[data-pn]').forEach(b=>b.onclick=async()=>{const n=b.dataset.pn;if(here.has(n)){const r=rowsFor(cd()).find(x=>x.s._id===site._id);await saveRow(cd(),site,r.crew.filter(c=>c.n!==n))}else{const o=offOn(n,cd());if(o&&!confirm(short(n)+' is off ('+(o.type||'time off')+') on this day. Add anyway?'))return;const w=at(n);if(w.length&&!confirm(short(n)+' is on '+w.map(s=>jno(s.no)).join(', ')+'. Move to '+jno(site.no)+'?'))return;await moveTo(n,site)}setTimeout(draw,150)})};
   d.querySelector('#pkQ').oninput=e=>{t=e.target.value.trim().toLowerCase();draw()};d.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{lv=b.dataset.l;d.querySelectorAll('[data-l]').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()});
   d.querySelector('#pkC').onclick=closeDlg;draw()}
-function chipMenu(site,n){const r=rowsFor(date).find(x=>x.s._id===site._id);const c=r.crew.find(x=>x.n===n)||{};const p=person(n)||{};const others=rowsFor(date).filter(x=>x.s._id!==site._id);
+function chipMenu(site,n){const r=rowsFor(cd()).find(x=>x.s._id===site._id);const c=r.crew.find(x=>x.n===n)||{};const p=person(n)||{};const others=rowsFor(cd()).filter(x=>x.s._id!==site._id);
   const d=dlg(`<h3>${E(short(n))} <small class="muted">${E(p.lv||'')}</small></h3>${p.cell||p.email?`<p class="dscontact dsinfo">${p.cell?`<span><b>Phone</b> ${E(p.cell)}</span>`:''}${p.email?`<span><b>Email</b> ${E(p.email)}</span>`:''}</p>`:''}
    <label class="f wide">Crew code <small class="muted">(e.g. 03 — shows before the name)</small><input id="cmT" value="${E(c.t||'')}" maxlength="4" inputmode="numeric"></label>
    <label class="f wide">Move to job<select id="cmM"><option value="">— stay on ${E(jno(site.no))} —</option>${others.map(x=>`<option value="${x.s._id}">${E(jno(x.s.no))} · ${E(x.s.name||'')}</option>`).join('')}</select></label>
    <div class="bar"><button class="btn dng" id="cmR">Remove from job</button><button class="btn" id="cmC">Cancel</button><button class="go" id="cmS" style="width:auto">Save</button></div>`);
   d.querySelector('#cmC').onclick=closeDlg;
-  d.querySelector('#cmR').onclick=async()=>{await saveRow(date,site,r.crew.filter(x=>x.n!==n));closeDlg();toast(short(n)+' removed from '+jno(site.no))};
+  d.querySelector('#cmR').onclick=async()=>{await saveRow(cd(),site,r.crew.filter(x=>x.n!==n));closeDlg();toast(short(n)+' removed from '+jno(site.no))};
   d.querySelector('#cmS').onclick=async()=>{const t=d.querySelector('#cmT').value.trim();const m=d.querySelector('#cmM').value;
-    if(m){await moveTo(n,S.find(s=>s._id===m),t);toast(short(n)+' moved')}else{await saveRow(date,site,r.crew.map(x=>x.n===n?{...x,t}:x))}closeDlg()}}
-function toJob(n){const rows=rowsFor(date);if(!rows.length){toast('No jobs on this day');return}
+    if(m){await moveTo(n,S.find(s=>s._id===m),t);toast(short(n)+' moved')}else{await saveRow(cd(),site,r.crew.map(x=>x.n===n?{...x,t}:x))}closeDlg()}}
+function toJob(n){const rows=rowsFor(cd());if(!rows.length){toast('No jobs on this day');return}
   const d=dlg(`<h3>Send ${E(short(n))} to…</h3><div class="dspick">${rows.map(r=>`<button type="button" class="dsprow" data-tj="${r.s._id}"><b>${E(jno(r.s.no))}</b><span>${E(r.s.name||'')}</span><small class="muted" style="margin-left:auto">Crew ${r.crew.length}</small></button>`).join('')}</div><div class="bar"><button class="btn" id="tjC">Cancel</button></div>`);
   d.querySelector('#tjC').onclick=closeDlg;d.querySelectorAll('[data-tj]').forEach(b=>b.onclick=async()=>{await moveTo(n,S.find(s=>s._id===b.dataset.tj));closeDlg();toast(short(n)+' → '+jno(S.find(s=>s._id===b.dataset.tj).no))})}
 
@@ -191,10 +202,10 @@ function leaveDlg(l,who){const nw=!l;l=l||{n:who||'',type:'Vacation',from:date,t
     const from=d.querySelector('#lvF').value,to=d.querySelector('#lvTo').value||from;if(!from||to<from){toast('Check the dates');return}
     const o={n:p.name,type:d.querySelector('#lvT').value,from,to,note:d.querySelector('#lvO').value.trim(),by:curUser,at:new Date().toISOString()};
     await db.doc('dleave/'+(nw?sid():l._id)).set(o);
-    let moved=0;for(let x=monOf(from);x<=to&&moved<400;x=addD(x,7)){if(!DAY[x]&&x!==date)continue;for(const r of rowsFor(x)){if(r.crew.some(c=>c.n===p.name)){await saveRow(x,r.s,r.crew.filter(c=>c.n!==p.name),null,true);moved++}}}
+    let moved=0;for(let x=from;x<=to&&moved<400;x=addD(x,1)){for(const r of rowsFor(x)){if(r.crew.some(c=>c.n===p.name)){await saveRow(x,r.s,r.crew.filter(c=>c.n!==p.name),null,true);moved++}}}
     closeDlg();toast(short(p.name)+' off '+fmtD(from)+(to!==from?'–'+fmtD(to):'')+(moved?' · taken off '+moved+' job day(s)':''))}}
 /* text the whole crew of a job at once (opens the phone's Messages app, prefilled) */
-function textCrew(site){if(!site)return;const r=rowsFor(date).find(x=>x.s._id===site._id)||{crew:site.crew||[]};
+function textCrew(site){if(!site)return;const r=rowsFor(cd()).find(x=>x.s._id===site._id)||{crew:site.crew||[]};
   const rows=r.crew.map(c=>{const p=person(c.n)||{};return {name:short(c.n),cell:(p.cell||'').replace(/\D/g,'')}});
   const have=rows.filter(x=>x.cell.length>=10),miss=rows.filter(x=>x.cell.length<10).map(x=>x.name);
   if(!have.length){toast('No phone numbers for this crew'+(miss.length?' ('+miss.length+' missing)':''));return}
@@ -240,7 +251,7 @@ function sendDlg(){const day=DAY[date]||{};const rev=day.sent?(day.sent.rev||1)+
       return G.map(([h,L])=>`<div class="rcg"><div class="rcgh"><span>${h}</span><button type="button" class="btn small" data-rca="${h}">All</button><button type="button" class="btn small" data-rcn="${h}">None</button></div><div class="rcl" data-rcg="${h}">${L.sort((a,b)=>short(a.name).localeCompare(short(b.name))).map(p=>`<label class="rcp"><input type="checkbox" value="${E(p.email)}" ${sel.has(p.email.toLowerCase())?'checked':''}><span>${E(short(p.name))}</span><small>${E(p.lv==='Office'?'':p.lv||'')}</small></label>`).join('')||'<small class="muted">Nobody with an email yet</small>'}</div></div>`).join('')+`<label class="f wide" style="margin-top:6px">Other emails <small class="muted">(optional, separate with ;)</small><input id="sdTo" value="${E(extra.join('; '))}"></label>`})()}</div>
    <label class="f wide">Subject<input id="sdSub" value="${E(subj)}"></label>
    <label class="f wide">Message<textarea id="sdMsg" rows="4">${E(intro)}</textarea></label>
-   <details><summary class="muted">Preview the table</summary><div class="dsprev">${tableHTML(date)}</div></details>
+   <details><summary class="muted">Preview the table</summary><div class="dsprev">${tableHTML(cd())}</div></details>
    <label class="chk"><input type="checkbox" id="sdMail" checked> Email it from my Outlook</label>
    <label class="chk"><input type="checkbox" id="sdTeams" ${CFG.teams!==false?'checked':''}> Post to the Teams chat</label>
    <label class="chk"><input type="checkbox" id="sdBell" checked> App bell + phone alert for everyone</label>
@@ -248,14 +259,14 @@ function sendDlg(){const day=DAY[date]||{};const rev=day.sent?(day.sent.rev||1)+
   d.querySelector('#sdC').onclick=closeDlg;
   const rcCount=()=>{const n=d.querySelectorAll('.rcp input:checked').length;d.querySelector('#rcN').textContent=n+' selected'};rcCount();d.querySelectorAll('.rcp input').forEach(c=>c.onchange=rcCount);
   d.querySelectorAll('[data-rca],[data-rcn]').forEach(b=>b.onclick=()=>{const g=b.dataset.rca||b.dataset.rcn;d.querySelectorAll(`[data-rcg="${g}"] input`).forEach(c=>c.checked=!!b.dataset.rca);rcCount()});
-  d.querySelector('#sdCopy').onclick=async()=>{await copyHTML(tableHTML(date),textTable(date));toast('Table copied — paste it into Outlook')};
+  d.querySelector('#sdCopy').onclick=async()=>{await copyHTML(tableHTML(cd()),textTable(cd()));toast('Table copied — paste it into Outlook')};
   d.querySelector('#sdS').onclick=async e=>{const b=e.target;b.disabled=true;b.textContent='Sending…';const toL=[...new Set([...[...d.querySelectorAll('.rcp input:checked')].map(c=>c.value),...d.querySelector('#sdTo').value.split(/[;,\s]+/).map(x=>x.trim()).filter(x=>/@/.test(x))])];if(!toL.length&&d.querySelector('#sdMail').checked){toast('Pick at least one person');b.disabled=false;b.textContent='Send';return}const sub=d.querySelector('#sdSub').value.trim();const msg=d.querySelector('#sdMsg').value.trim();
-    const html=`<div style="font:14px Calibri,Arial">${E(msg).replace(/\n/g,'<br>')}</div><br>${brandHead(date,LOGO_URL)}${tableHTML(date)}<br><div style="font:14px Calibri,Arial">${E(curUser||'')}</div>`;const res=[];
-    if(d.querySelector('#sdMail').checked){try{if(!window.ameMail)throw new Error('mail');await window.ameMail(toL,sub,html);res.push('Email sent')}catch(err){await copyHTML(html,msg+'\n\n'+textTable(date));location.href='mailto:'+encodeURIComponent(toL.join(';'))+'?subject='+encodeURIComponent(sub);res.push('Email couldn’t send from the app — the dispatch is copied, paste it into the new Outlook email')}}
-    if(d.querySelector('#sdTeams').checked){try{const c=await db.doc('config/trucks').get();const hook=((c.data&&c.data())||{}).hook;if(hook){await fetch(hook,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',content:{type:'AdaptiveCard',version:'1.4',$schema:'http://adaptivecards.io/schemas/adaptive-card.json',body:[{type:'TextBlock',weight:'Bolder',size:'Medium',text:sub},{type:'TextBlock',wrap:true,text:textTable(date).replace(/\n/g,'\n\n')}]}}]})});res.push('Posted to Teams')}else res.push('No Teams chat connected')}catch(err){res.push('Teams post failed')}}
+    const html=`<div style="font:14px Calibri,Arial">${E(msg).replace(/\n/g,'<br>')}</div><br>${brandHead(date,LOGO_URL)}${tableHTML(cd())}<br><div style="font:14px Calibri,Arial">${E(curUser||'')}</div>`;const res=[];
+    if(d.querySelector('#sdMail').checked){try{if(!window.ameMail)throw new Error('mail');await window.ameMail(toL,sub,html);res.push('Email sent')}catch(err){await copyHTML(html,msg+'\n\n'+textTable(cd()));location.href='mailto:'+encodeURIComponent(toL.join(';'))+'?subject='+encodeURIComponent(sub);res.push('Email couldn’t send from the app — the dispatch is copied, paste it into the new Outlook email')}}
+    if(d.querySelector('#sdTeams').checked){try{const c=await db.doc('config/trucks').get();const hook=((c.data&&c.data())||{}).hook;if(hook){await fetch(hook,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',content:{type:'AdaptiveCard',version:'1.4',$schema:'http://adaptivecards.io/schemas/adaptive-card.json',body:[{type:'TextBlock',weight:'Bolder',size:'Medium',text:sub},{type:'TextBlock',wrap:true,text:textTable(cd()).replace(/\n/g,'\n\n')}]}}]})});res.push('Posted to Teams')}else res.push('No Teams chat connected')}catch(err){res.push('Teams post failed')}}
     const now=new Date().toISOString();
-    if(d.querySelector('#sdBell').checked){try{await db.collection('logs').add({ts:now,action:'DISPATCH',name:sub,by:curUser,note:rowsFor(date).length+' jobs · '+rowsFor(date).reduce((a,r)=>a+r.crew.length,0)+' people',dsp:date})}catch(err){}}
-    await db.doc('dday/'+date).set({...(DAY[date]||{}),rows:Object.fromEntries(rowsFor(date).map(r=>[r.s._id,{...((DAY[date]||{}).rows||{})[r.s._id],crew:r.crew,note:r.note}])),sent:{at:now,by:curUser,rev,snap:snap(date)}});
+    if(d.querySelector('#sdBell').checked){try{await db.collection('logs').add({ts:now,action:'DISPATCH',name:sub,by:curUser,note:rowsFor(cd()).length+' jobs · '+rowsFor(cd()).reduce((a,r)=>a+r.crew.length,0)+' people',dsp:date})}catch(err){}}
+    await db.doc('dday/'+date).set({...(DAY[date]||{}),sent:{at:now,by:curUser,rev,snap:snap(cd())}});
     try{await db.doc('config/dispatch').set({...CFG,to:toL,teams:d.querySelector('#sdTeams').checked})}catch(err){}
     closeDlg();toast(res.join(' · ')||'Saved')}}
 async function copyHTML(html,text){try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})])}catch(e){try{await navigator.clipboard.writeText(text)}catch(x){}}}
@@ -439,6 +450,13 @@ AME.nav&&(AME.nav.dsp={get:()=>({view,date}),set:o=>{view=o.view;date=o.date;ren
 const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="dsp"]');if(b)b.hidden=!AME.allowed(AME.mod('dsp'))};
 document.head.insertAdjacentHTML('beforeend',`<style>
 .dsdate{display:flex;align-items:center;gap:8px;margin-bottom:8px}.dsdate label{position:relative;display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;cursor:pointer}.dsdate label b{font-size:18px}.dsdate input[type=date]{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}.dsdate>.btn{min-width:44px;font-size:20px;padding:6px 10px}
+.dsdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:0 0 10px;max-width:520px}
+.dsday{display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 2px;border:1px solid var(--line,#555);border-radius:10px;background:transparent;color:inherit;cursor:pointer;position:relative;min-height:48px;justify-content:center}
+.dsday b{font-size:12px;font-weight:700;letter-spacing:.02em}.dsday small{font-size:15px;font-weight:600;opacity:.85}
+.dsday.on{background:var(--hi,#f47b20);border-color:var(--hi,#f47b20);color:#fff}.dsday.on small{opacity:1}
+.dsday.today:not(.on){border-color:var(--hi,#f47b20)}
+.dsday .dsdoff{position:absolute;top:3px;right:4px;background:#ff6b6b;color:#1d1a18;font-size:9px;font-weight:800;border-radius:7px;padding:0 4px;font-style:normal}
+.dsdaypill{background:var(--hi,#f47b20)!important;color:#fff!important;border-color:var(--hi,#f47b20)!important}
 .dsstat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .dscard{padding:12px 14px!important;margin-bottom:10px}.dscard[hidden]{display:none}.dsh{display:flex;align-items:baseline;gap:8px;min-width:0}.dsno{font-size:17px;flex:none}.dsnm{font-weight:700;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .dsmeta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;margin:4px 0 8px;align-items:center}.dspic{display:inline-flex;align-items:center;gap:6px;font-weight:600}.dspic::before{content:'';width:10px;height:10px;border-radius:3px;background:var(--c)}
