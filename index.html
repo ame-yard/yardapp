@@ -654,7 +654,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.11',APP_DATE='2026-10-15';
+const APP_VERSION='4.12',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -765,7 +765,7 @@ function renderMap(){
   items.forEach(i=>{const l=locOf(i);cnt[l]=(cnt[l]||0)+1;if(q&&match(i,q))hit[l]=1;if(cart.some(c=>c.id===i.id))inc[l]=1});
   let h=`<rect class="bldg" x="200" y="20" width="610" height="495" rx="6"/>`;
   h+=ZONES.map(([z,x,y,w,hh])=>`<rect class="z ${yLoc==='zone:'+z?'sel':''}" data-zone="${z}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="4"/>${z==='Y'?`<text class="zl" style="font-size:18px" x="${x+12}" y="${y+24}">OUTDOOR YARD</text>`:`<text class="zl" x="${x+w-10}" y="${y+hh-10}" text-anchor="end">${z}</text>`}`).join('');
-  h=h.replace('<rect class="z','<rect class="z')
+  h=h.replace('<rect class="z','<rect class="z');h+=ZONES.map(([z,x,y,w,hh])=>`<text class="zlc" x="${x+w/2}" y="${y+hh/2}" text-anchor="middle" dominant-baseline="central">${z==='Y'?'OUTDOOR':z}</text>`).join('')
   h+=Object.entries(BAYS).map(([l,[x,y,bw=46,bh=40]])=>{const n=cnt[l]||0;const c=['bay',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
     return `<g class="${c}" data-loc="${l}"><rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="5"/><text x="${x}" y="${y-3}">${l}</text><text class="bc" x="${x}" y="${y+14}">${n?n:'—'}</text></g>`}).join('');
   if(mapEdit){h+=ZONES.map(([z,x,y,w,hh])=>`<rect class="zedit ${mapSel&&mapSel.id===z+'|'+x+'|'+y?'msel':''}" data-zk="${z}|${x}|${y}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="4"/><rect class="zhandle" data-zh="${z}|${x}|${y}" x="${x+w-14}" y="${y+hh-14}" width="14" height="14" rx="2"/>`).join('');
@@ -780,7 +780,7 @@ function renderMap(){
        return `<button type="button" class="${c}" data-zl="${l}"><b>${l}</b><span class="zc">${n?n+' item'+(n>1?'s':''):'Empty'}</span>${its.length?`<span class="zi">${esc([...new Set(its)].slice(0,3).join(' · '))}</span>`:''}</button>`}).join('')||'<p class="muted">No racks in this zone.</p>';
      $$('#zpanel [data-zl]').forEach(g=>g.onclick=()=>{yLoc=yLoc===g.dataset.zl?'':g.dataset.zl;$('#ysearch').value='';renderYard();scrollToList()})}}
   $$('#ymap [data-loc]').forEach(g=>g.onclick=e=>{e.stopPropagation();yLoc=yLoc===g.dataset.loc?'':g.dataset.loc;$('#ysearch').value='';renderYard();scrollToList()});
-  $$('#ymap [data-zone]').forEach(r=>r.onclick=()=>{mZone=r.dataset.zone;const z='zone:'+r.dataset.zone;yLoc=z;$('#ysearch').value='';renderYard();scrollToList()});
+  $$('#ymap [data-zone]').forEach(r=>r.onclick=()=>{if(document.body.classList.contains('bigui')){mZone=r.dataset.zone;yLoc='';renderMap();renderYard();setTimeout(()=>{const zp=$('#zbar');if(zp)zp.scrollIntoView({behavior:'smooth',block:'start'})},50);return}mZone=r.dataset.zone;const z='zone:'+r.dataset.zone;yLoc=z;$('#ysearch').value='';renderYard();scrollToList()});
 }
 const jobLabel=no=>{const j=jobs.find(x=>x.no===no)||jobs.find(x=>x.no==='#'+no);return j?(j.name?`${j.no} · ${j.name}`:j.no):no};
 $$('#actions .act').forEach(b=>b.onclick=()=>{act=b.dataset.act;$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x===b));
@@ -1742,6 +1742,7 @@ db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()}
 .listview .card .cfoot{flex-direction:row!important;align-items:center!important;gap:6px!important;white-space:nowrap;margin-right:44px!important;align-self:center}.listview .card .cfoot .cqty{font-weight:700}.listview .card .cinfo{top:50%;bottom:auto;transform:translateY(-50%)}
 .listview .card .oosband{right:52px!important;left:auto!important}@media (max-width:600px){.listview .card .cfoot{flex-direction:column!important;align-items:flex-end!important;gap:2px!important;margin-right:40px!important}.listview .card .oosband{display:none}}
 .card .cfoot{padding-right:38px;box-sizing:border-box}.card.in .ptop>span:first-child{visibility:hidden}
+#ymap .zlc{display:none;pointer-events:none}body.bigui #ymap .bay{display:none}body.bigui #ymap .zlc{display:block;font:800 44px var(--display,sans-serif);fill:#f3ede6}body.bigui #ymap .z{fill:rgba(242,106,27,.14);stroke:#f26a1b;stroke-width:3;cursor:pointer}body.bigui #ymap .zl{display:none}
 </style>
 <script>
 function rmBar(){const b=document.getElementById('rmBar');if(!b)return;b.hidden=!selMode;document.getElementById('rmCount').textContent=picked.size+' selected';document.getElementById('rmGo').disabled=!picked.size}
@@ -1764,7 +1765,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="safety.js?v=409"></script>
 <script src="deliv.js?v=404"></script>
 <script src="admin.js?v=388"></script>
-<script src="lab.js?v=411"></script>
+<script src="lab.js?v=412"></script>
 <script src="scan.js?v=399"></script>
 <script>
 /* auto-detect a newer app version */

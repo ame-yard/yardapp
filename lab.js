@@ -70,13 +70,15 @@ const ICON_V='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 /* Practice mode: the real Yard screens, big text, nothing saved (writes stay on this device until you leave) */
 let prOn=false;
 function prBar(){let b=document.getElementById('prBar');if(!prOn){if(b)b.remove();return}if(!b){b=document.createElement('div');b.id='prBar';document.body.appendChild(b)}
-  b.innerHTML=`<b>PRACTICE</b><span>Nothing is saved</span><div class="prz">${Object.entries(ZS).map(([k,v])=>`<button data-pz="${k}" aria-pressed="${k===tz}">${k==='md'?'A':k==='lg'?'A+':'A++'}</button>`).join('')}</div><button class="prx" data-px>Exit</button>`;
+  b.innerHTML=`<b>PRACTICE</b><span>Foreman view · not saved</span><div class="prz">${Object.entries(ZS).map(([k,v])=>`<button data-pz="${k}" aria-pressed="${k===tz}">${k==='md'?'A':k==='lg'?'A+':'A++'}</button>`).join('')}</div><button class="prx" data-px>Exit</button>`;
   b.querySelectorAll('[data-pz]').forEach(x=>x.onclick=()=>{tz=x.dataset.pz;try{localStorage.setItem('ytestZ',tz)}catch(e){}prApply();prBar()});b.querySelector('[data-px]').onclick=()=>AME.home()}
 function prApply(){document.body.style.setProperty('--pz',ZS[tz].s);document.body.classList.toggle('bigui',prOn&&tz!=='md');document.body.classList.toggle('bigxl',prOn&&tz==='xl')}
-function prEnter(){if(prOn)return;prOn=true;window.__ameSandbox=true;try{cart=[];}catch(e){}document.body.classList.add('practice');prApply();prBar()}
-async function prExit(){if(!prOn)return;prOn=false;document.body.classList.remove('practice','bigui','bigxl');prBar();try{cart=[];}catch(e){}window.__ameSandbox=false;try{const d=await window.claude.use('db');await d.refresh()}catch(e){}try{render()}catch(e){}toast('Practice ended — real data reloaded')}
+let _can=null,_adm=null;
+function asForeman(on){try{if(on){_adm=isAdmin;_can=window.can;const role='Foreman';window.can=f=>{const r=(perms.roles||{})[role];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)};isAdmin=false}else if(_can){window.can=_can;isAdmin=_adm;_can=null}applyRole()}catch(e){console.warn('practice role',e)}}
+function prEnter(){if(prOn)return;prOn=true;window.__ameSandbox=true;asForeman(true);try{cart=[];}catch(e){}document.body.classList.add('practice');prApply();prBar()}
+async function prExit(){if(!prOn)return;prOn=false;asForeman(false);document.body.classList.remove('practice','bigui','bigxl');prBar();try{cart=[];}catch(e){}window.__ameSandbox=false;try{const d=await window.claude.use('db');await d.refresh()}catch(e){}try{render()}catch(e){}toast('Practice ended — real data reloaded')}
 {const _o=AME.open.bind(AME),_h=AME.home.bind(AME);AME.open=function(id,...r){if(id!=='ytest'&&prOn)prExit();return _o(id,...r)};AME.home=function(...r){if(prOn)prExit();return _h(...r)}}
-AME.register({id:'ytest',name:'Inventory (Test)',desc:'Practice the real Yard screens in big text · nothing is saved',allow:own,tabs:['yard'],section:null,icon:ICON_T,open:()=>{prEnter();showTab('yard');try{yardStart()}catch(e){}try{render()}catch(e){}}});
+AME.register({id:'ytest',name:'Inventory (Test)',desc:'Practice the real Yard screens in big text · nothing is saved',allow:own,tabs:['yard'],section:null,icon:ICON_T,open:()=>{prEnter();showTab('yard');try{yardStart()}catch(e){}try{document.querySelector('.lvseg [data-lv=card]')?.click()}catch(e){}try{render()}catch(e){}}});
 document.head.insertAdjacentHTML('beforeend',`<style>
 #prBar{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 6px);z-index:99990;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:999px;background:#1d6b3a;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.45);font-size:13px;white-space:nowrap;max-width:calc(100vw - 16px)}
 #prBar b{letter-spacing:.08em}#prBar span{opacity:.85}#prBar .prz{display:flex;gap:2px;background:rgba(0,0,0,.25);border-radius:999px;padding:2px}
@@ -84,7 +86,24 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 #prBar .prx{border:0;background:#fff;color:#1d6b3a;font-weight:800;height:30px;padding:0 12px;border-radius:999px}
 @media(max-width:420px){#prBar span{display:none}}
 body.practice header.top{padding-top:44px}
-body.bigui .ysrow{flex-wrap:wrap}body.bigui .ysrow #ysearch{flex:1 1 100%;min-width:0}
+
+body.practice nav.tabs button[data-tab]:not([data-tab=yard]){display:none!important}
+body.practice #ySort,body.practice .lvseg,body.practice #rackSel,body.practice #rackEdit,body.practice #rackAdd,body.practice #selClear,body.practice #mapEditBar,body.practice #editBanner{display:none!important}
+body.bigui #ylist{grid-template-columns:1fr!important}
+body.bigui #ylist.cards .card:not(.newcard){display:grid!important;grid-template-columns:44% minmax(0,1fr);align-items:stretch;min-height:150px}
+body.bigui #ylist.cards .card .pwrap{width:auto!important;height:100%}
+body.bigui #ylist.cards .card .pic{width:100%!important;height:100%!important;min-height:150px;aspect-ratio:auto!important}
+body.bigui #ylist.cards .card .pic img{width:100%;height:100%;object-fit:cover}
+body.bigui #ylist.cards .card .cbody{display:flex!important;flex-direction:column;justify-content:center;gap:6px;padding:12px 12px 48px!important;min-width:0}
+body.bigui #ylist.cards .card .cname{font-size:18px;line-height:1.2;font-weight:800;white-space:normal!important;display:block!important;-webkit-line-clamp:unset!important;overflow:visible!important}
+body.bigui #ylist.cards .card .csub{font-size:14px;opacity:.8;white-space:normal!important}
+body.bigui #ylist.cards .card .cfoot{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:4px!important;margin:0!important;padding:0!important}
+body.bigui #ylist.cards .card .cqty{font-size:22px;font-weight:800}
+body.bigui #ylist.cards .card .loc{font-size:14px}
+body.bigui #ylist.cards .card .cinfo{top:auto!important;bottom:10px!important;right:10px!important;transform:none!important;width:36px;height:36px;line-height:36px}
+body.bigui #ylist.cards .card .oosband{left:0!important;right:auto!important;top:0;max-width:44%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.bigui #ylist.cards .card .cstep{max-width:calc(44% - 12px)}body.bigui #ylist.cards .card .cstep .cs-b{width:30px}body.bigui #ylist.cards .card .cstep b{min-width:20px}
+body.bigui #ylist.cards .card .ph{display:flex!important;align-items:center!important;justify-content:center!important}body.bigui #ylist.cards .card .ph .pbig,body.bigui #ylist.cards .card .ph .pbrand,body.bigui #ylist.cards .card .ph .ptop>span{display:none!important}body.bigui #ylist.cards .card .ph .ptop{position:static!important;display:flex!important;justify-content:center}body.bigui #ylist.cards .card .ph .ptop svg{width:64px!important;height:64px!important;opacity:.9}
+body.bigui .ysrow{flex-wrap:wrap}body.bigui .ysrow #ysearch{flex:1 1 100%;min-width:0}body.bigui .ysrow .scanbtn{flex:1 1 100%!important;justify-content:center;min-height:52px}
 @media(max-width:700px){body.bigui #ylist.cards:not(.listview){grid-template-columns:1fr!important}}
 body.bigui #cartbar .cb-in{font-size:calc(15px*var(--pz))}body.bigui #cartbar .cb-in .btn,body.bigui #cartbar .cb-in .go{font-size:calc(14px*var(--pz));min-height:calc(44px*var(--pz))}body.bigui #cartbar #cbCount{font-size:calc(22px*var(--pz))}body.bigui #cartbar .cb-in{flex-wrap:wrap;row-gap:8px}body.bigui #cartbar .cb-in>div{flex:1 1 auto;min-width:0}body.bigui #cbGo{flex:1 1 100%!important;width:100%!important}
 body.bigui #saveBtn,body.bigui #syncBtn{white-space:nowrap}body.bigxl #actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}body.bigui #actions .act b,body.bigui #actions .act{overflow-wrap:anywhere}body.bigui .listview .card .cbody{display:flex!important;flex-direction:column;align-items:flex-start!important;text-align:left;min-width:0;padding-right:52px!important;box-sizing:border-box}body.bigui .listview .card .csub{text-align:left!important;align-self:flex-start}body.bigui .listview .card .cname{display:block!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;max-height:none!important;height:auto!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}body.bigui .listview .card .cfoot{grid-column:auto!important;grid-row:auto!important;flex-direction:row!important;align-items:center!important;margin:4px 0 0 0!important;padding-right:0}body.bigui #dlgRoot .dlg{max-width:calc((100vw - 16px) / var(--pz))!important;width:calc((100vw - 16px) / var(--pz))!important;box-sizing:border-box}body.bigui #dlgRoot .dlg .fields{grid-template-columns:1fr!important}body.bigui #dlgRoot .dlg select,body.bigui #dlgRoot .dlg input{max-width:100%;box-sizing:border-box}body.practice #dlgRoot .scrim{padding-top:52px}
