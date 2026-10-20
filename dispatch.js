@@ -17,7 +17,7 @@ const canEdit=()=>{try{return !!(isAdmin||(typeof can==='function'&&can('DISPATC
 const E=s=>esc(s==null?'':String(s));
 const sid=()=>Math.random().toString(36).slice(2,10);
 const jno=n=>String(n||'').replace(/^#/,'');
-const person=n=>STAFF.find(p=>p.name===n)||STAFF.find(p=>p.short===n||(p.alias||[]).includes(n));
+const person=n=>STAFF.find(p=>p.name===n)||STAFF.find(p=>p.short===n||(p.alias||[]).includes(n))||(typeof matchStaff==='function'?matchStaff(n||''):null);
 /* match a schedule name ("Sergio Cerna") to a staff record ("Sergio Cerna Galvez") */
 function matchStaff(raw){const n=raw.trim().toLowerCase();if(!n)return null;let p=STAFF.find(x=>x.name.toLowerCase()===n||(x.short||'').toLowerCase()===n);if(p)return p;
   const w=n.replace(/[.,]/g,'').split(/\s+/);const c=STAFF.filter(x=>{const v=x.name.toLowerCase().replace(/[.,]/g,'').split(/\s+/);return w.every(t=>v.includes(t))});return c.length===1?c[0]:null}
