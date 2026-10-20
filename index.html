@@ -25,7 +25,7 @@ html[data-theme=light] .dsfree,html[data-theme=light] .dsoff{background:var(--pa
 html[data-theme=light] .dsinact[aria-pressed]{color:#c0392b}
 .thbtn svg{width:18px;height:18px}
 </style><style>.pfov{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}.pfbox{background:var(--panel);color:var(--ink);border-radius:14px;padding:16px;width:min(420px,100%);box-shadow:0 10px 40px rgba(0,0,0,.5)}.pfprev{aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--chip);touch-action:none;cursor:grab;margin-bottom:10px}.pfprev img{width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}.pfrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.pfz{display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px}.pfz input{flex:1;width:auto;height:auto;accent-color:#f47b20}.pic{overflow:hidden}</style>
-<style>.picksearch{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;cursor:pointer}.picksearch span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.picksearch svg{flex:none;opacity:.6}.pksov{position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:8vh 14px 14px}.pksbox{background:var(--panel);color:var(--ink);border-radius:14px;width:min(460px,100%);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.5);overflow:hidden}.pkshd{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.pkshd input{flex:1;min-width:0;padding:11px 12px;border:2px solid var(--line);border-radius:8px;background:var(--bg);color:inherit;font-size:16px}.pksl{overflow:auto;padding:6px}.pksr{display:block;width:100%;text-align:left;padding:12px 12px;border:0;background:none;color:inherit;font:inherit;font-size:16px;border-radius:8px;cursor:pointer}.pksr:hover{background:rgba(255,255,255,.06)}.pksr.on{color:var(--hi,#f47b20);font-weight:700}.pksr.new{color:var(--hi,#f47b20);font-weight:600;border-top:1px solid var(--line);margin-top:4px}.pksr.clr{opacity:.7}</style>
+<style>.picksearch{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;cursor:pointer}.picksearch span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.picksearch svg{flex:none;opacity:.6}.pksov{position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:8vh 14px 14px}.pksbox{background:var(--panel);color:var(--ink);border-radius:14px;width:min(460px,100%);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.5);overflow:hidden}.pkshd{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line)}.pkshd input{flex:1;min-width:0;padding:11px 12px;border:2px solid var(--line);border-radius:8px;background:var(--bg);color:inherit;font-size:16px}.pksl{overflow:auto;padding:6px}.pksr{display:block;width:100%;text-align:left;padding:12px 12px;border:0;background:none;color:inherit;font:inherit;font-size:16px;border-radius:8px;cursor:pointer}.pksr:hover{background:rgba(255,255,255,.06)}.pksr.on{color:var(--hi,#f47b20);font-weight:700}.pksr.new{color:var(--hi,#f47b20);font-weight:600;border-top:1px solid var(--line);margin-top:4px}.pksr.clr{opacity:.7}.pksre{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line)}.pksre span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}</style>
 <style>.duplist{display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow:auto;margin-bottom:10px}.duprow{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line)}.dupmain{flex:1;min-width:0}</style>
 </head><body>
 <title>AME</title>
@@ -682,7 +682,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.72',APP_DATE='2026-10-15';
+const APP_VERSION='4.74',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1370,14 +1370,22 @@ function buildPicks(pool){for(const k of PICKK){const inp=document.getElementByI
     sel.innerHTML=`<option value="">— Select —</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+`<option value="__new">+ Type a new one…</option>`;syncPick(k)}}
 function pickSearch(k,label){const inp=document.getElementById('e_'+k);const btn=document.getElementById('pb_'+k);if(!inp||!btn)return;
   const vals=btn._vals||[];const cur=inp.value;let q='';
-  const ov=document.createElement('div');ov.className='pksov';ov.innerHTML=`<div class="pksbox"><div class="pkshd"><input id="pksQ" placeholder="Search ${esc(label||k)}…" autocomplete="off"><button type="button" class="btn" id="pksX">Cancel</button></div><div id="pksL" class="pksl"></div></div>`;
+  const canEditList=(typeof isAdmin!=='undefined'&&isAdmin)||(typeof can==='function'&&can('ADD'));let editMode=false;
+  const ov=document.createElement('div');ov.className='pksov';ov.innerHTML=`<div class="pksbox"><div class="pkshd"><input id="pksQ" placeholder="Search ${esc(label||k)}…" autocomplete="off">${canEditList&&['cat','mfgr','name','size'].includes(k)?`<button type="button" class="btn" id="pksE">Edit list</button>`:''}<button type="button" class="btn" id="pksX">Cancel</button></div><div id="pksL" class="pksl"></div></div>`;
   document.body.appendChild(ov);const qi=ov.querySelector('#pksQ');
   const choose=v=>{inp._typing=0;inp.value=v;inp.hidden=true;ov.remove();try{inp.dispatchEvent(new Event('change',{bubbles:true}))}catch(e){}try{cascadePicks()}catch(e){}buildPicks(typePools())};
   const typeNew=()=>{ov.remove();inp._typing=1;inp.hidden=false;inp.value='';const b=document.getElementById('pb_'+k);if(b)b.innerHTML=`<span class="muted">Type below…</span>`;setTimeout(()=>{try{inp.focus()}catch(e){}},60)};
   const draw=()=>{const t=q.trim().toLowerCase();const L=vals.filter(v=>!t||String(v).toLowerCase().includes(t));
+    if(editMode){document.getElementById('pksL').innerHTML=`<p class="muted" style="padding:6px 12px;font-size:13px;margin:0">Rename to fix duplicates (e.g. “SIKA” → “Sika”). Every item with that ${esc(label||k)} is updated. To merge two, rename one to exactly match the other.</p>`+L.map(v=>`<div class="pksre"><span>${esc(v)}</span><button type="button" class="btn small" data-ren="${esc(v)}">Rename</button></div>`).join('')||'<p class="muted" style="padding:12px">Nothing to edit.</p>';
+      ov.querySelectorAll('[data-ren]').forEach(b=>b.onclick=()=>renameField(k,b.dataset.ren,label,()=>{const nv=uniq((typeof typePools==='function'?(()=>{const pl=typePools();return (k==='loc'||k==='level'?items:typeof pl==='function'?pl(k):pl)})():items).map(x=>x[k]));btn._vals=nv;draw()}));return}
     document.getElementById('pksL').innerHTML=(cur?`<button type="button" class="pksr clr" data-v="">— None —</button>`:'')+L.map(v=>`<button type="button" class="pksr${v===cur?' on':''}" data-v="${esc(v)}">${esc(v)}</button>`).join('')+`<button type="button" class="pksr new" data-new="1">+ Type a new one…</button>`;
     ov.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>choose(b.dataset.v));ov.querySelector('[data-new]').onclick=typeNew;};
-  qi.oninput=()=>{q=qi.value;draw()};ov.querySelector('#pksX').onclick=()=>ov.remove();ov.onclick=e=>{if(e.target===ov)ov.remove()};draw();setTimeout(()=>{try{qi.focus()}catch(e){}},60)}
+  qi.oninput=()=>{q=qi.value;draw()};{const e=ov.querySelector('#pksE');if(e)e.onclick=()=>{editMode=!editMode;e.textContent=editMode?'Done':'Edit list';draw()}}ov.querySelector('#pksX').onclick=()=>ov.remove();ov.onclick=e=>{if(e.target===ov)ov.remove()};draw();setTimeout(()=>{try{qi.focus()}catch(e){}},60)}
+async function renameField(k,oldV,label,after){const nv=prompt('Rename this '+(label||k)+':\n\n(Every item using “'+oldV+'” will change. To merge, type the exact spelling you want to keep.)',oldV);if(nv==null)return;const newV=nv.trim();if(!newV||newV===oldV)return;
+  const hit=[...rawItems,...pendingItems].filter(x=>String(x[k]||'')===oldV);if(!hit.length){toast('Nothing used that value');return}
+  const merge=[...rawItems,...pendingItems].some(x=>String(x[k]||'')===newV);
+  if(!confirm((merge?'Merge ':'Rename ')+hit.length+' item'+(hit.length>1?'s':'')+' from “'+oldV+'” to “'+newV+'”?'+(merge?'\n\nItems already using “'+newV+'” stay as they are — these just join them.':'')))return;
+  try{for(const x of hit){const pend=pendingItems.some(p=>p.id===x.id)&&!rawItems.some(r=>r.id===x.id);await db.doc((pend?'newitems/':'items/')+x.id).update({[k]:newV})}toast('Renamed '+hit.length+' item'+(hit.length>1?'s':'')+' → '+newV);after&&setTimeout(after,300)}catch(e){toast('Rename failed: '+(e.message||e))}}
 function fillLists(pool){setTimeout(()=>buildPicks(pool),0);const keys=['cat','mfgr','name','size','unit','level','loc'];let dl=document.getElementById('dlbox');if(!dl){dl=document.createElement('div');dl.id='dlbox';dl.hidden=true;document.body.appendChild(dl)}
   dl.innerHTML=keys.map(k=>`<datalist id="dl_${k}">${uniq((k==='loc'||k==='level'?items:typeof pool==='function'?pool(k):pool).map(x=>x[k])).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
 function typePools(){const g=k=>{const e=document.getElementById('e_'+k);return e?e.value.trim():''};const t=g('type'),c=g('cat'),m=g('mfgr'),n=g('name');const L=x=>String(x||'').toLowerCase();
@@ -1851,7 +1859,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="shell.js?v=455"></script>
 <script src="polish.js?v=460"></script>
 <script src="mpl.js?v=396"></script>
-<script src="eqp.js?v=409"></script>
+<script src="eqp.js?v=473"></script>
 <script src="field.js?v=461"></script>
 <script src="trucks.js?v=469"></script>
 <script src="safety.js?v=418"></script>
