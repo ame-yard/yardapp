@@ -59,7 +59,8 @@ const DEF_CHK=['Fall protection in place at all open edges (guardrail, warning l
 const checklist=j=>(jcfg(j).checklist&&jcfg(j).checklist.length?jcfg(j).checklist:DEF_CHK);
 const siteOf=j=>FS.find(x=>x.no===j)||{};
 const WXC={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Rain showers',81:'Rain showers',82:'Heavy showers',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'};
-let geoC=null;const geo=()=>geoC?Promise.resolve(geoC):new Promise(ok=>{if(!navigator.geolocation)return ok(null);navigator.geolocation.getCurrentPosition(p=>{geoC={lat:+p.coords.latitude.toFixed(5),lon:+p.coords.longitude.toFixed(5)};ok(geoC)},()=>ok(null),{timeout:6000,maximumAge:600000})});
+const GEO_OFF=true;/* location asking paused (Kyle, 10/20) — flip to false to turn back on */
+let geoC=null;const geo=()=>GEO_OFF?Promise.resolve(null):geoC?Promise.resolve(geoC):new Promise(ok=>{if(!navigator.geolocation)return ok(null);navigator.geolocation.getCurrentPosition(p=>{geoC={lat:+p.coords.latitude.toFixed(5),lon:+p.coords.longitude.toFixed(5)};ok(geoC)},()=>ok(null),{timeout:6000,maximumAge:600000})});
 async function jobLL(j){const a=jcfg(j).address||siteOf(j).addr||'';const c=jcfg(j);if(c.lat&&c.lon)return {lat:c.lat,lon:c.lon};
   const tries=[a,...a.split(',').map(x=>x.trim()).reverse()].filter(x=>x&&x.length>2&&!/^\d+$/.test(x));
   for(const t of tries){try{const r=await (await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&country=US&name='+encodeURIComponent(t.replace(/\b(CA|California)\b/,'').trim()))).json();if(r.results&&r.results[0])return {lat:r.results[0].latitude,lon:r.results[0].longitude,from:t}}catch(e){}}
