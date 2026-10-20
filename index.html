@@ -680,7 +680,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.62',APP_DATE='2026-10-15';
+const APP_VERSION='4.63',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -867,13 +867,13 @@ let __locMig=false;async function locMig(){if(__locMig||!isAdmin||!items.length)
 async function writeItem(id,upd){if(upd&&upd.loc)upd.loc=fixLoc(upd.loc);const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
-const FEATS=[['YARD','App: Yard Inventory'],['MPL','App: Mobilization Prep List'],['EQP','App: Equipment Prices'],['OUT','Take Out'],['RETURN','Return'],['RECEIVE','App: Deliveries (receive)'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)']];
+const FEATS=[['YARD','App: Yard Inventory'],['MPL','App: Mobilization Prep List'],['EQP','App: Equipment Prices'],['OUT','Take Out'],['RETURN','Return'],['RECEIVE','App: Deliveries (receive)'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)'],['DISPATCH','App: Dispatch (edit crews & schedule)']];
 const DEF_ON=['YARD','OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UNITS'];
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
   if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
-  const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')||(['MPL','EQP'].includes(f)&&['President','PM','Office'].includes(curRole()))}
+  const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')||(['MPL','EQP','DISPATCH'].includes(f)&&['President','PM','Office'].includes(curRole()))}
 function applyRole(){try{updBell()}catch(e){}document.body.classList.toggle('owner',isOwner(curUser));$$('nav.tabs button[data-tab]').forEach(b=>{if(['jobs','log','sheet'].includes(b.dataset.tab))b.hidden=!isAdmin});{const cur=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true');if(cur&&cur.hidden)showTab('yard')}$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
   document.body.classList.toggle('nophoto',!can('PHOTO'));{if($('#addJob'))$('#addJob').hidden=!can('JOBS');const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
   if(!can(act)){act=['OUT','RETURN','RECEIVE','REPAIR','DISPOSE'].find(can)||'OUT';$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act))}
