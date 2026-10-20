@@ -24,7 +24,8 @@ html[data-theme=light] .eqtile,html[data-theme=light] .eqnew{background:#fff;bor
 html[data-theme=light] .dsfree,html[data-theme=light] .dsoff{background:var(--panel)}
 html[data-theme=light] .dsinact[aria-pressed]{color:#c0392b}
 .thbtn svg{width:18px;height:18px}
-</style></head><body>
+</style><style>.pfov{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}.pfbox{background:var(--panel);color:var(--ink);border-radius:14px;padding:16px;width:min(420px,100%);box-shadow:0 10px 40px rgba(0,0,0,.5)}.pfprev{aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--chip);touch-action:none;cursor:grab;margin-bottom:10px}.pfprev img{width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}.pfrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.pfz{display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px}.pfz input{flex:1;width:auto;height:auto;accent-color:#f47b20}.pic{overflow:hidden}</style>
+</head><body>
 <title>AME</title>
 <script>document.documentElement.classList.add('boot');setTimeout(()=>document.documentElement.classList.remove('boot'),4000)</script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -679,7 +680,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.61',APP_DATE='2026-10-15';
+const APP_VERSION='4.62',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -818,7 +819,8 @@ function byId(id){return items.find(i=>i.id===id)}
 const HUE={ladder:210,power:25,hand:45,equip:190,safety:0,fast:265,nail:285,tube:160,pail:120,roll:230,iso:330,wood:35,flash:200,other:90};
 function bigTxt(i){const sz=(i.size||'').trim();if(sz&&sz!=='-')return sz;const m=(i.name||'').match(/\d[\d\/\-.]*\s*(ft|"|gal|mil|oz)?/i);return m?m[0]:(i.name||'').split(' ')[0]}
 function thumb(i){return i&&i.photo?`<img class="thumb" src="${esc(i.photo)}" alt="" loading="lazy">`:''}
-function pic(i){if(i.photo)return `<img src="${esc(i.photo)}" alt="" loading="lazy">`;const g=grp(i),gl=GROUPS.find(x=>x[0]===g);
+function pfStyle(f){if(!f)return "";const z=+f.z||1,x=f.x==null?50:+f.x,y=f.y==null?50:+f.y;return `object-fit:${f.fit==="contain"?"contain":"cover"};object-position:${x}% ${y}%;${z!==1?`transform:scale(${z});transform-origin:${x}% ${y}%;`:""}${f.fit==="contain"?"background:#fff;":""}`}
+function pic(i){if(i.photo)return `<img src="${esc(i.photo)}" alt="" loading="lazy" style="${pfStyle(i.pf)}">`;const g=grp(i),gl=GROUPS.find(x=>x[0]===g);
   return `<span class="ph" style="--h:${HUE[g]??90}"><span class="ptop"><span>${esc(sub(i)||gl?.[1]||'')}</span>${IC[gl?.[2]||'box']}</span><span><span class="pbig">${esc(bigTxt(i))}</span><span class="pbrand">${esc(i.mfgr||i.cat||'')}</span></span></span>`}
 let crew=[];const ROLES=['President','PM','Office','Intern','Yard','FM','SFM','Crew'];
 const FIELD=['FM','SFM','Crew'];const groupOf=r=>FIELD.includes(r)?'Field':'HQ';
@@ -1330,10 +1332,11 @@ function uniq(a){return [...new Set(a.filter(x=>x&&String(x).trim()&&x!=='-'))].
 const PICKK=['cat','mfgr','name','size','unit','level','loc'];
 function syncPick(k){const inp=document.getElementById('e_'+k),sel=document.getElementById('pk_'+k);if(!inp||!sel)return;const v=inp.value;
   if(v&&![...sel.options].some(o=>o.value===v)){const o=document.createElement('option');o.value=v;o.textContent=v;sel.insertBefore(o,sel.options[1])}
+  if(inp._typing){sel.value='__new';inp.hidden=false;return}
   sel.value=v||'';inp.hidden=!!(v===''?false:[...sel.options].some(o=>o.value===v));if(!v)inp.hidden=true}
 function buildPicks(pool){for(const k of PICKK){const inp=document.getElementById('e_'+k);if(!inp||inp.disabled)continue;let sel=document.getElementById('pk_'+k);
     if(!sel){sel=document.createElement('select');sel.id='pk_'+k;sel.className='pick';inp.parentNode.insertBefore(sel,inp);
-      sel.onchange=()=>{if(sel.value==='__new'){inp.hidden=false;inp.value='';inp.focus()}else{inp.value=sel.value;inp.hidden=true}};}
+      sel.onchange=()=>{if(sel.value==='__new'){inp._typing=1;inp.hidden=false;inp.value='';setTimeout(()=>{try{inp.focus()}catch(e){}},60)}else{inp._typing=0;inp.value=sel.value;inp.hidden=true}};}
     const vals=uniq((k==='loc'||k==='level'?items:typeof pool==='function'?pool(k):pool).map(x=>x[k]));const cur=inp.value;
     sel.innerHTML=`<option value="">— Select —</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+`<option value="__new">+ Type a new one…</option>`;syncPick(k)}}
 function fillLists(pool){setTimeout(()=>buildPicks(pool),0);const keys=['cat','mfgr','name','size','unit','level','loc'];let dl=document.getElementById('dlbox');if(!dl){dl=document.createElement('div');dl.id='dlbox';dl.hidden=true;document.body.appendChild(dl)}
@@ -1367,7 +1370,7 @@ function openItem(id,newLoc){
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true" data-item="${esc(id||'')}">
    <h3>${id?esc(i.name):'New item'} <span class="muted mono" style="font-size:14px">${esc(id)}</span></h3>
    ${id?`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><span class="pic" style="width:120px;border-radius:10px;overflow:hidden">${pic(i)}</span>
-   <button type="button" class="btn" id="e_photoLbl">${i.photo?'Change photo':'Add photo'}</button>
+   <button type="button" class="btn" id="e_photoLbl">${i.photo?'Change photo':'Add photo'}</button>${i.photo?'<button type="button" class="btn" id="e_photoFit">Adjust photo</button>':''}
    <button class="btn pri" id="e_hist" style="margin-left:auto">History</button></div>`:''}
    ${i.issue?`<div class="banner"><b>To verify:</b> ${esc(i.issue)}</div>`:''}
    ${!id?'<div id="qp"></div>':''}<div class="fields">${F('loc','Location (e.g. B-10)')}${F('level','Level (GR, L1–L5)')}${F('pallet','Pallet # on that level (1, 2…)')}${F('type','Type','',['Materials','Tools','Equipment','Safety'])}${F('cat','Category')}
@@ -1389,6 +1392,7 @@ function openItem(id,newLoc){
     $('#e_repBtn').onclick=async()=>{const t=$('#e_rep').value.trim();if(!t){toast('Describe the problem first.');return}const who=curUser||'Yard';const now=new Date().toISOString();
       try{await writeItem(id,{cond:'Needs Check',report:t,updatedAt:now,updatedBy:who});await db.collection('logs').add({ts:now,action:'REPORT',itemId:id,name:i.name,size:i.size||'',unit:i.unit||'',loc:i.loc,n:0,before:i.qty,after:i.qty,job:'',by:who,note:t,cond:'Needs Check'});toast('Reported — it now shows in Repair requests');closeDlg()}catch(e){toast('Could not report: '+(e.message||e.code))}}}
   if(id&&$('#e_photoLbl'))$('#e_photoLbl').onclick=()=>pickPhoto(id,()=>openItem(id));
+  if(id&&$('#e_photoFit'))$('#e_photoFit').onclick=()=>photoFit(id);
   if(id&&$('#e_photo'))$('#e_photo').onchange=async e=>{const f=e.target.files[0];if(!f)return;const as=await window.claude?.use?.('assets');
     if(!as){toast('Photo upload is not available for your access level.');return}
     $('#e_photoLbl').textContent='Uploading…';
@@ -1412,6 +1416,22 @@ function openItem(id,newLoc){
 let camFor='';
 document.body.insertAdjacentHTML('beforeend','<input type="file" id="camIn" accept="image/*" capture="environment" hidden><input type="file" id="libIn" accept="image/*" hidden><div id="phSheet" hidden><div class="phbox"><b>Item photo</b><button class="btn pri" id="phCam"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg> Take photo</button><button class="btn pri" id="phLib"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg> Upload from photos / files</button><button class="btn dng" id="phDel" hidden>Remove photo</button><button class="btn" id="phX">Cancel</button></div></div>');
 let photoAfter=null;
+/* Adjust how a photo sits in its card: fill / fit, zoom, drag to move */
+function photoFit(id){const it=byId(id);if(!it||!it.photo)return;let f={fit:'cover',z:1,x:50,y:50,...(it.pf||{})};
+  const ov=document.createElement('div');ov.className='pfov';ov.innerHTML=`<div class="pfbox"><h3 style="margin:0 0 4px">Adjust photo</h3><p class="muted" style="margin:0 0 10px;font-size:13px">Drag the photo to move it · this is how the card will look</p>
+   <div class="pfprev"><img src="${esc(it.photo)}" alt="" draggable="false"></div>
+   <div class="pfrow"><div class="viewseg" style="margin:0"><button type="button" data-pff="cover">Fill</button><button type="button" data-pff="contain">Fit whole</button></div><button type="button" class="btn small" id="pfR">Reset</button></div>
+   <label class="pfz">Zoom<input type="range" id="pfZ" min="1" max="3" step="0.05"></label>
+   <div class="bar"><button class="btn" id="pfC">Cancel</button><button class="go" id="pfS" style="width:auto">Save</button></div></div>`;
+  document.body.appendChild(ov);const img=ov.querySelector('img'),box=ov.querySelector('.pfprev'),zr=ov.querySelector('#pfZ');
+  const draw=()=>{img.setAttribute('style',pfStyle(f));zr.value=f.z;ov.querySelectorAll('[data-pff]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pff===f.fit))};draw();
+  ov.querySelectorAll('[data-pff]').forEach(b=>b.onclick=()=>{f.fit=b.dataset.pff;draw()});zr.oninput=()=>{f.z=+zr.value;draw()};
+  ov.querySelector('#pfR').onclick=()=>{f={fit:'cover',z:1,x:50,y:50};draw()};
+  box.onpointerdown=e=>{e.preventDefault();box.setPointerCapture(e.pointerId);const x0=e.clientX,y0=e.clientY,fx=f.x,fy=f.y,W=box.clientWidth,H=box.clientHeight;
+    box.onpointermove=ev=>{const k=1/(f.z||1);f.x=Math.max(0,Math.min(100,fx-(ev.clientX-x0)/W*100*k*1.5));f.y=Math.max(0,Math.min(100,fy-(ev.clientY-y0)/H*100*k*1.5));draw()};
+    box.onpointerup=()=>{box.onpointermove=box.onpointerup=null}};
+  ov.querySelector('#pfC').onclick=()=>ov.remove();
+  ov.querySelector('#pfS').onclick=async()=>{const pf={fit:f.fit,z:Math.round(f.z*100)/100,x:Math.round(f.x),y:Math.round(f.y)};try{await writeItem(id,{pf});it.pf=pf;toast('Photo adjusted');ov.remove();try{openItem(id)}catch(e){}}catch(e){toast('Could not save: '+(e.message||e))}}}
 function pickPhoto(id,after){camFor=id;photoAfter=after||null;const it=byId(id);$('#phDel').hidden=!(it&&it.photo);$('#phSheet').hidden=false}
 $('#phDel').onclick=async()=>{const id=camFor;$('#phSheet').hidden=true;if(!id||!confirm('Remove this photo?'))return;try{await writeItem(id,{photo:'',photoId:'',photoBy:curUser||''});toast('Photo removed');if(photoAfter){const a=photoAfter;photoAfter=null;a()}}catch(e){toast('Could not remove: '+(e.message||e))}};
 $('#phX').onclick=()=>{$('#phSheet').hidden=true};$('#phSheet').onclick=e=>{if(e.target.id==='phSheet')$('#phSheet').hidden=true};
