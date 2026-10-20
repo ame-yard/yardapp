@@ -144,3 +144,14 @@ window.ameZoom=function(src){if(!src)return;let o=document.getElementById('zoomO
   const close=()=>{o.remove();if(history.state&&history.state.zoom)history.back()};o.querySelector('.zx').onclick=close;
   try{history.pushState({...(history.state||{}),zoom:1},'')}catch(e){}const pop=()=>{o.remove();removeEventListener('popstate',pop)};addEventListener('popstate',pop)};
 document.head.insertAdjacentHTML('beforeend','<style>#zoomOv{position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.95);display:flex;flex-direction:column}#zoomOv .zhd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px}#zoomOv .zhint{color:#bbb;font-size:13px}#zoomOv button{height:44px;padding:0 16px;border-radius:22px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-weight:700;display:flex;align-items:center;gap:6px}#zoomOv .zsc{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none}#zoomOv img{max-width:100%;max-height:100%;display:block;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-select:none}</style>');
+
+/* Job # inputs start with "#" already typed */
+(function(){const SEL='#clJ,#dj,#rv_job,#l_job,#job,#fsN,#j_no,input[data-jobno]';
+  const D=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+  const prep=el=>{if(el._hj)return;el._hj=1;Object.defineProperty(el,'value',{configurable:true,get(){const v=D.get.call(this);return v.trim()==='#'?'':v},set(x){D.set.call(this,typeof x==='string'&&/^\d/.test(x)?'#'+x:x)}});
+    {const v0=D.get.call(el);if(!el.readOnly&&!el.disabled){if(!v0)D.set.call(el,'#');else if(/^\d/.test(v0))D.set.call(el,'#'+v0)}}
+    el.addEventListener('input',()=>{const v=D.get.call(el);if(v&&!v.startsWith('#')&&/^\d/.test(v)){D.set.call(el,'#'+v)}else if(!v){D.set.call(el,'#')}});
+    el.addEventListener('focus',()=>{if(!D.get.call(el))D.set.call(el,'#');setTimeout(()=>{try{const n=D.get.call(el).length;el.setSelectionRange(n,n)}catch(e){}},0)})};
+  const scan=r=>{(r.querySelectorAll?r:document).querySelectorAll(SEL).forEach(prep);if(r.matches&&r.matches(SEL))prep(r)};
+  new MutationObserver(ms=>{for(const m of ms)m.addedNodes.forEach(n=>n.nodeType===1&&scan(n))}).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('DOMContentLoaded',()=>scan(document));scan(document)})();
