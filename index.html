@@ -5,6 +5,25 @@ html.boot section[id^=tab-]{visibility:hidden}
 .dvphw{position:relative;display:inline-block;margin:10px 0;max-width:100%}.dvphw img{display:block}.dvmin{position:absolute;top:8px;right:8px;border:0;background:none;padding:2px;color:var(--muted,#bbb);cursor:pointer;line-height:0}.dvmin:hover{color:#fff}.dvphb{position:absolute;top:6px;right:6px;border:0;background:none;padding:0;cursor:pointer;line-height:0}.dvphw.sm .dvphb svg{width:24px;height:24px}.dvphw img{max-width:100%;max-height:360px;border-radius:10px;cursor:zoom-in}.dvphw.sm img{max-height:90px;max-width:120px;object-fit:cover}
 .dvjob{flex:none;margin-left:auto!important;font-size:12px;font-weight:700;padding:4px 10px;border-radius:14px;border:1px solid var(--line,#666);white-space:nowrap}.dvjob.none{border-color:#f47b20;color:#f47b20}
 .mplcard.dvc{padding:10px 14px;gap:4px}.dvc .dvh{display:flex;align-items:center;gap:8px;min-width:0}.dvc .dvh b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.dvc .dvh>*:last-child{flex:none;margin:0}.dvc small{line-height:1.35}
+</style><script>(function(){try{var t=localStorage.getItem('ameTheme')||'dark';if(t==='auto')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()</script>
+<style id="themeLight">
+html[data-theme=light]{--bg:#f3efeb;--panel:#ffffff;--ink:#2b2420;--muted:#6f655d;--line:#d6ccc2;--chip:#ece5de;--ok:#2e8b57;--warn:#a87400;--bad:#d14334;color-scheme:light}
+html[data-theme=light] body{background:var(--bg);color:var(--ink)}
+html[data-theme=light] .ghead,html[data-theme=light] .gl,html[data-theme=light] .dsjh{background:#f7f3ef}
+html[data-theme=light] .grow:hover .gl{background:#efe8e1}html[data-theme=light] .grow.gsec .gl{background:#fbf2d2}html[data-theme=light] .grow.gsec{background:rgba(255,212,0,.08)}
+html[data-theme=light] .gr>i{background:rgba(0,0,0,.06)}html[data-theme=light] .grow{border-bottom-color:rgba(0,0,0,.07)}html[data-theme=light] .gm{border-left-color:rgba(0,0,0,.2)}html[data-theme=light] .gwrap{background:#fff}
+html[data-theme=light] body.gfull #tab-dsp{background:var(--bg)}
+html[data-theme=light] #repBar,html[data-theme=light] #rmBar,html[data-theme=light] .dsghost{background:#fff;color:var(--ink)}
+html[data-theme=light] .dschip,html[data-theme=light] .dslist .dschip,html[data-theme=light] .dscrow,html[data-theme=light] .dsprow{background:rgba(0,0,0,.035)}
+html[data-theme=light] .dschip em,html[data-theme=light] .dscnt{background:rgba(0,0,0,.08)}
+html[data-theme=light] .dsst,html[data-theme=light] .dsjr,html[data-theme=light] .dspr{border-bottom-color:rgba(0,0,0,.07)}
+html[data-theme=light] .dsst:hover,html[data-theme=light] .dsjr:not(.dsjh):hover,html[data-theme=light] .rprow:hover{background:rgba(0,0,0,.04)}
+html[data-theme=light] .dsnote{color:#2462c4}html[data-theme=light] .dsst.inact,html[data-theme=light] .dssrow.inact{color:#c0392b}
+html[data-theme=light] .jst{color:#237a44}html[data-theme=light] .jst.onhold{color:#8a6a00}
+html[data-theme=light] .eqtile,html[data-theme=light] .eqnew{background:#fff;border-color:var(--line)}
+html[data-theme=light] .dsfree,html[data-theme=light] .dsoff{background:var(--panel)}
+html[data-theme=light] .dsinact[aria-pressed]{color:#c0392b}
+.thbtn svg{width:18px;height:18px}
 </style></head><body>
 <title>AME</title>
 <script>document.documentElement.classList.add('boot');setTimeout(()=>document.documentElement.classList.remove('boot'),4000)</script>
@@ -660,7 +679,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.54',APP_DATE='2026-10-15';
+const APP_VERSION='4.55',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1768,7 +1787,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=435"></script>
+<script src="shell.js?v=455"></script>
 <script src="polish.js?v=405"></script>
 <script src="mpl.js?v=396"></script>
 <script src="eqp.js?v=409"></script>

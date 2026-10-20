@@ -155,3 +155,13 @@ document.head.insertAdjacentHTML('beforeend','<style>#zoomOv{position:fixed;inse
   const scan=r=>{(r.querySelectorAll?r:document).querySelectorAll(SEL).forEach(prep);if(r.matches&&r.matches(SEL))prep(r)};
   new MutationObserver(ms=>{for(const m of ms)m.addedNodes.forEach(n=>n.nodeType===1&&scan(n))}).observe(document.documentElement,{childList:true,subtree:true});
   document.addEventListener('DOMContentLoaded',()=>scan(document));scan(document)})();
+
+/* Light / dark theme — per device, remembered */
+(function(){const SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+  const cur=()=>document.documentElement.dataset.theme==='light'?'light':'dark';
+  const meta=()=>{let m=document.querySelector('meta[name="theme-color"]');if(m)m.content=cur()==='light'?'#f3efeb':'#3b3633'};
+  window.ameSetTheme=t=>{try{localStorage.setItem('ameTheme',t)}catch(e){}document.documentElement.dataset.theme=t==='auto'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;meta();paint()};
+  function paint(){const b=document.getElementById('themeBtn');if(!b)return;b.innerHTML=cur()==='light'?MOON:SUN;b.title=cur()==='light'?'Dark mode':'Light mode';const bell=document.getElementById('bellBtn');b.hidden=!!(bell&&bell.hidden)}
+  function ensure(){if(document.getElementById('themeBtn'))return paint();const bell=document.getElementById('bellBtn');if(!bell)return;const b=document.createElement('button');b.id='themeBtn';b.type='button';b.className='bell thbtn';b.setAttribute('aria-label','Light or dark mode');const after=document.getElementById('langBtn')||bell;after.parentNode.insertBefore(b,after.nextSibling);b.onclick=()=>ameSetTheme(cur()==='light'?'dark':'light');paint()}
+  meta();setInterval(ensure,1500);document.addEventListener('DOMContentLoaded',ensure);
+})();
