@@ -79,3 +79,15 @@ let start='home';try{start=sessionStorage.getItem('ameMod')||'home'}catch(e){}
 
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#homeScan');if(!b)return;AME.open('yard');setTimeout(()=>{try{window.ameScan()}catch(x){}},150)});
 document.head.insertAdjacentHTML('beforeend','<style>.homehead{display:flex;align-items:center;gap:12px}.homehead>div{flex:1;min-width:0}.homescan{flex:none;display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--line,#5a514a);background:var(--chip,#3a3532);color:inherit;font-weight:700;cursor:pointer}.homescan svg{color:#f26a1b}</style>');
+
+/* ---- App notifications (truck reservations, delivery notices) on this phone/computer ---- */
+(function(){
+  const reg=()=>navigator.serviceWorker&&navigator.serviceWorker.getRegistration?navigator.serviceWorker.getRegistration():Promise.resolve(null);
+  window.ameNotify=async(title,body,tag,data)=>{try{if(!('Notification' in window)||Notification.permission!=='granted')return;if(!document.hidden&&document.hasFocus())return;
+    const r=await reg();const o={body,tag,icon:'ame-192.png',badge:'ame-192.png',data:data||{}};if(r&&r.showNotification)await r.showNotification(title,o);else new Notification(title,o)}catch(e){}};
+  window.ameNotifyAsk=async()=>{try{if(!('Notification' in window)){toast('This device can’t show app notifications. On iPhone, add AME to the Home Screen first.');return}const p=await Notification.requestPermission();toast(p==='granted'?'Notifications on for this device':'Notifications are blocked — turn them on in the phone settings');try{updBell()}catch(e){}}catch(e){}};
+  let since=new Date().toISOString();
+  setInterval(()=>{try{if(typeof logs==='undefined'||!logs.length||!curUser)return;const nw=logs.filter(g=>g.ts>since&&g.by!==curUser&&g.action==='DELIV');if(!nw.length){since=logs[0].ts>since?logs[0].ts:since;return}
+    since=nw.reduce((a,g)=>g.ts>a?g.ts:a,since);nw.slice(0,3).forEach(g=>window.ameNotify(g.note&&/^Claimed/.test(g.note)?'Delivery claimed':'Delivery at the yard',(g.name||'Delivery')+(g.job?' · Job '+g.job:'')+(g.note&&/^Claimed/.test(g.note)?' · '+g.by:''),'deliv-'+(g.dv||g.ts),{mod:'deliv',dv:g.dv||''}))}catch(e){}},5000);
+  if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='open'&&d.mod){try{if(d.dv&&window.ameDelivClaim){window.ameDelivClaim(d.dv)}else AME.open(d.mod)}catch(x){}}});
+})();

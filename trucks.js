@@ -13,7 +13,7 @@ const lbl=v=>v?(v.code?v.code+' ':'')+v.name:'';
     if(!first){RS.filter(r=>!old.has(r._id)&&r.by!==curUser).forEach(r=>notify(r))}if(AME.cur==='trucks')render()},()=>{});
   db.doc('config/trucks').onSnapshot(s=>{CFG=s.data()||{}},()=>{})}else setTimeout(w,400)})();
 function notify(r){const v=V.find(x=>x._id===r.vid);const t=`${r.who||r.by} reserved ${lbl(v)} · ${fmt(r.from)}${r.to!==r.from?'–'+fmt(r.to):''}${r.job?' · '+r.job:''}`;try{toast('🚚 '+t)}catch(e){}
-  try{if('Notification' in window&&Notification.permission==='granted'&&document.hidden)new Notification('Truck reservation',{body:t,icon:'ame-192.png'})}catch(e){}}
+  try{window.ameNotify&&window.ameNotify('Truck reservation',t,'truck-'+(r._id||''),{mod:'trucks'})}catch(e){}}
 const overlaps=(a,b)=>a.vid===b.vid&&a._id!==b._id&&a.status!=='cancelled'&&b.status!=='cancelled'&&!(a.to<b.from||b.to<a.from)&&!(a.from===b.to&&a.allDay===false&&b.allDay===false&&(a.t1||'00:00')>=(b.t2||'24:00'))&&!(b.from===a.to&&a.allDay===false&&b.allDay===false&&(b.t1||'00:00')>=(a.t2||'24:00'));
 function dayInfo(d){const L=RS.filter(r=>r.status!=='cancelled'&&r.from<=d&&r.to>=d);const x=new Date(d+'T12:00');
   document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">${x.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</h3><button class="btn" id="diX">Close</button></div>
