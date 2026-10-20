@@ -16,7 +16,10 @@ const canEdit=()=>{try{return !!(isAdmin||(typeof can==='function'&&can('DISPATC
 const E=s=>esc(s==null?'':String(s));
 const sid=()=>Math.random().toString(36).slice(2,10);
 const jno=n=>String(n||'').replace(/^#/,'');
-const person=n=>STAFF.find(p=>p.name===n)||STAFF.find(p=>(p.alias||[]).includes(n));
+const person=n=>STAFF.find(p=>p.name===n)||STAFF.find(p=>p.short===n||(p.alias||[]).includes(n));
+/* match a schedule name ("Sergio Cerna") to a staff record ("Sergio Cerna Galvez") */
+function matchStaff(raw){const n=raw.trim().toLowerCase();if(!n)return null;let p=STAFF.find(x=>x.name.toLowerCase()===n||(x.short||'').toLowerCase()===n);if(p)return p;
+  const w=n.replace(/[.,]/g,'').split(/\s+/);const c=STAFF.filter(x=>{const v=x.name.toLowerCase().replace(/[.,]/g,'').split(/\s+/);return w.every(t=>v.includes(t))});return c.length===1?c[0]:null}
 const lvOf=n=>(person(n)||{}).lv||'';
 const short=n=>{const p=person(n);return p&&p.short||n};
 window.ameStaff=()=>STAFF;window.ameStaffFind=person;
@@ -34,11 +37,11 @@ const LT=['Vacation','Sick','Personal','Injury','Other'];
 const offOn=(n,d)=>LEAVE.find(l=>l.n===n&&l.from<=d&&(l.to||l.from)>=d);
 const offList=d=>LEAVE.filter(l=>l.from<=d&&(l.to||l.from)>=d);
 /* ---------- day model ---------- */
-const activeOn=(s,d)=>(s.status||'Active')==='Active'&&(!s.start||s.start<=d)&&(!s.end||s.end>=d);
+const activeOn=(s,d)=>(s.status||'Active')==='Active'&&(!s.start||s.start<=d)&&(!s.end||s.end>=d)&&(!s.asg||!s.asg.length||s.asg.some(a=>a.from<=d&&a.to>=d));
 const sortCrew=c=>[...c].sort((a,b)=>lvRank(lvOf(a.n))-lvRank(lvOf(b.n)));
 function rowsFor(d){const day=DAY[d]||{};const R=day.rows||{};
   return S.filter(s=>R[s._id]?!R[s._id].off:activeOn(s,d)).sort((a,b)=>jno(a.no).localeCompare(jno(b.no),undefined,{numeric:true}))
-    .map(s=>{const r=R[s._id];return {s,crew:sortCrew((r&&r.crew)||s.crew||[]),note:(r&&r.note!=null)?r.note:(s.note||''),own:!!r}})}
+    .map(s=>{const r=R[s._id];const asg=s.asg&&s.asg.length?s.asg.filter(a=>a.from<=d&&a.to>=d).reduce((o,a)=>o.some(x=>x.n===a.n)?o:[...o,{n:a.n,...(a.t?{t:a.t}:{})}],[]):null;return {s,crew:sortCrew((r&&r.crew)||asg||s.crew||[]),note:(r&&r.note!=null)?r.note:(s.note||''),own:!!r}})}
 function whereIs(d,n){return rowsFor(d).filter(r=>r.crew.some(c=>c.n===n)).map(r=>r.s)}
 async function saveRow(d,site,crew,extra,keepDef){const day=DAY[d]||{};const rows={...(day.rows||{})};rows[site._id]={...(rows[site._id]||{}),crew,...(extra||{})};
   await db.doc('dday/'+d).set({...day,rows,rev:(day.rev||0),editAt:new Date().toISOString(),editBy:curUser});
@@ -59,14 +62,14 @@ function render(){if(!sec)return;const ed=canEdit();
    <div class="dsdate"><button class="btn" data-dd="-1" aria-label="Previous day">‹</button><label><input type="date" id="dsD" value="${date}"><b>${dLabel(date)}</b><small class="muted">${code(date)} Dispatch</small></label><button class="btn" data-dd="1" aria-label="Next day">›</button>${date!==today()?'<button class="btn small" id="dsToday">Today</button>':''}</div>
    <div class="dsstat">${sent?`<span class="pill ${ch?'p-needs':'p-good'}">${ch?'Changed since sent':'Sent'}</span><small class="muted">${E(sent.by)} · ${E(fmtD(sent.at))} ${new Date(sent.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}${sent.rev>1?' · revision '+sent.rev:''}</small>`:'<span class="pill">Not sent yet</span>'}<small class="muted" style="margin-left:auto">${rows.length} job${rows.length===1?'':'s'} · ${total} people</small></div>
    <input id="dsQ" class="search" placeholder="Find a person or job…" value="${E(q)}">
-   <div id="dsRows">${rows.length?'':`<div class="panel muted">No jobs on this day.${ed?' Add or reopen jobs in the <b>Jobs</b> tab.':''}</div>`}${rows.map(r=>{const s=r.s;const was=prevSent[s._id];const fm=r.crew.find(c=>['FM','SFM'].includes(lvOf(c.n)));
+   <div class="dswrap"><div class="dsmain"><div id="dsRows">${rows.length?'':`<div class="panel muted">No jobs on this day.${ed?' Add or reopen jobs in the <b>Jobs</b> tab.':''}</div>`}${rows.map(r=>{const s=r.s;const was=prevSent[s._id];const fm=r.crew.find(c=>['FM','SFM'].includes(lvOf(c.n)));
      return `<div class="panel dscard" data-site="${s._id}"><div class="dsh"><b class="dsno">${E(jno(s.no))}</b><span class="dsnm">${E(s.name||'')}</span>${s.isNew?'<span class="pill p-needs">New</span>':''}</div>
       <div class="dsmeta">${s.sys?`<span>${E(s.sys)}</span>`:''}${s.pic?`<span class="dspic" style="--c:${picCol(s.pic)}">${E(s.pic)}</span>`:''}<span class="muted">Crew ${r.crew.length}</span></div>
       <div class="dscrew">${r.crew.map(c=>{const l=lvOf(c.n);const nw=sent&&was&&!was.some(x=>x.split('|')[1]===c.n);return `<button type="button" class="dschip${['FM','SFM'].includes(l)?' fm':''}${dup.has(c.n)?' dup':''}${nw?' nw':''}${offOn(c.n,date)?' off':''}" data-cn="${E(c.n)}" ${ed?'':'disabled'}>${c.t?`<i>${E(c.t)}</i>`:''}${E(short(c.n))}${l?`<em>${E(l)}</em>`:''}${offOn(c.n,date)?`<em class="offb">${E(offOn(c.n,date).type||'Off')}</em>`:''}</button>`}).join('')}${ed?`<button type="button" class="dschip add" data-add="${s._id}">+ Add</button>`:''}</div>
       ${sent&&was?(()=>{const gone=was.map(x=>x.split('|')[1]).filter(n=>!r.crew.some(c=>c.n===n));return gone.length?`<small class="dsgone">Removed since sent: ${gone.map(n=>E(short(n))).join(', ')}</small>`:''})():''}
       ${r.note?`<p class="dsnote">${E(r.note)}</p>`:''}${ed?`<button type="button" class="btn small dsnb" data-note="${s._id}">${r.note?'Edit note':'+ Note'}</button>`:''}</div>`}).join('')}</div>
-   <div class="panel dsoff"><div class="dsoffh"><b>Time off</b><span class="muted">${OFF.length?OFF.length+' off this day':'Nobody off'}</span>${ed?'<button type="button" class="btn small" id="dsLv" style="margin-left:auto">+ Time off</button>':''}</div>${OFF.length?`<div class="dscrew" style="margin-top:8px">${OFF.map(l=>`<button type="button" class="dschip off" data-lv="${l._id}" ${ed?'':'disabled'}>${E(short(l.n))}<em class="offb">${E(l.type||'Off')}</em><small class="muted">${l.to&&l.to!==l.from?E(fmtD(l.from))+'–'+E(fmtD(l.to)):''}</small></button>`).join('')}</div>`:''}</div>
-   ${ed&&free.length?`<details class="panel dsfree"><summary><b>Not dispatched</b> <span class="muted">${free.length} active field people</span></summary><div class="dscrew">${free.map(p=>`<button type="button" class="dschip" data-free="${E(p.name)}">${E(short(p.name))}<em>${E(p.lv||'')}</em></button>`).join('')}</div></details>`:''}
+   </div><aside class="dsside"><div class="panel dsoff"><div class="dsoffh"><b>Time off</b><span class="muted">${OFF.length?OFF.length+' off this day':'Nobody off'}</span>${ed?'<button type="button" class="btn small" id="dsLv" style="margin-left:auto">+ Time off</button>':''}</div>${OFF.length?`<div class="dscrew" style="margin-top:8px">${OFF.map(l=>`<button type="button" class="dschip off" data-lv="${l._id}" ${ed?'':'disabled'}>${E(short(l.n))}<em class="offb">${E(l.type||'Off')}</em><small class="muted">${l.to&&l.to!==l.from?E(fmtD(l.from))+'–'+E(fmtD(l.to)):''}</small></button>`).join('')}</div>`:''}</div>
+   ${ed&&free.length?`<details class="panel dsfree" ${innerWidth>=900?'open':''}><summary><b>Not dispatched</b> <span class="muted">${free.length} active field people</span></summary><div class="dscrew">${free.map(p=>`<button type="button" class="dschip" data-free="${E(p.name)}">${E(short(p.name))}<em>${E(p.lv||'')}</em></button>`).join('')}</div></details>`:''}</aside></div>
    ${!STAFF.length?`<div class="panel muted">No staff list yet.${ed?' Open <b>Staff</b> and import the Field Employees Contact workbook.':''}</div>`:''}`;
   bindCommon();
   const go=n=>{date=addD(date,n);render()};sec.querySelectorAll('[data-dd]').forEach(b=>b.onclick=()=>go(+b.dataset.dd));
@@ -80,9 +83,25 @@ function render(){if(!sec)return;const ed=canEdit();
   {const b=sec.querySelector('#dsLv');if(b)b.onclick=()=>leaveDlg()}
   sec.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>leaveDlg(LEAVE.find(l=>l._id===b.dataset.lv)));
   sec.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>pick(S.find(s=>s._id===b.dataset.add)));
-  sec.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>chipMenu(S.find(s=>s._id===b.closest('[data-site]').dataset.site),b.dataset.cn));
-  sec.querySelectorAll('[data-free]').forEach(b=>b.onclick=()=>toJob(b.dataset.free));
+  sec.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>b._dr?(b._dr=0):chipMenu(S.find(s=>s._id===b.closest('[data-site]').dataset.site),b.dataset.cn));
+  sec.querySelectorAll('[data-free]').forEach(b=>b.onclick=()=>b._dr?(b._dr=0):toJob(b.dataset.free));
+  dragSetup();
   sec.querySelectorAll('[data-note]').forEach(b=>b.onclick=async()=>{const s=S.find(x=>x._id===b.dataset.note);const r=rowsFor(date).find(x=>x.s._id===s._id);const v=prompt('Note for '+jno(s.no)+' on '+dLabel(date)+' (shows in the dispatch):',r.note||'');if(v==null)return;await saveRow(date,s,r.crew,{note:v.trim()})})}
+/* drag a person chip onto another job (mouse, iPad, phone: hold then drag) */
+function dragSetup(){sec.querySelectorAll('[data-cn],[data-free]').forEach(ch=>{ch.style.touchAction='manipulation';
+  ch.addEventListener('pointerdown',e=>{if(e.button)return;const n=ch.dataset.cn||ch.dataset.free;const from=ch.closest('[data-site]');const x0=e.clientX,y0=e.clientY;let on=false,gh=null,tgt=null,tm=null;
+    const start=()=>{on=true;ch._dr=1;ch.classList.add('dragsrc');gh=ch.cloneNode(true);gh.className='dschip dsghost';document.body.appendChild(gh);document.body.classList.add('dsdragging');mv(e)};
+    const hit=(x,y)=>{gh.style.display='none';const el=document.elementFromPoint(x,y);gh.style.display='';return el&&(el.closest('.dscard')||el.closest('.dsside'))};
+    const mv=ev=>{if(!on){if(e.pointerType==='mouse'&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>6)start();else if(e.pointerType!=='mouse'&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>10)cleanup();return}
+      gh.style.left=ev.clientX+'px';gh.style.top=ev.clientY+'px';const t=hit(ev.clientX,ev.clientY);if(t!==tgt){tgt&&tgt.classList.remove('droph');tgt=t;tgt&&tgt.classList.add('droph')}
+      const H=innerHeight;if(ev.clientY<70)scrollBy(0,-12);else if(ev.clientY>H-70)scrollBy(0,12)};
+    const tmv=ev=>{if(on)ev.preventDefault()};
+    const up=async ev=>{const t=on&&hit(ev.clientX,ev.clientY);const was=on;cleanup();if(!was)return;setTimeout(()=>ch._dr=0,350);
+      if(!t)return;if(t.classList.contains('dsside')){if(from){const s=S.find(x=>x._id===from.dataset.site);const r=rowsFor(date).find(x=>x.s._id===s._id);await saveRow(date,s,r.crew.filter(c=>c.n!==n));toast(short(n)+' taken off '+jno(s.no))}return}
+      const to=S.find(x=>x._id===t.dataset.site);if(!to||(from&&from.dataset.site===to._id))return;const o=offOn(n,date);if(o&&!confirm(short(n)+' is off ('+(o.type||'time off')+'). Add anyway?'))return;await moveTo(n,to);toast(short(n)+' → '+jno(to.no))};
+    function cleanup(){clearTimeout(tm);removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',cleanup);removeEventListener('touchmove',tmv);gh&&gh.remove();tgt&&tgt.classList.remove('droph');ch.classList.remove('dragsrc');document.body.classList.remove('dsdragging');on=false}
+    addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',()=>{if(!on)cleanup()});addEventListener('touchmove',tmv,{passive:false});
+    if(e.pointerType!=='mouse')tm=setTimeout(()=>{start();try{navigator.vibrate&&navigator.vibrate(15)}catch(x){}},320)})})}
 function filt(){const t=q.trim().toLowerCase();sec.querySelectorAll('.dscard').forEach(c=>{if(!t){c.hidden=false;c.querySelectorAll('.dschip').forEach(x=>x.classList.remove('hit'));return}
   const s=S.find(x=>x._id===c.dataset.site);const jobHit=(jno(s.no)+' '+(s.name||'')+' '+(s.pic||'')).toLowerCase().includes(t);let any=false;
   c.querySelectorAll('[data-cn]').forEach(x=>{const h=x.dataset.cn.toLowerCase().includes(t);x.classList.toggle('hit',h);any=any||h});c.hidden=!(jobHit||any)})}
@@ -160,11 +179,12 @@ async function copyHTML(html,text){try{await navigator.clipboard.write([new Clip
 
 /* ---------- jobs ---------- */
 function renderSites(seg,ed){const L=S.filter(s=>fltSite==='all'||(fltSite==='active'?(s.status||'Active')==='Active':(s.status||'Active')!=='Active')).sort((a,b)=>jno(a.no).localeCompare(jno(b.no),undefined,{numeric:true}));
-  sec.innerHTML=`<div class="mplhead"><h2>Dispatch</h2>${ed?'<span class="mtop"><button class="btn pri" id="dsNew">+ Add job</button></span>':''}</div>${seg}
+  sec.innerHTML=`<div class="mplhead"><h2>Dispatch</h2>${ed?'<span class="mtop"><button class="btn" id="dsMpp">Import MS Project</button><button class="btn pri" id="dsNew">+ Add job</button></span>':''}</div>${seg}<input type="file" id="dsMppF" accept=".xml" hidden>
    <div class="viewseg" style="margin-bottom:12px">${[['active','Active'],['done','On hold / Done'],['all','All']].map(([k,l])=>`<button data-sf="${k}" aria-pressed="${fltSite===k}">${l}</button>`).join('')}</div>
    <div class="mplcards">${L.map(s=>`<button class="mplcard dvc" data-se="${s._id}"><span class="dvh"><b>${E(jno(s.no))} · ${E(s.name||'')}</b>${(s.status||'Active')!=='Active'?`<span class="pill">${E(s.status)}</span>`:''}</span><small class="muted">${[s.sys,s.pic,(s.crew||[]).length+' crew',s.start?('from '+fmtD(s.start)):'',s.end?('to '+fmtD(s.end)):''].filter(Boolean).map(E).join(' · ')}</small></button>`).join('')||'<div class="panel muted">No jobs here.</div>'}</div>`;
   bindCommon();sec.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{fltSite=b.dataset.sf;render()});
   {const n=sec.querySelector('#dsNew');if(n)n.onclick=()=>siteDlg()}
+  {const b=sec.querySelector('#dsMpp'),f=sec.querySelector('#dsMppF');if(b){b.onclick=()=>{toast('In MS Project: File → Save As → XML format, then pick that file');f.click()};f.onchange=()=>f.files[0]&&importMSP(f.files[0])}}
   sec.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>ed?siteDlg(S.find(s=>s._id===b.dataset.se)):null);
   if(ed)sec.querySelectorAll('[data-se]').forEach(b=>window.ameSwipe&&ameSwipe(b,'Done',async()=>{const s=S.find(x=>x._id===b.dataset.se);if(!confirm('Mark '+jno(s.no)+' as Done? It stops showing on the dispatch from today.'))return;await db.doc('dsites/'+s._id).update({status:'Done',end:s.end&&s.end<today()?s.end:addD(today(),-1)});toast(jno(s.no)+' done')}))}
 function siteDlg(s){const nw=!s;s=s||{status:'Active',start:date,isNew:true,crew:[]};const pics=[...new Set([...Object.keys(PIC_COL),...STAFF.filter(p=>p.cls==='Office'&&p.st==='Active').map(p=>p.name),...S.map(x=>x.pic).filter(Boolean)])];
@@ -183,6 +203,30 @@ function siteDlg(s){const nw=!s;s=s||{status:'Active',start:date,isNew:true,crew
   d.querySelector('#seO').onclick=async()=>{const o={no:jno(d.querySelector('#seN').value.trim()),name:d.querySelector('#seM').value.trim(),sys:d.querySelector('#seY').value.trim(),pic:d.querySelector('#seP').value,start:d.querySelector('#seS').value,end:d.querySelector('#seE').value,status:d.querySelector('#seT').value,isNew:d.querySelector('#seW').checked,updated:new Date().toISOString(),by:curUser};
     if(!o.no){toast('Job # is needed');return}if(nw)await db.doc('dsites/'+sid()).set({...o,crew:[]});else await db.doc('dsites/'+s._id).update(o);closeDlg();toast('Saved')}}
 
+/* ---------- MS Project (XML) import ---------- */
+function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
+  const x=new DOMParser().parseFromString(rd.result,'application/xml');if(x.querySelector('parsererror'))throw new Error('Not an XML file — in MS Project use File → Save As → XML format');
+  const g=(el,t)=>{const c=el.getElementsByTagName(t)[0];return c?c.textContent:''};const day=v=>String(v||'').slice(0,10);
+  const T={},order=[];for(const t of x.getElementsByTagName('Task')){const uid=g(t,'UID');T[uid]={uid,name:g(t,'Name').trim(),lvl:+g(t,'OutlineLevel')||0,start:day(g(t,'Start')),end:day(g(t,'Finish')),sum:g(t,'Summary')==='1'};order.push(uid)}
+  /* each task belongs to the nearest job heading above it ("404-Rancho …") */
+  let job=null;const stack=[];for(const uid of order){const t=T[uid];while(stack.length&&stack[stack.length-1].lvl>=t.lvl)stack.pop();stack.push(t);const j=[...stack].reverse().find(a=>/^\d{3}/.test(a.name));t.job=j||null}
+  const R={};for(const r of x.getElementsByTagName('Resource')){const nm=g(r,'Name').trim();if(nm)R[g(r,'UID')]=nm}
+  const parseRes=raw=>{const m=raw.match(/^(\d{1,2})\s+(.*)$/);let t='',rest=raw;if(m){t=m[1].padStart(2,'0');rest=m[2]}const mm=rest.match(/^(.*?)_([A-Za-z0-9]+)$/);const nm=(mm?mm[1]:rest).trim(),lv=mm?mm[2].toUpperCase():'';const p=matchStaff(nm);return {n:p?p.name:nm,t,lv,known:!!p}};
+  const jobs={},leave=[],unk=new Set();
+  for(const a of x.getElementsByTagName('Assignment')){const t=T[g(a,'TaskUID')];const rn=R[g(a,'ResourceUID')];if(!t||!rn||!t.job)continue;const pr=parseRes(rn);if(!pr.known)unk.add(pr.n);
+    const from=day(g(a,'Start'))||t.start,to=day(g(a,'Finish'))||t.end;if(!from)continue;
+    if(/time.?off/i.test(t.job.name)){leave.push({n:pr.n,type:/sick/i.test(t.name)?'Sick':/vac/i.test(t.name)?'Vacation':'Other',from,to,note:t.name===t.job.name?'':t.name});continue}
+    const k=t.job.uid;(jobs[k]=jobs[k]||{t:t.job,asg:[]}).asg.push({n:pr.n,...(pr.t?{t:pr.t}:{}),from,to})}
+  const J=Object.values(jobs).filter(j=>j.asg.length);
+  if(!J.length)throw new Error('No jobs found (tasks named like “404-Job name”)');
+  const msg=`Import ${J.length} jobs and ${J.reduce((a,j)=>a+j.asg.length,0)} crew assignments${leave.length?' + '+leave.length+' time-off entries':''}?`+(unk.size?`\n\n${unk.size} name(s) aren’t in the staff list yet (they still import): ${[...unk].slice(0,8).join(', ')}${unk.size>8?'…':''}`:'')+'\n\nJobs with the same # are updated; days you already changed by hand stay as they are.';
+  if(!confirm(msg))return;
+  for(const j of J){const m=j.t.name.match(/^([\d ]+?)\s*-\s*(.*)$/);const no=m?m[1].trim():j.t.name,name=m?m[2].trim():'';const id='mp'+no.replace(/\s+/g,'_');const old=S.find(s=>s._id===id)||S.find(s=>jno(s.no)===no);
+    const from=j.asg.length?j.asg.reduce((a,b)=>b.from<a?b.from:a,j.asg[0].from):j.t.start,to=j.asg.length?j.asg.reduce((a,b)=>b.to>a?b.to:a,j.asg[0].to):j.t.end;
+    const o={no,name:old&&old.name||name,asg:j.asg,start:from,end:to,status:old&&old.status||'Active',src:'msp',updated:new Date().toISOString(),by:curUser};
+    if(old)await db.doc('dsites/'+old._id).update(o);else await db.doc('dsites/'+id).set({...o,sys:'',pic:'',isNew:false,crew:[]})}
+  for(const l of leave){const id='mpl_'+(l.n+'_'+l.from).replace(/[^\w]+/g,'_');await db.doc('dleave/'+id).set({...l,by:curUser,at:new Date().toISOString(),src:'msp'})}
+  toast(J.length+' jobs imported');view='day';render()}catch(e){toast('Import failed: '+(e.message||e))}};rd.readAsText(file)}
 /* ---------- staff directory ---------- */
 let stQ='',stF='Active';
 function renderStaff(seg,ed){const L=STAFF.filter(p=>(stF==='All'||p.st===stF)&&(!stQ||(p.name+' '+(p.short||'')+' '+(p.lv||'')+' '+(p.cell||'')).toLowerCase().includes(stQ.toLowerCase()))).sort((a,b)=>(a.cls==='Office')-(b.cls==='Office')||lvRank(a.lv)-lvRank(b.lv)||a.name.localeCompare(b.name));
@@ -236,7 +280,11 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .dschip i{font-style:normal;font-size:11px;font-weight:700;opacity:.7}.dschip em{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:6px;background:rgba(255,255,255,.1)}
 .dschip.fm{border-color:#f47b20;background:rgba(244,123,32,.12)}.dschip.fm em{background:#f47b20;color:#1d1a18}.dschip.dup{border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b inset}.dschip.nw{border-style:dashed;border-color:#3fb950}.dschip.hit{outline:2px solid #ffd54a}
 .dschip.add{border-style:dashed;color:#f47b20;border-color:#f47b20;font-weight:600}
-.dschip.off{border-color:#ff6b6b;opacity:.85}.dschip em.offb{background:#ff6b6b;color:#1d1a18}.dschip small{font-size:11px}.dsoff{padding:10px 14px!important;margin-bottom:10px}.dsoffh{display:flex;align-items:center;gap:10px}.dsgone{display:block;margin-top:6px;color:#ff8a80;font-size:12px}.dsnote{margin:8px 0 0;color:#8ab4ff;font-size:14px}.dsnb{margin-top:8px}
+.dschip.off{border-color:#ff6b6b;opacity:.85}.dschip em.offb{background:#ff6b6b;color:#1d1a18}.dschip small{font-size:11px}.dsoff{padding:10px 14px!important;margin-bottom:10px}.dsoffh{display:flex;align-items:center;gap:10px}.dsghost{position:fixed;z-index:99999;pointer-events:none;transform:translate(-50%,-120%);box-shadow:0 8px 24px rgba(0,0,0,.5);background:#3a3430;border-color:#f47b20}.dschip.dragsrc{opacity:.35}.droph{outline:2px dashed #f47b20;outline-offset:2px;background:rgba(244,123,32,.08)!important}body.dsdragging{user-select:none;-webkit-user-select:none}.dschip{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+@media(min-width:900px){.dswrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}#dsRows{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}#dsRows .dscard{margin:0}.dsside{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}.dsside .panel{margin-bottom:12px}.dsfree summary{pointer-events:none}.dsfree summary::marker{content:''}
+ #tab-dsp .dsdate{max-width:520px}#tab-dsp #dsQ{max-width:520px}}
+@media(min-width:1400px){.dswrap{grid-template-columns:minmax(0,1fr) 340px}}
+.dsgone{display:block;margin-top:6px;color:#ff8a80;font-size:12px}.dsnote{margin:8px 0 0;color:#8ab4ff;font-size:14px}.dsnb{margin-top:8px}
 .dsfree summary{cursor:pointer;padding:2px 0 8px}.dspick{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow:auto;margin-bottom:10px}
 .dsprow{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line,#555);border-radius:10px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsprow.on{border-color:#3fb950;background:rgba(63,185,80,.1)}.dsprow em{font-style:normal;font-size:11px;font-weight:700;opacity:.75}
 .dsprev{overflow:auto;background:#fff;color:#000;padding:8px;border-radius:8px;margin:6px 0}.dscontact{display:flex;gap:8px;flex-wrap:wrap}
