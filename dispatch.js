@@ -33,7 +33,7 @@ window.ameStaff=()=>STAFF;window.ameStaffFind=person;
 }else setTimeout(w,400)})();
 
 /* ---------- time off ---------- */
-const LT=['Vacation','Sick','Personal','Injury','Other'];
+const LT=['Time off','Vacation','Sick','Personal','Injury','Other'];
 const offOn=(n,d)=>LEAVE.find(l=>l.n===n&&l.from<=d&&(l.to||l.from)>=d);
 const offList=d=>LEAVE.filter(l=>l.from<=d&&(l.to||l.from)>=d);
 /* ---------- day model ---------- */
@@ -207,7 +207,10 @@ function siteDlg(s){const nw=!s;s=s||{status:'Active',start:date,isNew:true,crew
 function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
   const x=new DOMParser().parseFromString(rd.result,'application/xml');if(x.querySelector('parsererror'))throw new Error('Not an XML file — in MS Project use File → Save As → XML format');
   const g=(el,t)=>{const c=el.getElementsByTagName(t)[0];return c?c.textContent:''};const day=v=>String(v||'').slice(0,10);
-  const T={},order=[];for(const t of x.getElementsByTagName('Task')){const uid=g(t,'UID');T[uid]={uid,name:g(t,'Name').trim(),lvl:+g(t,'OutlineLevel')||0,start:day(g(t,'Start')),end:day(g(t,'Finish')),sum:g(t,'Summary')==='1'};order.push(uid)}
+  const T={},order=[];for(const t of x.getElementsByTagName('Task')){const uid=g(t,'UID');const ex={};for(const e of t.getElementsByTagName('ExtendedAttribute'))ex[g(e,'FieldID')]=g(e,'Value');T[uid]={uid,name:g(t,'Name').trim(),lvl:+g(t,'OutlineLevel')||0,start:day(g(t,'Start')),end:day(g(t,'Finish')),sum:g(t,'Summary')==='1',ex};order.push(uid)}
+  const FA={};for(const e of x.querySelectorAll('Project>ExtendedAttributes>ExtendedAttribute'))FA[g(e,'FieldID')]=(g(e,'Alias')||'').toLowerCase();
+  const fid=re=>Object.keys(FA).filter(k=>re.test(FA[k]));const fSys=fid(/roof/),fNew=fid(/new project/),fPic=[...fid(/^pic$/),'188743750'];
+  const exv=(t,ids)=>{for(const i of ids){const v=(t.ex||{})[i];if(v)return v.trim()}return ''};
   /* each task belongs to the nearest job heading above it ("404-Rancho …") */
   let job=null;const stack=[];for(const uid of order){const t=T[uid];while(stack.length&&stack[stack.length-1].lvl>=t.lvl)stack.pop();stack.push(t);const j=[...stack].reverse().find(a=>/^\d{3}/.test(a.name));t.job=j||null}
   const R={};for(const r of x.getElementsByTagName('Resource')){const nm=g(r,'Name').trim();if(nm)R[g(r,'UID')]=nm}
@@ -215,7 +218,7 @@ function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
   const jobs={},leave=[],unk=new Set();
   for(const a of x.getElementsByTagName('Assignment')){const t=T[g(a,'TaskUID')];const rn=R[g(a,'ResourceUID')];if(!t||!rn||!t.job)continue;const pr=parseRes(rn);if(!pr.known)unk.add(pr.n);
     const from=day(g(a,'Start'))||t.start,to=day(g(a,'Finish'))||t.end;if(!from)continue;
-    if(/time.?off/i.test(t.job.name)){leave.push({n:pr.n,type:/sick/i.test(t.name)?'Sick':/vac/i.test(t.name)?'Vacation':'Other',from,to,note:t.name===t.job.name?'':t.name});continue}
+    if(/time.?off/i.test(t.job.name)){leave.push({n:pr.n,type:/sick/i.test(t.name)?'Sick':/vac/i.test(t.name)?'Vacation':'Time off',from,to,note:(t.name===t.job.name||matchStaff(t.name))?'':t.name});continue}
     const k=t.job.uid;(jobs[k]=jobs[k]||{t:t.job,asg:[]}).asg.push({n:pr.n,...(pr.t?{t:pr.t}:{}),from,to})}
   const J=Object.values(jobs).filter(j=>j.asg.length);
   if(!J.length)throw new Error('No jobs found (tasks named like “404-Job name”)');
@@ -223,8 +226,9 @@ function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
   if(!confirm(msg))return;
   for(const j of J){const m=j.t.name.match(/^([\d ]+?)\s*-\s*(.*)$/);const no=m?m[1].trim():j.t.name,name=m?m[2].trim():'';const id='mp'+no.replace(/\s+/g,'_');const old=S.find(s=>s._id===id)||S.find(s=>jno(s.no)===no);
     const from=j.asg.length?j.asg.reduce((a,b)=>b.from<a?b.from:a,j.asg[0].from):j.t.start,to=j.asg.length?j.asg.reduce((a,b)=>b.to>a?b.to:a,j.asg[0].to):j.t.end;
-    const o={no,name:old&&old.name||name,asg:j.asg,start:from,end:to,status:old&&old.status||'Active',src:'msp',updated:new Date().toISOString(),by:curUser};
-    if(old)await db.doc('dsites/'+old._id).update(o);else await db.doc('dsites/'+id).set({...o,sys:'',pic:'',isNew:false,crew:[]})}
+    const sys=exv(j.t,fSys),pic=exv(j.t,fPic),nwv=exv(j.t,fNew);
+    const o={no,name:old&&old.name||name,asg:j.asg,start:from,end:to,status:old&&old.status||'Active',src:'msp',updated:new Date().toISOString(),by:curUser,...(sys?{sys}:{}),...(pic?{pic}:{}),...(nwv?{isNew:/^y/i.test(nwv)}:{})};
+    if(old)await db.doc('dsites/'+old._id).update(o);else await db.doc('dsites/'+id).set({sys:'',pic:'',isNew:false,crew:[],...o})}
   for(const l of leave){const id='mpl_'+(l.n+'_'+l.from).replace(/[^\w]+/g,'_');await db.doc('dleave/'+id).set({...l,by:curUser,at:new Date().toISOString(),src:'msp'})}
   toast(J.length+' jobs imported');view='day';render()}catch(e){toast('Import failed: '+(e.message||e))}};rd.readAsText(file)}
 /* ---------- staff directory ---------- */
