@@ -682,7 +682,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.71',APP_DATE='2026-10-15';
+const APP_VERSION='4.72',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -872,21 +872,19 @@ function dupDlg(id){const base=byId(id);if(!base)return;const bn=normName(base.n
   const draw=()=>{const list=items.filter(x=>x.id!==id&&!x.pending&&normName(x.name)===bn);
     document.getElementById('dupBody').innerHTML=list.length?list.map(x=>`<div class="duprow"><div class="dupmain"><b>${esc(x.name)}</b><div class="muted" style="font-size:13px">${esc([x.mfgr,x.size&&x.size!=='-'?x.size:'',x.loc,(+x.qty||0)+' '+(x.unit||'')].filter(Boolean).join(' · '))}</div></div><button type="button" class="btn small" data-dupe="${esc(x.id)}">Edit</button><button type="button" class="btn small pri" data-dupm="${esc(x.id)}">Merge in →</button></div>`).join(''):'<p class="muted">No other items share this name. (Match is by name only — check manufacturer and size before merging.)</p>';
     document.querySelectorAll('[data-dupe]').forEach(b=>b.onclick=()=>{closeDlg();openItem(b.dataset.dupe)});
-    document.querySelectorAll('[data-dupm]').forEach(b=>b.onclick=()=>mergeInto(id,b.dataset.dupm,draw));};
+    document.querySelectorAll('[data-dupm]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;b.disabled=true;await mergeInto(id,b.dataset.dupm,draw);b.disabled=false});};
   $('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>Duplicates of “${esc(base.name)}”</h3><p class="muted" style="margin-top:0">Merging adds the other item's quantity and unit tags into <b>this</b> one (${esc(base.loc||'')}), then moves the duplicate to the Trash (restorable). Details of this item stay.</p><div id="dupBody" class="duplist"></div><div class="bar"><button class="btn" id="dupX">Close</button></div></div></div>`;
   document.getElementById('dupX').onclick=closeDlg;draw()}
-async function mergeInto(targetId,srcId,after){const t=byId(targetId),srv=byId(srcId);if(!t||!srv)return;
+let _merging=false;async function mergeInto(targetId,srcId,after){if(_merging)return;const t=byId(targetId),srv=byId(srcId);if(!t||!srv)return;
   if(!confirm('Merge “'+srv.name+'” ('+(+srv.qty||0)+' '+(srv.unit||'')+', '+(srv.loc||'')+') into “'+t.name+'” ('+(t.loc||'')+')?\n\nThe duplicate goes to the Trash and can be restored.'))return;
-  try{const qty=(+t.qty||0)+(+srv.qty||0);const units={...(srv.units||{}),...(t.units||{})};
+  _merging=true;try{const qty=(+t.qty||0)+(+srv.qty||0);const units={...(srv.units||{}),...(t.units||{})};
     const serials=[...new Set([...(Array.isArray(t.serials)?t.serials:[]),...(Array.isArray(srv.serials)?srv.serials:[])])];
     const tags=[...new Set([...(Array.isArray(t.tags)?t.tags:[]),...(Array.isArray(srv.tags)?srv.tags:[])])];
     const upd={qty};if(Object.keys(units).length)upd.units=units;if(serials.length)upd.serials=serials;if(tags.length)upd.tags=tags;
     await writeItem(targetId,upd);
-    const raw=rawItems.find(x=>x.id===srcId)||srv;const {id:_ig,...data}=raw;
-    await db.collection('trash').add({coll:'items',id:srcId,data,by:curUser,at:new Date().toISOString(),note:'Merged into '+t.name});
     try{await db.collection('logs').add({ts:new Date().toISOString(),action:'ADJUST',itemId:targetId,name:t.name,n:(+srv.qty||0),before:(+t.qty||0),after:qty,by:curUser,note:'Merged duplicate “'+srv.name+'”'})}catch(e){}
     await db.doc('items/'+srcId).delete();try{await db.doc('stock/'+srcId).delete()}catch(e){}
-    toast('Merged · '+srv.name+' → Trash');after&&after()}catch(e){toast('Merge failed: '+(e.message||e))}}
+    toast('Merged · '+srv.name+' → Trash');after&&after()}catch(e){toast('Merge failed: '+(e.message||e))}finally{_merging=false}}
 async function writeItem(id,upd){if(upd&&upd.loc)upd.loc=fixLoc(upd.loc);const st={},ma={};for(const k in upd)(STOCKF.includes(k)?st:ma)[k]=upd[k];
   if(Object.keys(st).length)await db.doc('stock/'+id).set({...(stockMap[id]||{}),...st});
   if(Object.keys(ma).length)await db.doc((byId(id)?.pending?'newitems/':'items/')+id).update(ma)}
