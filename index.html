@@ -649,12 +649,12 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
   <section id="tab-admin" hidden></section>
 </main>
 
-<div class="ptr" id="ptr" aria-hidden="true"><span class="ptrspin">🔄</span><span id="ptrTxt" hidden>Pull to sync</span></div>
+<div class="ptr" id="ptr" aria-hidden="true"><span class="ptrspin"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></svg></span><span id="ptrTxt" hidden>Pull to sync</span></div>
 <div id="loginRoot"></div>
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.08',APP_DATE='2026-10-15';
+const APP_VERSION='4.09',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1735,7 +1735,7 @@ db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()}
 #ymap .zedit.msel{stroke-width:4;stroke-dasharray:none;fill:rgba(242,106,27,.18)}#ymap .bedit.msel rect{stroke:#fff;stroke-width:3}#ymap .zlbl{fill:#f6a04d;font:700 14px sans-serif;pointer-events:none}
 #ymap .bhandle{fill:#fff;stroke:#f26a1b;stroke-width:2;cursor:nwse-resize}
 .aundo{background:none;border:0;color:#f6a04d;text-decoration:underline;font:inherit;font-weight:700;padding:2px 4px;cursor:pointer}
-#ptr.ptr{left:auto;top:auto;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:none!important;width:44px;height:44px;padding:0;border-radius:50%;justify-content:center;gap:0;opacity:0;transition:opacity .15s;z-index:9990}#ptr .ptrspin{width:auto;height:auto;border:0;font-size:22px;line-height:1;color:var(--hi,#f26a1b);display:block}#ptr.ready{box-shadow:0 0 0 3px var(--hi,#f26a1b)}#ptr.go .ptrspin{animation:spin .8s linear infinite!important}body.hascart #ptr.ptr{bottom:calc(env(safe-area-inset-bottom,0px) + 96px)}
+#ptr.ptr{left:auto;top:auto;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:none!important;width:44px;height:44px;padding:0;border-radius:50%;justify-content:center;gap:0;opacity:0;transition:opacity .15s;z-index:9990}#ptr .ptrspin{width:22px;height:22px;border:0;line-height:0;color:var(--hi,#f26a1b);display:block}#ptr.ready{box-shadow:0 0 0 3px var(--hi,#f26a1b)}#ptr.go .ptrspin{animation:spin .8s linear infinite!important}body.hascart #ptr.ptr{bottom:calc(env(safe-area-inset-bottom,0px) + 96px)}
 .bpx{margin-left:auto;flex:none;align-self:center;width:28px;height:28px;border-radius:50%;border:0;background:none;color:var(--muted,#aaa);font-size:18px;cursor:pointer}
 .ysort{height:40px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:inherit;padding:0 10px;font:inherit;font-size:14px}
 .card .cstep{position:absolute;top:8px;left:8px;z-index:4;display:flex;align-items:center;gap:0;background:var(--hi,#f26a1b);color:var(--hi-ink,#1a1a1a);border-radius:20px;height:36px;box-shadow:0 2px 8px rgba(0,0,0,.35)}.card .cstep b{min-width:28px;text-align:center;font-family:var(--display);font-size:19px}.card .cstep .cs-b{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;cursor:pointer;border-radius:50%}.card .cstep .cs-b:active{background:rgba(0,0,0,.18)}
@@ -1757,10 +1757,10 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="shell.js?v=405"></script>
 <script src="polish.js?v=405"></script>
 <script src="mpl.js?v=396"></script>
-<script src="eqp.js?v=396"></script>
-<script src="field.js?v=396"></script>
-<script src="trucks.js?v=405"></script>
-<script src="safety.js?v=396"></script>
+<script src="eqp.js?v=409"></script>
+<script src="field.js?v=409"></script>
+<script src="trucks.js?v=409"></script>
+<script src="safety.js?v=409"></script>
 <script src="deliv.js?v=404"></script>
 <script src="admin.js?v=388"></script>
 <script src="scan.js?v=399"></script>
@@ -1779,7 +1779,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
   function busy(){const d=document.querySelector('#dlgRoot .dlg');return !!(d&&d.querySelector('input:not([type=hidden]),textarea,select'))}
   function show(v){if(document.getElementById('updDlg'))return;if(busy()){setTimeout(()=>show(v),15000);return}
     const w=document.createElement('div');w.id='updDlg';w.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(10,8,6,.55);display:flex;align-items:center;justify-content:center;padding:20px';
-    w.innerHTML=`<div style="background:var(--panel,#3b3633);border:1px solid var(--line,#5a514a);border-radius:16px;max-width:380px;width:100%;padding:22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)"><div style="font-size:34px;line-height:1">⬆️</div><h3 style="margin:10px 0 6px">New version ready</h3><p class="muted" style="margin:0 0 16px">Version ${v} is available. Your cart and anything you're editing are saved first, then the app reloads right where you are.</p><button class="go" id="updGo" style="width:100%;min-height:52px">Update now</button><button class="btn" id="updLater" style="width:100%;margin-top:8px;min-height:44px">Later</button></div>`;
+    w.innerHTML=`<div style="background:var(--panel,#3b3633);border:1px solid var(--line,#5a514a);border-radius:16px;max-width:380px;width:100%;padding:22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)"><div style="line-height:1;color:var(--hi,#f26a1b)"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div><h3 style="margin:10px 0 6px">New version ready</h3><p class="muted" style="margin:0 0 16px">Version ${v} is available. Your cart and anything you're editing are saved first, then the app reloads right where you are.</p><button class="go" id="updGo" style="width:100%;min-height:52px">Update now</button><button class="btn" id="updLater" style="width:100%;margin-top:8px;min-height:44px">Later</button></div>`;
     document.body.appendChild(w);w.querySelector('#updGo').onclick=e=>doUpdate(v,e.target);w.querySelector('#updLater').onclick=()=>{w.remove();later=Date.now();shown=false}}
   async function chk(){if(shown||document.hidden||Date.now()-later<30*60e3)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;show(m[1])}}catch(e){}}
   setTimeout(chk,8000);setInterval(chk,120000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
@@ -1812,7 +1812,7 @@ window.addEventListener('ame-save',e=>{const b=document.getElementById('saveBtn'
   if(vv){vv.addEventListener('resize',fix);vv.addEventListener('scroll',fix)}addEventListener('scroll',fix,{passive:true});document.addEventListener('focusin',fix);document.addEventListener('focusout',()=>setTimeout(()=>{fix();if(innerWidth<820)window.scrollTo(window.scrollX,window.scrollY)},120));addEventListener('orientationchange',()=>setTimeout(fix,300));new MutationObserver(()=>fix()).observe(document.getElementById('dlgRoot'),{childList:true})})();
 
 /* maintenance notice: status.json in the repo (set by Claude while fixing) or Admin toggle (config/app.maint) */
-(function(){let a=null,b=null;const show=()=>{const on=(a&&a.maint)||(b&&b.on);const msg=(a&&a.maint&&a.msg)||(b&&b.on&&b.msg)||'';let el=document.getElementById('maintBar');if(!on){el&&el.remove();return}if(!el){el=document.createElement('div');el.id='maintBar';el.style.cssText='position:sticky;top:0;z-index:250;background:#e8a33d;color:#1d1a17;font-weight:700;text-align:center;padding:9px 14px;font-size:14px';document.body.prepend(el)}el.textContent='🛠 '+(msg||'Maintenance in progress — the app may act up for a few minutes. Your saved work is safe.')};
+(function(){let a=null,b=null;const show=()=>{const on=(a&&a.maint)||(b&&b.on);const msg=(a&&a.maint&&a.msg)||(b&&b.on&&b.msg)||'';let el=document.getElementById('maintBar');if(!on){el&&el.remove();return}if(!el){el=document.createElement('div');el.id='maintBar';el.style.cssText='position:sticky;top:0;z-index:250;background:#e8a33d;color:#1d1a17;font-weight:700;text-align:center;padding:9px 14px;font-size:14px';document.body.prepend(el)}el.textContent='Maintenance: '+(msg||'Maintenance in progress — the app may act up for a few minutes. Your saved work is safe.')};
   const poll=async()=>{try{const r=await fetch('status.json?t='+Date.now(),{cache:'no-store'});if(r.ok)a=await r.json()}catch(e){}show()};poll();setInterval(poll,60000);
   const w=()=>{if(typeof db!=='undefined'&&db&&db.doc){try{db.doc('config/app').onSnapshot(s=>{b=(s.data()||{}).maint||null;show()},()=>{})}catch(e){}}else setTimeout(w,500)};w()})();
 

@@ -12,7 +12,7 @@ const lbl=v=>v?(v.code?v.code+' ':'')+v.name:'';
   db.collection('reservations').onSnapshot(s=>{const old=new Set(RS.map(r=>r._id));const first=!RS.length&&!w.done;RS=s.docs.map(d=>({...d.data(),_id:d.id}));AME.badges&&AME.badges();w.done=true;
     if(!first){RS.filter(r=>!old.has(r._id)&&r.by!==curUser).forEach(r=>notify(r))}if(AME.cur==='trucks')render()},()=>{});
   db.doc('config/trucks').onSnapshot(s=>{CFG=s.data()||{}},()=>{})}else setTimeout(w,400)})();
-function notify(r){const v=V.find(x=>x._id===r.vid);const t=`${r.who||r.by} reserved ${lbl(v)} · ${fmt(r.from)}${r.to!==r.from?'–'+fmt(r.to):''}${r.job?' · '+r.job:''}`;try{toast('🚚 '+t)}catch(e){}
+function notify(r){const v=V.find(x=>x._id===r.vid);const t=`${r.who||r.by} reserved ${lbl(v)} · ${fmt(r.from)}${r.to!==r.from?'–'+fmt(r.to):''}${r.job?' · '+r.job:''}`;try{toast(t)}catch(e){}
   try{window.ameNotify&&window.ameNotify('Truck reservation',t,'truck-'+(r._id||''),{mod:'trucks'})}catch(e){}}
 const overlaps=(a,b)=>a.vid===b.vid&&a._id!==b._id&&a.status!=='cancelled'&&b.status!=='cancelled'&&!(a.to<b.from||b.to<a.from)&&!(a.from===b.to&&a.allDay===false&&b.allDay===false&&(a.t1||'00:00')>=(b.t2||'24:00'))&&!(b.from===a.to&&a.allDay===false&&b.allDay===false&&(b.t1||'00:00')>=(a.t2||'24:00'));
 function dayInfo(d){const L=RS.filter(r=>r.status!=='cancelled'&&r.from<=d&&r.to>=d);const x=new Date(d+'T12:00');
