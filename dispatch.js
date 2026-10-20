@@ -10,6 +10,10 @@ const dordGet=()=>{try{return JSON.parse(localStorage.getItem(dordKey())||'[]')}
 const dordPut=a=>{try{localStorage.setItem(dordKey(),JSON.stringify(a))}catch(e){}};
 let S=[],DAY={},STAFF=[],CFG={},LEAVE=[],view='day',date=monOf(today()),q='',fltSite='active';
 let dsDrag=0;
+/* safety net: any pointer release sweeps away stray drag clones (even if a drag was interrupted mid-way, and on any screen) */
+function dsClearGhosts(){document.querySelectorAll('.dscard.dsdrag,.dschip.dsghost,.dsghost').forEach(x=>x.remove());document.body.classList.remove('dsdragging')}
+addEventListener('pointerup',()=>setTimeout(dsClearGhosts,60),true);
+addEventListener('pointercancel',()=>setTimeout(dsClearGhosts,60),true);
 const LV=['FM','SFM','JM','A7','A6','A5','A4','A3','A2','A1'];
 const lvRank=l=>{const i=LV.indexOf(l);return i<0?99:i};
 const PIC_COL={'Jin Yang':'#f2b705','Fred Barra':'#7b4bb7','Kyle Kim':'#8bc34a','Don Seo':'#5fc3c9','Suji Ham':'#e66aa8'};
