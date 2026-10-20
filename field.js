@@ -159,14 +159,14 @@ function tsWire(rerender){const d=W.data;const x=()=>d.days[tsDay];const ch=()=>
   sec.querySelectorAll('[data-ppx]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this page?'))return;d.paper.splice(+b.dataset.ppx,1);ch()});
   sec.querySelectorAll('[data-pp]').forEach(b=>b.onclick=async()=>{const f=d.paper[+b.dataset.pp];if(!f)return;if(f.type==='pdf'&&f.path){try{const fs=await window.claude.use('files');const bl=await fs.get(f.path);window.open(URL.createObjectURL(new Blob([bl],{type:'application/pdf'})),'_blank')}catch(e){toast('Could not open')}}else window.open(f.url,'_blank')})}
 /* month calendar of timesheet coverage on the job page */
-function tsCal(){const L=R.filter(r=>r.job===job);if(!calM)calM=today().slice(0,7);const [y,m]=calM.split('-').map(Number);const first=new Date(y,m-1,1),days=new Date(y,m,0).getDate();const lead=(first.getDay()+6)%7;
+function tsCal(){const L=R.filter(r=>r.job===job);if(!calM)calM=today().slice(0,7);const [y,m]=calM.split('-').map(Number);const first=new Date(y,m-1,1),days=new Date(y,m,0).getDate();const lead=first.getDay();
   const info={},oth={};L.forEach(r=>{const d=r.data||{};if(r.type==='ts'){d.days?.forEach((_,i)=>{const k=addD(r.date,i);const h=(d.rows||[]).reduce((a,x)=>a+cellH(x.d?.[i]),0);if(d.paper?.length)info[k]={t:'paper'};else if(h)info[k]={t:'ok',h};})}else{(oth[r.date]=oth[r.date]||[]).push(r)}});
   const st0=L.filter(r=>r.type==='ts').map(r=>r.date).sort()[0]||'9999';const cells=[];for(let i=0;i<lead;i++)cells.push('<div></div>');
   for(let dd=1;dd<=days;dd++){const k=calM+'-'+String(dd).padStart(2,'0');const wd=new Date(k+'T12:00').getDay();const f=info[k];const o=oth[k]||[];
     const cls=f?.t==='ok'?'ok':f?.t==='paper'?'paper':(k<=today()&&k>=st0&&wd>0&&wd<6?'miss':'');
     cells.push(`<button type="button" class="tc ${cls} ${k===today()?'today':''}" data-cd="${k}"><b>${dd}</b><small>${f?.t==='ok'?f.h+'h':f?.t==='paper'?'Paper':cls==='miss'?'No TS':''}</small>${o.length?`<span class="tcd">${o.map(r=>`<i style="background:${T[r.type]?.c}" title="${esc(T[r.type]?.n||'')}"></i>`).join('')}</span>`:''}</button>`)}
   return `<div class="panel"><div class="tshead"><h3 style="margin:0">Calendar</h3><span style="flex:1"></span><button class="btn small" data-cm="-1">‹</button><b style="min-width:120px;text-align:center">${first.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</b><button class="btn small" data-cm="1">›</button></div>
-   <div class="tcal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<div class="tch">${x}</div>`).join('')}${cells.join('')}</div>
+   <div class="tcal">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="tch">${x}</div>`).join('')}${cells.join('')}</div>
    <div class="tclg"><span class="ok">Timesheet entered</span><span class="paper">Paper timesheet</span><span class="miss">Workday, no timesheet</span>${Object.entries(T).filter(([k])=>k!=='ts').map(([k,t])=>`<span class="dt"><i style="background:${t.c}"></i>${t.n}</span>`).join('')}<span>· tap a day</span></div></div>`}
 function dayDlg(k){const wk=monday(k);const i=Math.round((new Date(k+'T12:00')-new Date(wk+'T12:00'))/864e5);const ts=R.find(x=>x.job===job&&x.type==='ts'&&x.date===wk);const o=R.filter(r=>r.job===job&&r.type!=='ts'&&r.date===k);
   const th=ts?(ts.data.rows||[]).reduce((a,x)=>a+cellH(x.d?.[i]),0):0;
