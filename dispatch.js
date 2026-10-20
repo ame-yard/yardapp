@@ -9,6 +9,7 @@ const dordKey=()=>'ameDspOrd:'+(typeof curUser!=='undefined'?curUser:'');
 const dordGet=()=>{try{return JSON.parse(localStorage.getItem(dordKey())||'[]')}catch(e){return[]}};
 const dordPut=a=>{try{localStorage.setItem(dordKey(),JSON.stringify(a))}catch(e){}};
 let S=[],DAY={},STAFF=[],CFG={},LEAVE=[],view='day',date=monOf(today()),q='',fltSite='active';
+let dsDrag=0;
 const LV=['FM','SFM','JM','A7','A6','A5','A4','A3','A2','A1'];
 const lvRank=l=>{const i=LV.indexOf(l);return i<0?99:i};
 const PIC_COL={'Jin Yang':'#f2b705','Fred Barra':'#7b4bb7','Kyle Kim':'#8bc34a','Don Seo':'#5fc3c9','Suji Ham':'#e66aa8'};
@@ -69,7 +70,9 @@ const changed=d=>{const day=DAY[monOf(d)];if(!day||!day.sent)return false;return
 const snap=d=>{const o={};rowsFor(d).forEach(r=>o[r.s._id]=r.crew.map(c=>(c.t||'')+'|'+c.n));return o};
 
 /* ---------- render ---------- */
-function render(){if(!sec)return;const ed=canEdit();
+function render(){if(!sec)return;if(dsDrag&&Date.now()-dsDrag<15000)return;/* never redraw mid-drag; 15s safety so a stuck drag can't freeze the board */
+  dsDrag=0;document.querySelectorAll('.dsghost,.dscard.dsdrag').forEach(x=>x.remove());document.body.classList.remove('dsdragging');
+  const ed=canEdit();
   const seg=`<div class="viewseg" style="margin-bottom:12px">${[['day','Dispatch'],['gantt','Schedule'],['sites','Jobs'],['staff','Staff']].map(([k,l])=>`<button data-dv="${k}" aria-pressed="${view===k}">${l}</button>`).join('')}</div>`;
   if(view!=='gantt')document.body.classList.remove('gfull');if(view==='gantt')return renderGantt(seg,ed);if(view==='sites')return renderSites(seg,ed);if(view==='staff')return renderStaff(seg,ed);
   const rows=rowsFor(cd());const day=DAY[date]||{};const sent=day.sent;const ch=changed(cd());
@@ -110,9 +113,9 @@ function render(){if(!sec)return;const ed=canEdit();
   sec.querySelectorAll('[data-sopen]').forEach(b=>b.onclick=()=>{const s=S.find(x=>x._id===b.dataset.sopen);if(s){if(ed)siteDlg(s);else{view='gantt';render()}}});
   sec.querySelectorAll('[data-sms]').forEach(b=>b.onclick=()=>textCrew(S.find(s=>s._id===b.dataset.sms)));
   {const sel=sec.querySelector('#dsPMsel');if(sel)sel.onchange=()=>{dpm=sel.value;try{localStorage.setItem('dsPM',dpm)}catch(e){}render()}}
-  if(ed&&dpm!=='__grp'){const box=sec.querySelector('#dsRows');sec.querySelectorAll('[data-grip]').forEach(g=>{g.style.touchAction='none';g.onpointerdown=e=>{e.preventDefault();e.stopPropagation();const card=g.closest('.dscard');if(!card)return;const gh=card.cloneNode(true);const rc=card.getBoundingClientRect();gh.className='dscard dsdrag';gh.style.cssText=`position:fixed;left:${rc.left}px;top:${rc.top}px;width:${rc.width}px;z-index:99999;pointer-events:none;opacity:.92;box-shadow:0 12px 30px rgba(0,0,0,.5)`;document.body.appendChild(gh);card.style.opacity='.3';const oy=e.clientY-rc.top;document.body.classList.add('dsdragging');g.setPointerCapture(e.pointerId);
+  if(ed&&dpm!=='__grp'){const box=sec.querySelector('#dsRows');sec.querySelectorAll('[data-grip]').forEach(g=>{g.style.touchAction='none';g.onpointerdown=e=>{e.preventDefault();e.stopPropagation();const card=g.closest('.dscard');if(!card)return;const gh=card.cloneNode(true);const rc=card.getBoundingClientRect();gh.className='dscard dsdrag';gh.style.cssText=`position:fixed;left:${rc.left}px;top:${rc.top}px;width:${rc.width}px;z-index:99999;pointer-events:none;opacity:.92;box-shadow:0 12px 30px rgba(0,0,0,.5)`;document.body.appendChild(gh);card.style.opacity='.3';const oy=e.clientY-rc.top;document.body.classList.add("dsdragging");dsDrag=Date.now();g.setPointerCapture(e.pointerId);
     const mv=ev=>{gh.style.top=(ev.clientY-oy)+'px';gh.style.left=rc.left+'px';const cards=[...box.querySelectorAll('.dscard')].filter(c=>c!==card);let tgt=null;for(const c of cards){const b=c.getBoundingClientRect();if(ev.clientY<b.top+b.height/2){tgt=c;break}}if(tgt!==card.nextSibling)box.insertBefore(card,tgt);if(ev.clientY<90)scrollBy(0,-14);else if(ev.clientY>innerHeight-90)scrollBy(0,14)};
-    const up=()=>{g.onpointermove=g.onpointerup=null;gh.remove();card.style.opacity='';document.body.classList.remove('dsdragging');dordPut([...box.querySelectorAll('.dscard')].map(c=>c.dataset.site));toast('Order saved for you')};
+    const up=()=>{g.onpointermove=g.onpointerup=g.onpointercancel=null;dsDrag=0;gh.remove();card.style.opacity='';document.body.classList.remove('dsdragging');dordPut([...box.querySelectorAll('.dscard')].map(c=>c.dataset.site));toast('Order saved for you')};g.onpointercancel=up;
     g.onpointermove=mv;g.onpointerup=up}})}
   sec.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>b._dr?(b._dr=0):chipMenu(S.find(s=>s._id===b.closest('[data-site]').dataset.site),b.dataset.cn));
   sec.querySelectorAll('[data-free]').forEach(b=>b.onclick=()=>b._dr?(b._dr=0):toJob(b.dataset.free));
@@ -147,7 +150,7 @@ function printPDF(d){const lg=(document.getElementById('logoImg')||{}).src||LOGO
 /* drag a person chip onto another job (mouse, iPad, phone: hold then drag) */
 function dragSetup(){sec.querySelectorAll('[data-cn],[data-free]').forEach(ch=>{ch.style.touchAction='manipulation';
   ch.addEventListener('pointerdown',e=>{if(e.button)return;const n=ch.dataset.cn||ch.dataset.free;const from=ch.closest('[data-site]');const x0=e.clientX,y0=e.clientY;let on=false,gh=null,tgt=null,tm=null;
-    const start=()=>{on=true;ch._dr=1;ch.classList.add('dragsrc');gh=ch.cloneNode(true);gh.className='dschip dsghost';document.body.appendChild(gh);document.body.classList.add('dsdragging');mv(e)};
+    const start=()=>{on=true;dsDrag=Date.now();ch._dr=1;ch.classList.add('dragsrc');gh=ch.cloneNode(true);gh.className='dschip dsghost';document.body.appendChild(gh);document.body.classList.add('dsdragging');mv(e)};
     const hit=(x,y)=>{gh.style.display='none';const el=document.elementFromPoint(x,y);gh.style.display='';return el&&(el.closest('.dscard')||el.closest('.dsside'))};
     const mv=ev=>{if(!on){if(e.pointerType==='mouse'&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>6)start();else if(e.pointerType!=='mouse'&&Math.hypot(ev.clientX-x0,ev.clientY-y0)>10)cleanup();return}
       gh.style.left=ev.clientX+'px';gh.style.top=ev.clientY+'px';const t=hit(ev.clientX,ev.clientY);if(t!==tgt){tgt&&tgt.classList.remove('droph');tgt=t;tgt&&tgt.classList.add('droph')}
@@ -156,7 +159,7 @@ function dragSetup(){sec.querySelectorAll('[data-cn],[data-free]').forEach(ch=>{
     const up=async ev=>{const t=on&&hit(ev.clientX,ev.clientY);const was=on;cleanup();if(!was)return;setTimeout(()=>ch._dr=0,350);
       if(!t)return;if(t.classList.contains('dsside')){if(from){const s=S.find(x=>x._id===from.dataset.site);const r=rowsFor(cd()).find(x=>x.s._id===s._id);await saveRow(cd(),s,r.crew.filter(c=>c.n!==n));toast(short(n)+' taken off '+jno(s.no))}return}
       const to=S.find(x=>x._id===t.dataset.site);if(!to||(from&&from.dataset.site===to._id))return;const o=offOn(n,cd());if(o&&!confirm(short(n)+' is off ('+(o.type||'time off')+'). Add anyway?'))return;await moveTo(n,to);toast(short(n)+' → '+jno(to.no))};
-    function cleanup(){clearTimeout(tm);removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',cleanup);removeEventListener('touchmove',tmv);gh&&gh.remove();tgt&&tgt.classList.remove('droph');ch.classList.remove('dragsrc');document.body.classList.remove('dsdragging');on=false}
+    function cleanup(){clearTimeout(tm);dsDrag=0;removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',cleanup);removeEventListener('touchmove',tmv);gh&&gh.remove();tgt&&tgt.classList.remove('droph');ch.classList.remove('dragsrc');document.body.classList.remove('dsdragging');on=false}
     addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',()=>{if(!on)cleanup()});addEventListener('touchmove',tmv,{passive:false});
     if(e.pointerType!=='mouse')tm=setTimeout(()=>{start();try{navigator.vibrate&&navigator.vibrate(15)}catch(x){}},320)})})}
 function filt(){const t=q.trim().toLowerCase();sec.querySelectorAll('.dscard').forEach(c=>{if(!t){c.hidden=false;c.querySelectorAll('.dschip').forEach(x=>x.classList.remove('hit'));return}
