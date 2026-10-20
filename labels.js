@@ -11,10 +11,12 @@ const ICO=(p,w=20)=>`<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="n
 const I_DL='<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',I_PR='<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z"/>';
 
 /* draw one label to a canvas: code graphic + big code text + small description */
+let inName=(()=>{try{return localStorage.getItem('lblIn')!=='0'}catch(e){return true}})();
+const payload=(code,desc)=>inName&&desc?(code+' | '+desc.replace(/[^\x20-\x7E]/g,'').slice(0,30)).trim():code;
 function drawLabel(code,desc,kind){const W=kind==='qr'?600:900,H=kind==='qr'?760:420;const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#000';
-  if(kind==='qr'){const q=qrcode(0,'M');q.addData(code);q.make();const n=q.getModuleCount(),sz=Math.floor(520/(n+2)),off=(W-sz*n)/2;for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect(off+k*sz,30+r*sz,sz,sz);
+  if(kind==='qr'){const q=qrcode(0,'M');q.addData(payload(code,desc));q.make();const n=q.getModuleCount(),sz=Math.floor(520/(n+2)),off=(W-sz*n)/2;for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect(off+k*sz,30+r*sz,sz,sz);
     x.textAlign='center';x.font='bold 64px Arial';x.fillText(code,W/2,30+sz*n+80);if(desc){x.font='32px Arial';x.fillText(desc.slice(0,28),W/2,30+sz*n+125)}}
-  else{const t=document.createElement('canvas');JsBarcode(t,code,{format:'CODE128',width:4,height:220,displayValue:false,margin:0});const s=Math.min(1,(W-60)/t.width);x.drawImage(t,(W-t.width*s)/2,30,t.width*s,220);
+  else{const t=document.createElement('canvas');JsBarcode(t,payload(code,desc),{format:'CODE128',width:4,height:220,displayValue:false,margin:0});const s=Math.min(1,(W-60)/t.width);x.drawImage(t,(W-t.width*s)/2,30,t.width*s,220);
     x.textAlign='center';x.font='bold 64px Arial';x.fillText(code,W/2,330);if(desc){x.font='30px Arial';x.fillText(desc.slice(0,40),W/2,385)}}
   return c}
 const dl=(c,name)=>new Promise(r=>c.toBlob(async b=>{try{const d=await window.claude.use('downloads');await d.save({filename:name,data:b})}catch(e){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click()}r()},'image/png'));
@@ -31,11 +33,12 @@ function render(){if(!sec)return;const items0=typeof items!=='undefined'?items:[
    </div>
    <div class="lbl-row"><span class="muted" id="lbNext"></span></div>
    <div class="lbl-row"><div class="viewseg"><button data-fmt="qr" aria-pressed="${fmt==='qr'}">QR code</button><button data-fmt="bar" aria-pressed="${fmt==='bar'}">Barcode</button></div>
-    <label class="lbl-chk"><input type="checkbox" id="lbU" checked> Each label is its own unit (adds the numbers to the item)</label></div>
+    <label class="lbl-chk"><input type="checkbox" id="lbU" checked> Each label is its own unit (adds the numbers to the item)</label><label class="lbl-chk"><input type="checkbox" id="lbIn" ${inName?'checked':''}> Put the name inside the code (the scanner screen shows “BP-1 | Battery Pack”)</label></div>
    <div class="bar" style="justify-content:flex-start"><button class="go" id="lbGo" style="width:auto">Create labels</button></div>`:'<p class="muted">Only editors can make new labels.</p>'}
   </div>
   <div id="lbOut">${made.length?outHtml():''}</div>
   ${LOG.length?`<h3 style="margin-top:22px">Made before</h3><div class="tblwrap"><table><thead><tr><th>Codes</th><th>What</th><th>Item</th><th>When</th><th></th></tr></thead><tbody>${LOG.slice(0,40).map((g,k)=>`<tr><td class="mono"><b>${esc(g.from)}${g.to!==g.from?' – '+esc(g.to):''}</b></td><td>${esc(g.desc||'')}</td><td>${esc(g.item||'—')}</td><td><small>${esc(fmtD(g.at))} · ${esc(g.by||'')}</small></td><td><button class="btn small" data-again="${k}" data-af="qr">${ICO(I_DL,16)} QR</button> <button class="btn small" data-again="${k}" data-af="bar">${ICO(I_DL,16)} Barcode</button>${canMake()?` <button class="btn small dng" data-ldel="${k}" title="Delete these labels">${ICO('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',16)} Delete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:''}`;
+  {const ci=sec.querySelector('#lbIn');if(ci)ci.onchange=()=>{inName=ci.checked;try{localStorage.setItem('lblIn',inName?'1':'0')}catch(e){}if(made.length)drawOut()}}
   sec.querySelectorAll('[data-fmt]').forEach(b=>b.onclick=()=>{fmt=b.dataset.fmt;try{localStorage.setItem('lblFmt',fmt)}catch(e){}sec.querySelectorAll('[data-fmt]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(made.length)drawOut()});
   const P=sec.querySelector('#lbP');if(P){const nx=()=>{const p=P.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');const n=Math.max(1,Math.min(200,parseInt(sec.querySelector('#lbN').value)||1));const s=(SEQ[p]||0)+1;sec.querySelector('#lbNext').innerHTML=p?`Will make <b class="mono">${p}-${s}</b>${n>1?` to <b class="mono">${p}-${s+n-1}</b>`:''}`:'Type a short prefix — the number is added for you.'};
     P.oninput=nx;sec.querySelector('#lbN').oninput=nx;nx();sec.querySelector('#lbGo').onclick=create}

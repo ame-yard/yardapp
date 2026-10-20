@@ -8,7 +8,8 @@ function resolve(code){const c=String(code).trim();const t=TAGS[key(c)];if(t&&by
   for(const it of items){if(Array.isArray(it.serials)&&it.serials.includes(c))return {it,unit:c,tag:c}}return null}
 const canReg=()=>typeof isAdmin!=='undefined'&&isAdmin;
 /* ---------- result dialog ---------- */
-function onCode(code,fromCam){code=String(code||'').trim();if(!code)return;try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}
+const normCode=c=>{c=String(c||'').trim();const m=c.match(/^([A-Za-z0-9]{1,10}-\d{1,6})(?:\s*[|·]\s*|\s+).+$/);return m?m[1].toUpperCase():c};window.ameNormCode=normCode;
+function onCode(code,fromCam){code=normCode(code);if(!code)return;try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}
   if(AME.cur!=='yard'){AME.open('yard')}if(document.getElementById('tab-yard').hidden)showTab('yard');
   const r=resolve(code);if(!r)return unknown(code,fromCam);if(document.querySelector('#dlgRoot .dlg'))return preview(r,fromCam);if(quick(r))return;preview(r,fromCam)}
 /* scanner fast lane: each scan goes straight into the list; Take Out vs Return is picked per item */
