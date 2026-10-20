@@ -3,6 +3,7 @@
    Field Employees Contact workbook (imported in the app — no personal data lives in this file). */
 (function(){
 const sec=document.getElementById('tab-dsp');
+let dlay=(()=>{try{return localStorage.getItem('dsLay')||'cards'}catch(e){return 'cards'}})();
 let S=[],DAY={},STAFF=[],CFG={},LEAVE=[],view='day',date=today(),q='',fltSite='active';
 const LV=['FM','SFM','JM','A7','A6','A5','A4','A3','A2','A1'];
 const lvRank=l=>{const i=LV.indexOf(l);return i<0?99:i};
@@ -62,8 +63,8 @@ function render(){if(!sec)return;const ed=canEdit();
   sec.innerHTML=`<div class="mplhead"><h2>Dispatch</h2>${ed?`<span class="mtop"><button class="btn pri" id="dsSend">${sent?(ch?'Send update':'Sent ✓'):'Send dispatch'}</button></span>`:''}</div>${seg}
    <div class="dsdate"><button class="btn" data-dd="-1" aria-label="Previous day">‹</button><label><input type="date" id="dsD" value="${date}"><b>${dLabel(date)}</b><small class="muted">${code(date)} Dispatch</small></label><button class="btn" data-dd="1" aria-label="Next day">›</button>${date!==today()?'<button class="btn small" id="dsToday">Today</button>':''}</div>
    <div class="dsstat">${sent?`<span class="pill ${ch?'p-needs':'p-good'}">${ch?'Changed since sent':'Sent'}</span><small class="muted">${E(sent.by)} · ${E(fmtD(sent.at))} ${new Date(sent.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}${sent.rev>1?' · revision '+sent.rev:''}</small>`:'<span class="pill">Not sent yet</span>'}<small class="muted" style="margin-left:auto">${rows.length} job${rows.length===1?'':'s'} · ${total} people</small></div>
-   <input id="dsQ" class="search" placeholder="Find a person or job…" value="${E(q)}">
-   <div class="dswrap"><div class="dsmain"><div id="dsRows">${rows.length?'':`<div class="panel muted">No jobs on this day.${ed?' Add or reopen jobs in the <b>Jobs</b> tab.':''}</div>`}${rows.map(r=>{const s=r.s;const was=prevSent[s._id];const fm=r.crew.find(c=>['FM','SFM'].includes(lvOf(c.n)));
+   <div class="dsbar"><input id="dsQ" class="search" placeholder="Find a person or job…" value="${E(q)}"><div class="viewseg dslay">${[['cards','Board'],['compact','Compact'],['table','Table'],['people','By person']].map(([k,l])=>`<button data-lay="${k}" aria-pressed="${dlay===k}">${l}</button>`).join('')}</div><button type="button" class="btn" id="dsPdf" title="Save or print as PDF"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 14h6M9 18h4"/></svg>PDF</button></div>
+   <div class="dswrap"><div class="dsmain">${dlay!=='cards'?altView(rows,ed):''}<div id="dsRows" ${dlay!=='cards'?'hidden':''}>${rows.length?'':`<div class="panel muted">No jobs on this day.${ed?' Add or reopen jobs in the <b>Jobs</b> tab.':''}</div>`}${rows.map(r=>{const s=r.s;const was=prevSent[s._id];const fm=r.crew.find(c=>['FM','SFM'].includes(lvOf(c.n)));
      return `<div class="panel dscard" data-site="${s._id}" style="--pc:${s.pic?picCol(s.pic):'#6b6460'}"><div class="dsh"><b class="dsno">${E(jno(s.no))}</b><span class="dsnm">${E(s.name||'')}</span><span class="dscnt" title="Crew size">${r.crew.length}</span>${ed?`<button type="button" class="dsib" data-note="${s._id}" title="${r.note?'Edit note':'Add note'}" aria-label="Note"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></button><button type="button" class="dsib add" data-add="${s._id}" title="Add people" aria-label="Add people">+</button>`:''}</div>
       <div class="dsmeta">${s.pic?`<span class="dspic" style="--c:${picCol(s.pic)}">${E(s.pic)}</span>`:''}${s.sys?`<span>${E(s.sys)}</span>`:''}${s.isNew?'<span class="dsnew">NEW</span>':''}</div>
       ${r.note?`<p class="dsnote">${E(r.note)}</p>`:''}<div class="dscrew dslist">${r.crew.map(c=>{const l=lvOf(c.n);const nw=sent&&was&&!was.some(x=>x.split('|')[1]===c.n);return `<button type="button" class="dschip${['FM','SFM'].includes(l)?' fm':''}${dup.has(c.n)?' dup':''}${nw?' nw':''}${offOn(c.n,date)?' off':''}" data-cn="${E(c.n)}" ${ed?'':'disabled'}><i>${E(c.t||'')}</i><span class="cn">${dot(c.n)}${E(short(c.n))}</span>${l?`<em>${E(l)}</em>`:''}${offOn(c.n,date)?`<em class="offb">${E(offOn(c.n,date).type||'Off')}</em>`:''}</button>`}).join('')||`<div class="dsempty">${ed?'Drag people here or tap +':'No crew yet'}</div>`}</div>
@@ -77,6 +78,9 @@ function render(){if(!sec)return;const ed=canEdit();
   {const t=sec.querySelector('#dsToday');if(t)t.onclick=()=>{date=today();render()}}
   sec.querySelector('#dsD').onchange=e=>{if(e.target.value){date=e.target.value;render()}};
   const qi=sec.querySelector('#dsQ');qi.oninput=()=>{q=qi.value;filt()};filt();
+  sec.querySelectorAll('[data-lay]').forEach(b=>b.onclick=()=>{dlay=b.dataset.lay;try{localStorage.setItem('dsLay',dlay)}catch(e){}render()});
+  sec.querySelector('#dsPdf').onclick=()=>printPDF(date);
+  sec.querySelectorAll('[data-cjob]').forEach(b=>b.onclick=()=>{q=S.find(x=>x._id===b.dataset.cjob).no;dlay='cards';render()});
   if(window.ameSwipe&&!('ontouchstart' in window)){}
   {let x0=null;const R=sec.querySelector('#dsRows');R.addEventListener('touchstart',e=>{if(e.target.closest('.dschip'))return;x0=e.touches[0].clientX},{passive:true});R.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>90)go(dx<0?1:-1)})}
   if(!ed)return;
@@ -88,6 +92,17 @@ function render(){if(!sec)return;const ed=canEdit();
   sec.querySelectorAll('[data-free]').forEach(b=>b.onclick=()=>b._dr?(b._dr=0):toJob(b.dataset.free));
   dragSetup();
   sec.querySelectorAll('[data-note]').forEach(b=>b.onclick=async()=>{const s=S.find(x=>x._id===b.dataset.note);const r=rowsFor(date).find(x=>x.s._id===s._id);const v=prompt('Note for '+jno(s.no)+' on '+dLabel(date)+' (shows in the dispatch):',r.note||'');if(v==null)return;await saveRow(date,s,r.crew,{note:v.trim()})})}
+/* other ways to look at the day */
+function altView(rows,ed){
+  if(dlay==='compact')return `<div class="dscomp">${rows.map(r=>{const s=r.s;const fm=r.crew.filter(c=>['FM','SFM'].includes(lvOf(c.n)));return `<button type="button" class="dscrow" data-cjob="${s._id}" style="--pc:${s.pic?picCol(s.pic):'#6b6460'}"><b class="dsno">${E(jno(s.no))}</b><span class="dsnm">${E(s.name||'')}</span><span class="dscpic">${E(s.pic||'')}</span><span class="dscfm">${fm.map(c=>E((c.t?c.t+' ':'')+short(c.n))).join(', ')||'<span class="muted">No FM</span>'}</span><span class="dscnt">${r.crew.length}</span>${s.isNew?'<span class="dsnew">NEW</span>':''}</button>`}).join('')||'<div class="panel muted">No jobs on this day.</div>'}</div>`;
+  if(dlay==='table')return `<div class="dsprev dstable">${tableHTML(date)}</div>`;
+  if(dlay==='people'){const L=[];rows.forEach(r=>r.crew.forEach(c=>L.push({n:c.n,t:c.t,s:r.s})));L.sort((a,b)=>prRank(a.n)-prRank(b.n)||lvRank(lvOf(a.n))-lvRank(lvOf(b.n))||short(a.n).localeCompare(short(b.n)));
+    return `<div class="dspeople">${L.map(x=>`<div class="dspr">${dot(x.n)}<span class="cn">${E(short(x.n))}</span><em>${E(lvOf(x.n))}</em><span class="dspj" style="--pc:${x.s.pic?picCol(x.s.pic):'#6b6460'}"><b>${E(jno(x.s.no))}</b> ${E(x.s.name||'')}</span></div>`).join('')||'<div class="panel muted">Nobody dispatched.</div>'}</div>`}
+  return ''}
+/* PDF: print the dispatch table (choose "Save as PDF") */
+function printPDF(d){const html=`<!doctype html><html><head><meta charset="utf-8"><title>${code(d)} Dispatch</title><style>@page{size:letter landscape;margin:12mm}body{font:13px Calibri,Arial,sans-serif;color:#000;margin:0}h1{font-size:18px;margin:0 0 4px}p{margin:0 0 10px;color:#444}table{width:100%}td,th{font-size:12px!important}tr{page-break-inside:avoid}</style></head><body><h1>${code(d)} Dispatch · ${dLabel(d)}</h1><p>AME Builders, Inc. · ${rowsFor(d).length} jobs · ${rowsFor(d).reduce((a,r)=>a+r.crew.length,0)} people${DAY[d]&&DAY[d].sent?' · sent by '+E(DAY[d].sent.by):''}</p>${tableHTML(d).replace('<table style="border-collapse:collapse"','<table style="border-collapse:collapse;width:100%"')}</body></html>`;
+  let f=document.getElementById('dsPrintF');if(f)f.remove();f=document.createElement('iframe');f.id='dsPrintF';f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(f);
+  const w=f.contentWindow;w.document.open();w.document.write(html);w.document.close();setTimeout(()=>{try{w.focus();w.print()}catch(e){const o=window.open('','_blank');if(o){o.document.write(html);o.document.close();o.print()}}},250);toast('Choose “Save as PDF” in the print window')}
 /* drag a person chip onto another job (mouse, iPad, phone: hold then drag) */
 function dragSetup(){sec.querySelectorAll('[data-cn],[data-free]').forEach(ch=>{ch.style.touchAction='manipulation';
   ch.addEventListener('pointerdown',e=>{if(e.button)return;const n=ch.dataset.cn||ch.dataset.free;const from=ch.closest('[data-site]');const x0=e.clientX,y0=e.clientY;let on=false,gh=null,tgt=null,tm=null;
@@ -266,8 +281,8 @@ function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
   const exv=(t,ids)=>{for(const i of ids){const v=(t.ex||{})[i];if(v)return v.trim()}return ''};
   /* each task belongs to the nearest job heading above it ("404-Rancho …") */
   let job=null;const stack=[];for(const uid of order){const t=T[uid];while(stack.length&&stack[stack.length-1].lvl>=t.lvl)stack.pop();stack.push(t);const j=[...stack].reverse().find(a=>/^\d{3}/.test(a.name));t.job=j||null}
-  const R={};for(const r of x.getElementsByTagName('Resource')){const nm=g(r,'Name').trim();if(nm)R[g(r,'UID')]=nm}
-  const parseRes=raw=>{const m=raw.match(/^(\d{1,2})\s+(.*)$/);let t='',rest=raw;if(m){t=m[1].padStart(2,'0');rest=m[2]}const mm=rest.match(/^(.*?)_([A-Za-z0-9]+)$/);const nm=(mm?mm[1]:rest).trim(),lv=mm?mm[2].toUpperCase():'';const p=matchStaff(nm);return {n:p?p.name:nm,t,lv,known:!!p}};
+  const R={},RC={};for(const r of x.getElementsByTagName('Resource')){const nm=g(r,'Name').trim();if(nm){R[g(r,'UID')]=nm;RC[nm]=g(r,'Code').trim()}}
+  const parseRes=raw=>{const m=raw.match(/^(\d{1,2})\s+(.*)$/);let t='',rest=raw;if(m){t=m[1].padStart(2,'0');rest=m[2]}const mm=rest.match(/^(.*?)_([A-Za-z0-9]+)$/);const nm=(mm?mm[1]:rest).trim(),lv=mm?mm[2].toUpperCase():'';const cd=+RC[raw]||0;const p=(cd&&STAFF.find(x=>+x.emp===cd))||matchStaff(nm);return {n:p?p.name:nm,t,lv,known:!!p}};
   const jobs={},leave=[],unk=new Set();
   for(const a of x.getElementsByTagName('Assignment')){const t=T[g(a,'TaskUID')];const rn=R[g(a,'ResourceUID')];if(!t||!rn||!t.job)continue;const pr=parseRes(rn);if(!pr.known)unk.add(pr.n);
     const from=day(g(a,'Start'))||t.start,to=day(g(a,'Finish'))||t.end;if(!from)continue;
@@ -373,6 +388,11 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .dslist .dschip:hover{border-color:var(--line,#555)}.dslist .dschip .cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dslist .dschip.fm{background:rgba(244,123,32,.14);border-color:rgba(244,123,32,.5)}.dslist .dschip.fm .cn{font-weight:700}
 .dslist .dschip.dup{border-color:#ff6b6b}.dslist .dschip.nw{border:1px dashed #3fb950}.dsempty{padding:14px;text-align:center;font-size:13px;opacity:.6;border:1px dashed var(--line,#555);border-radius:8px}
 .dsgrp{margin-top:8px}.dsgrp>small{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-bottom:4px}.dsgrp .dschip{min-height:30px;padding:4px 9px;font-size:13px}.dschip i:empty{display:none}.dslist .dschip i:empty{display:block}
+.dsbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.dsbar .search{flex:1 1 260px;min-width:0;margin:0}.dslay button{white-space:nowrap}
+.dscomp{display:flex;flex-direction:column;gap:6px}.dscrow{display:grid;grid-template-columns:auto minmax(0,1.6fr) minmax(70px,.6fr) minmax(0,1.4fr) auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line,#555);border-left:5px solid var(--pc);border-radius:10px;background:rgba(255,255,255,.03);color:inherit;font:inherit;text-align:left;cursor:pointer}.dscrow .dsnm{font-weight:600}.dscpic{font-size:13px;opacity:.85}.dscfm{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dstable{background:#fff;color:#000;border-radius:10px;padding:10px;overflow:auto}
+.dspeople{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px 12px}.dspr{display:grid;grid-template-columns:14px minmax(0,1fr) 34px minmax(0,1.3fr);gap:6px;align-items:center;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.07)}.dspr em{font-style:normal;font-size:11px;font-weight:700;opacity:.7}.dspr .cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dspj{font-size:12px;border-left:3px solid var(--pc);padding-left:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dspr .prd{margin:0}
+@media(max-width:600px){.dscrow{grid-template-columns:auto minmax(0,1fr) auto;row-gap:2px}.dscpic,.dscfm{grid-column:2/3;font-size:12px}.dscrow .dsnew{display:none}.dslay{width:100%;overflow:auto}.dslay button{flex:1}}
 .dsgone{display:block;margin-top:6px;color:#ff8a80;font-size:12px}.dsnote{margin:8px 0 0;color:#8ab4ff;font-size:14px}.dsnb{margin-top:8px}
 .dsfree summary{cursor:pointer;padding:2px 0 8px}.dspick{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow:auto;margin-bottom:10px}
 .dsprow{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line,#555);border-radius:10px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsprow.on{border-color:#3fb950;background:rgba(63,185,80,.1)}.dsprow em{font-style:normal;font-size:11px;font-weight:700;opacity:.75}
