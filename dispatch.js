@@ -20,12 +20,12 @@ const person=n=>STAFF.find(p=>p.name===n)||STAFF.find(p=>p.short===n||(p.alias||
 /* match a schedule name ("Sergio Cerna") to a staff record ("Sergio Cerna Galvez") */
 function matchStaff(raw){const n=raw.trim().toLowerCase();if(!n)return null;let p=STAFF.find(x=>x.name.toLowerCase()===n||(x.short||'').toLowerCase()===n);if(p)return p;
   const w=n.replace(/[.,]/g,'').split(/\s+/);const c=STAFF.filter(x=>{const v=x.name.toLowerCase().replace(/[.,]/g,'').split(/\s+/);return w.every(t=>v.includes(t))});return c.length===1?c[0]:null}
-const lvOf=n=>(person(n)||{}).lv||'';
+let LVC={};const lvOf=n=>(person(n)||{}).lv||LVC[n]||'';
 const short=n=>{const p=person(n);return p&&p.short||n};
 window.ameStaff=()=>STAFF;window.ameStaffFind=person;
 
 (function w(){if(typeof db!=='undefined'&&db&&db.collection){
-  db.collection('dsites').onSnapshot(s=>{S=s.docs.map(d=>({...d.data(),_id:d.id}));if(AME.cur==='dsp')render()},()=>{});
+  db.collection('dsites').onSnapshot(s=>{S=s.docs.map(d=>({...d.data(),_id:d.id}));LVC={};S.forEach(x=>(x.asg||[]).forEach(a=>{if(a.lv)LVC[a.n]=a.lv}));if(AME.cur==='dsp')render()},()=>{});
   db.collection('dday').onSnapshot(s=>{DAY={};s.docs.forEach(d=>DAY[d.id]=d.data());if(AME.cur==='dsp')render()},()=>{});
   db.doc('config/staff').onSnapshot(s=>{STAFF=(s.data&&s.data()||{}).list||[];if(AME.cur==='dsp')render()},()=>{});
   db.collection('dleave').onSnapshot(s=>{LEAVE=s.docs.map(d=>({...d.data(),_id:d.id}));if(AME.cur==='dsp')render()},()=>{});
@@ -192,7 +192,7 @@ function renderGantt(seg,ed){const T=dn(today());const ppd=gz;
   const bar=(s0,e0,col,lab,cls)=>`<div class="gbar ${cls||''}" style="left:${x(s0)}px;width:${Math.max(ppd,(e0-s0+1)*ppd)}px;--c:${col}"></div>${lab?`<span class="glab" style="left:${x(e0+1)+6}px">${E(lab)}</span>`:''}`;
   const row=(left,right,attrs)=>`<div class="grow" ${attrs||''}><div class="gl">${left}</div><div class="gr" style="width:${W}px">${grid}${right}</div></div>`;
   const leaveRows=lv.length?row(`<b class="gno">000</b><span class="gnm">Time off</span>`,bar(Math.min(...lv.map(l=>dn(l.from))),Math.max(...lv.map(l=>dn(l.to||l.from))),'#e53935','',' gsum'),'')+lv.map(l=>row(`<span class="gnm gind">${E(short(l.n))}</span><span class="gsm">${E(l.type||'')}</span>`,bar(dn(l.from),dn(l.to||l.from),'#5fc3c9',short(l.n)+(lvOf(l.n)?'_'+lvOf(l.n):''),' ghatch'),ed?`data-glv="${l._id}"`:'')).join(''):'';
-  const jobRows=jobs.map(s=>{const cn=crewNames(s);return row(`<b class="gno">${E(jno(s.no))}</b><span class="gnm">${E(s.name||'')}</span><span class="gsys">${E(s.sys||'')}</span><span class="gpic" style="--c:${s.pic?picCol(s.pic):'transparent'}">${E(s.pic||'')}</span><span class="gnew${s.isNew?' y':''}">${s.isNew?'Y':'N'}</span><span class="gcs">${cn.length}</span><span class="gdt">${E(fmtD(s.start))} – ${E(fmtD(s.end||s.start))}</span>`,
+  const jobRows=jobs.map(s=>{const cn=crewNames(s);return row(`<b class="gno">${E(jno(s.no))}</b><span class="gnm">${E(s.name||'')}</span><span class="gsys">${E(s.sys||'')}</span><span class="gpic" style="--c:${s.pic?picCol(s.pic):'transparent'}">${E(s.pic||'')}</span><span class="gnew${s.isNew?' y':''}">${s.isNew?'Y':'N'}</span><span class="gcs">${cn.length||s.plan||0}</span><span class="gdt">${E(fmtD(s.start))} – ${E(fmtD(s.end||s.start))}</span>`,
      `<span class="gtitle" style="left:${x(dn(s.start))}px">${E(jno(s.no)+'-'+(s.name||''))}</span>`+bar(dn(s.start),dn(s.end||s.start),s.pic?picCol(s.pic):'#9aa0a6',cn.join(', ')),`data-gs="${s._id}"`)}).join('');
   sec.innerHTML=`<div class="mplhead"><h2>Dispatch</h2></div>${seg}
    <div class="gtools"><div class="viewseg">${[[3,'Months'],[7,'Weeks'],[16,'Days']].map(([k,l])=>`<button data-gz="${k}" aria-pressed="${gz===k}">${l}</button>`).join('')}</div><button class="btn small" id="gToday">Today</button><label class="chk" style="margin:0"><input type="checkbox" id="gOld" ${gShowOld?'checked':''}> Past jobs</label><span class="gleg">${Object.entries(PIC_COL).map(([n,c])=>`<span class="dspic" style="--c:${c}">${E(n)}</span>`).join('')}</span></div>
@@ -234,9 +234,9 @@ function siteDlg(s){const nw=!s;s=s||{status:'Active',start:date,isNew:true,crew
 function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
   const x=new DOMParser().parseFromString(rd.result,'application/xml');if(x.querySelector('parsererror'))throw new Error('Not an XML file — in MS Project use File → Save As → XML format');
   const g=(el,t)=>{const c=el.getElementsByTagName(t)[0];return c?c.textContent:''};const day=v=>String(v||'').slice(0,10);
-  const T={},order=[];for(const t of x.getElementsByTagName('Task')){const uid=g(t,'UID');const ex={};for(const e of t.getElementsByTagName('ExtendedAttribute'))ex[g(e,'FieldID')]=g(e,'Value');T[uid]={uid,name:g(t,'Name').trim(),lvl:+g(t,'OutlineLevel')||0,start:day(g(t,'Start')),end:day(g(t,'Finish')),sum:g(t,'Summary')==='1',ex};order.push(uid)}
+  const T={},order=[];for(const t of x.getElementsByTagName('Task')){const uid=g(t,'UID');const ex={};for(const e of t.getElementsByTagName('ExtendedAttribute'))ex[g(e,'FieldID')]=g(e,'Value');T[uid]={uid,name:g(t,'Name').trim(),lvl:+g(t,'OutlineLevel')||0,start:day(g(t,'Start')),end:day(g(t,'Finish')),sum:g(t,'Summary')==='1',act:g(t,'Active')!=='0',ex};order.push(uid)}
   const FA={};for(const e of x.querySelectorAll('Project>ExtendedAttributes>ExtendedAttribute'))FA[g(e,'FieldID')]=(g(e,'Alias')||'').toLowerCase();
-  const fid=re=>Object.keys(FA).filter(k=>re.test(FA[k]));const fSys=fid(/roof/),fNew=fid(/new project/),fPic=[...fid(/^pic$/),'188743750'];
+  const fid=re=>Object.keys(FA).filter(k=>re.test(FA[k]));const fSys=fid(/roof/),fNew=fid(/new project/),fPic=[...fid(/^pic$/),'188743750'],fCs=[...fid(/crew size/)];
   const exv=(t,ids)=>{for(const i of ids){const v=(t.ex||{})[i];if(v)return v.trim()}return ''};
   /* each task belongs to the nearest job heading above it ("404-Rancho …") */
   let job=null;const stack=[];for(const uid of order){const t=T[uid];while(stack.length&&stack[stack.length-1].lvl>=t.lvl)stack.pop();stack.push(t);const j=[...stack].reverse().find(a=>/^\d{3}/.test(a.name));t.job=j||null}
@@ -246,15 +246,16 @@ function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
   for(const a of x.getElementsByTagName('Assignment')){const t=T[g(a,'TaskUID')];const rn=R[g(a,'ResourceUID')];if(!t||!rn||!t.job)continue;const pr=parseRes(rn);if(!pr.known)unk.add(pr.n);
     const from=day(g(a,'Start'))||t.start,to=day(g(a,'Finish'))||t.end;if(!from)continue;
     if(/time.?off/i.test(t.job.name)){leave.push({n:pr.n,type:/sick/i.test(t.name)?'Sick':/vac/i.test(t.name)?'Vacation':'Time off',from,to,note:(t.name===t.job.name||matchStaff(t.name))?'':t.name});continue}
-    const k=t.job.uid;(jobs[k]=jobs[k]||{t:t.job,asg:[]}).asg.push({n:pr.n,...(pr.t?{t:pr.t}:{}),from,to})}
-  const J=Object.values(jobs).filter(j=>j.asg.length);
+    const k=t.job.uid;(jobs[k]=jobs[k]||{t:t.job,asg:[]}).asg.push({n:pr.n,...(pr.t?{t:pr.t}:{}),...(pr.lv?{lv:pr.lv}:{}),from,to})}
+  for(const t of Object.values(T))if(t.job===t&&t.lvl===1&&!jobs[t.uid]&&!/time.?off/i.test(t.name))jobs[t.uid]={t,asg:[]};
+  const J=Object.values(jobs);
   if(!J.length)throw new Error('No jobs found (tasks named like “404-Job name”)');
-  const msg=`Import ${J.length} jobs and ${J.reduce((a,j)=>a+j.asg.length,0)} crew assignments${leave.length?' + '+leave.length+' time-off entries':''}?`+(unk.size?`\n\n${unk.size} name(s) aren’t in the staff list yet (they still import): ${[...unk].slice(0,8).join(', ')}${unk.size>8?'…':''}`:'')+'\n\nJobs with the same # are updated; days you already changed by hand stay as they are.';
+  const msg=`Import ${J.length} jobs (${J.filter(j=>!j.t.act).length} inactive → On hold) and ${J.reduce((a,j)=>a+j.asg.length,0)} crew assignments${leave.length?' + '+leave.length+' time-off entries':''}?`+(unk.size?`\n\n${unk.size} name(s) aren’t in the staff list yet (they still import): ${[...unk].slice(0,8).join(', ')}${unk.size>8?'…':''}`:'')+'\n\nJobs with the same # are updated; days you already changed by hand stay as they are.';
   if(!confirm(msg))return;
   for(const j of J){const m=j.t.name.match(/^([\d ]+?)\s*-\s*(.*)$/);const no=m?m[1].trim():j.t.name,name=m?m[2].trim():'';const id='mp'+no.replace(/\s+/g,'_');const old=S.find(s=>s._id===id)||S.find(s=>jno(s.no)===no);
     const from=j.asg.length?j.asg.reduce((a,b)=>b.from<a?b.from:a,j.asg[0].from):j.t.start,to=j.asg.length?j.asg.reduce((a,b)=>b.to>a?b.to:a,j.asg[0].to):j.t.end;
-    const sys=exv(j.t,fSys),pic=exv(j.t,fPic),nwv=exv(j.t,fNew);
-    const o={no,name:old&&old.name||name,asg:j.asg,start:from,end:to,status:old&&old.status||'Active',src:'msp',updated:new Date().toISOString(),by:curUser,...(sys?{sys}:{}),...(pic?{pic}:{}),...(nwv?{isNew:/^y/i.test(nwv)}:{})};
+    const sys=exv(j.t,fSys),pic=exv(j.t,fPic),nwv=exv(j.t,fNew),cs=+exv(j.t,fCs)||0;
+    const o={no,name:old&&old.name||name,asg:j.asg,start:from,end:to,status:j.t.act?(old&&old.status&&old.status!=='On hold'?old.status:'Active'):'On hold',plan:cs,src:'msp',updated:new Date().toISOString(),by:curUser,...(sys?{sys}:{}),...(pic?{pic}:{}),...(nwv?{isNew:/^y/i.test(nwv)}:{})};
     if(old)await db.doc('dsites/'+old._id).update(o);else await db.doc('dsites/'+id).set({sys:'',pic:'',isNew:false,crew:[],...o})}
   for(const l of leave){const id='mpl_'+(l.n+'_'+l.from).replace(/[^\w]+/g,'_');await db.doc('dleave/'+id).set({...l,by:curUser,at:new Date().toISOString(),src:'msp'})}
   toast(J.length+' jobs imported');view='day';render()}catch(e){toast('Import failed: '+(e.message||e))}};rd.readAsText(file)}
