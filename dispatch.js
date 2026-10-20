@@ -185,13 +185,17 @@ function textCrew(site){if(!site)return;const r=rowsFor(date).find(x=>x.s._id===
   const have=rows.filter(x=>x.cell.length>=10),miss=rows.filter(x=>x.cell.length<10).map(x=>x.name);
   if(!have.length){toast('No phone numbers for this crew'+(miss.length?' ('+miss.length+' missing)':''));return}
   const body=`${jno(site.no)} ${site.name||''} — ${wkLabel(date)}. You're on this job. Reply if you can't make it.`;
+  const nums=have.map(x=>x.cell.length===10?'1'+x.cell:x.cell);
+  const iOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(/Mac/.test(navigator.platform||'')&&(navigator.maxTouchPoints||0)>1);
+  const smsHref=m=>{const enc=encodeURIComponent(m||'');return iOS?`sms:${nums.join(',')}&body=${enc}`:`sms:${nums.join(',')}?body=${enc}`};
   const d=dlg(`<h3>Text crew · ${E(jno(site.no))}</h3><p class="muted" style="margin-top:0">Opens your Messages app with ${have.length} ${have.length===1?'person':'people'} filled in. You still tap send.${miss.length?`<br><b style="color:#ff8a80">No number:</b> ${E(miss.join(', '))}`:''}</p>
    <label class="f wide">Message<textarea id="tcMsg" rows="4">${E(body)}</textarea></label>
-   <div class="bar"><button class="btn" id="tcC">Cancel</button><button class="go" id="tcS" style="width:auto">Open Messages</button></div>`);
+   <div class="bar"><button class="btn" id="tcC">Cancel</button><button type="button" class="btn" id="tcCopy">Copy text</button><a class="go" id="tcS" role="button" style="width:auto;display:inline-flex;align-items:center;justify-content:center;text-decoration:none" href="${smsHref(body)}">Open Messages</a></div>`);
   d.querySelector('#tcC').onclick=closeDlg;
-  d.querySelector('#tcS').onclick=()=>{const msg=d.querySelector('#tcMsg').value;const nums=have.map(x=>x.cell.length===10?'1'+x.cell:x.cell);const iOS=/iP(hone|ad|od)|Mac/.test(navigator.platform||navigator.userAgent);
-    const url=iOS?`sms:/open?addresses=${nums.join(',')}&body=${encodeURIComponent(msg)}`:`sms:${nums.join(',')}?body=${encodeURIComponent(msg)}`;
-    try{location.href=url}catch(e){}closeDlg()}}
+  const a=d.querySelector('#tcS'),ta=d.querySelector('#tcMsg');
+  ta.oninput=()=>{a.setAttribute('href',smsHref(ta.value))};
+  d.querySelector('#tcCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ta.value)}catch(e){}toast('Message copied — paste it into Messages if it doesn’t open')};
+  a.addEventListener('click',()=>{setTimeout(closeDlg,1500)})}
 /* ---------- send ---------- */
 const DEF_TO=[];
 function tableHTML(d,opt){opt=opt||{};const rows=rowsFor(d);const F='font-family:Calibri,Arial,sans-serif;';
