@@ -74,7 +74,7 @@ async function create(){const p=sec.querySelector('#lbP').value.trim().toUpperCa
   catch(e){toast('Could not create: '+(e.message||e));btn.disabled=false;btn.textContent='Create labels'}}
 document.head.insertAdjacentHTML('beforeend',`<style>.lbl-form .fields{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}.lbl-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0}.lbl-chk{display:flex;gap:8px;align-items:center;font-size:14px}
 .lbl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}.lbl-card{background:#fff;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;align-items:center}.lbl-img{width:100%;height:auto;display:block}.lbl-card .btn{color:#222;border-color:#ccc;background:#f3f3f3}</style>`);
-AME.register({id:'labels',name:'Labels',desc:'Make QR / barcode tags · auto numbers · download or print',allow:()=>typeof isAdmin!=='undefined'&&(isAdmin||(typeof can==='function'&&can('UNITS'))),tabs:['labels'],section:'tab-labels',
+AME.register({id:'labels',beta:true,name:'Labels',desc:'Make QR / barcode tags · auto numbers · download or print',allow:()=>typeof isAdmin!=='undefined'&&(isAdmin||(typeof can==='function'&&can('UNITS'))),tabs:['labels'],section:'tab-labels',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>',
   open:()=>{showTab('labels');render()},onShow:render});
 })();
