@@ -88,8 +88,8 @@ document.head.insertAdjacentHTML('beforeend','<style>.homehead{display:flex;alig
     const r=await reg();const o={body,tag,icon:'ame-192.png',badge:'ame-192.png',data:data||{}};if(r&&r.showNotification)await r.showNotification(title,o);else new Notification(title,o)}catch(e){}};
   window.ameNotifyAsk=async()=>{try{if(!('Notification' in window)){toast('This device can’t show app notifications. On iPhone, add AME to the Home Screen first.');return}const p=await Notification.requestPermission();toast(p==='granted'?'Notifications on for this device':'Notifications are blocked — turn them on in the phone settings');try{updBell()}catch(e){}}catch(e){}};
   let since=new Date().toISOString();
-  setInterval(()=>{try{if(typeof logs==='undefined'||!logs.length||!curUser)return;const nw=logs.filter(g=>g.ts>since&&g.by!==curUser&&g.action==='DELIV');if(!nw.length){since=logs[0].ts>since?logs[0].ts:since;return}
-    since=nw.reduce((a,g)=>g.ts>a?g.ts:a,since);nw.slice(0,3).forEach(g=>window.ameNotify(g.note&&/^Claimed/.test(g.note)?'Delivery claimed':'Delivery at the yard',(g.name||'Delivery')+(g.job?' · Job '+g.job:'')+(g.note&&/^Claimed/.test(g.note)?' · '+g.by:''),'deliv-'+(g.dv||g.ts),{mod:'deliv',dv:g.dv||''}))}catch(e){}},5000);
+  setInterval(()=>{try{if(typeof logs==='undefined'||!logs.length||!curUser)return;const nw=logs.filter(g=>g.ts>since&&g.by!==curUser&&(g.action==='DELIV'||g.action==='DISPATCH'));if(!nw.length){since=logs[0].ts>since?logs[0].ts:since;return}
+    since=nw.reduce((a,g)=>g.ts>a?g.ts:a,since);nw.slice(0,3).forEach(g=>g.action==='DISPATCH'?window.ameNotify(g.name||'Dispatch',(g.note||'')+' · '+(g.by||''),'dsp-'+(g.dsp||g.ts),{mod:'dsp'}):window.ameNotify(g.note&&/^Claimed/.test(g.note)?'Delivery claimed':'Delivery at the yard',(g.name||'Delivery')+(g.job?' · Job '+g.job:'')+(g.note&&/^Claimed/.test(g.note)?' · '+g.by:''),'deliv-'+(g.dv||g.ts),{mod:'deliv',dv:g.dv||''}))}catch(e){}},5000);
   if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='open'&&d.mod){try{if(d.dv&&window.ameDelivClaim){window.ameDelivClaim(d.dv)}else AME.open(d.mod)}catch(x){}}});
 })();
 

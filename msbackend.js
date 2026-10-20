@@ -42,6 +42,12 @@ async function token(){
   try{return (await msal.acquireTokenSilent({scopes:CFG.scopes,account})).accessToken}
   catch(e){await msal.acquireTokenRedirect({scopes:CFG.scopes,account});return new Promise(()=>{})}
 }
+
+/* Send an email from the signed-in user's mailbox (needs Mail.Send; asks once). */
+window.ameMail=async(to,subject,html)=>{const sc={scopes:['Mail.Send'],account};let t;
+  try{t=(await msal.acquireTokenSilent(sc)).accessToken}catch(e){t=(await msal.acquireTokenPopup(sc)).accessToken}
+  const r=await fetch(G+'/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({message:{subject,body:{contentType:'HTML',content:html},toRecipients:to.map(a=>({emailAddress:{address:a}}))},saveToSentItems:true})});
+  if(!r.ok)throw new Error('Mail '+r.status);return true};
 async function gfetch(url,opt={}){
   const t=await token();
   const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+t,...(opt.headers||{})}});
