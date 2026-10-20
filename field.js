@@ -38,7 +38,8 @@ function render(){if(!sec)return;if(view==='edit'&&W)return renderEdit();if(view
    <input id="frQ" class="search" placeholder="Search job # or name…"><div class="jlist" id="frJobs"></div>`;
   const draw=q=>{q=(q||'').toLowerCase();const l=act.filter(j=>!q||(j.no+' '+(j.name||'')).toLowerCase().includes(q));
     document.getElementById('frJobs').innerHTML=l.map(j=>{const n=R.filter(r=>r.job===j.no).length;return `<button class="jrow" data-fj="${esc(j.no)}"><span class="jno">${esc(j.no)}</span><span class="jnm">${esc(j.name||'')}</span><span class="jct">${n?n+' report'+(n>1?'s':''):''}</span><span></span></button>`}).join('')||'<div class="muted" style="padding:12px">No jobs yet. Tap + Add job.</div>';
-    sec.querySelectorAll('[data-fj]').forEach(b=>b.onclick=()=>{job=b.dataset.fj;view='job';render();scrollTo({top:0})})};
+    sec.querySelectorAll('[data-fj]').forEach(b=>b.onclick=()=>{job=b.dataset.fj;view='job';render();scrollTo({top:0})});
+    if(isAdmin)sec.querySelectorAll('[data-fj]').forEach(b=>window.ameSwipe&&ameSwipe(b,'Remove',async()=>{const no=b.dataset.fj,x=FS.find(y=>y.no===no);if(!x)return;const n=R.filter(r=>r.job===no).length;if(!confirm('Remove '+fl(no)+' from Field Reports?'+(n?'\n'+n+' report(s) stay saved and come back if the job is re-added.':'')))return;try{await db.doc('fsites/'+x._id).delete();toast(no+' removed')}catch(e){toast('Could not remove: '+(e.message||e))}}))};
   const ad=document.getElementById('frAdd');if(ad)ad.onclick=addSite;
   draw('');document.getElementById('frQ').oninput=e=>draw(e.target.value)}
 function renderJob(){const L=R.filter(r=>r.job===job).sort((a,b)=>String(b.date||b.at).localeCompare(String(a.date||a.at)));
