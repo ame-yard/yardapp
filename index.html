@@ -659,7 +659,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.33',APP_DATE='2026-10-15';
+const APP_VERSION='4.34',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1845,4 +1845,21 @@ if(/[?&]debug=1/.test(location.search)){const box=document.createElement('div');
   document.addEventListener('touchend',e=>{const t=e.changedTouches[0];if(Math.abs(t.clientX-sx)>10||Math.abs(t.clientY-sy)>10||Date.now()-st>600)return;const b=e.target.closest&&e.target.closest('button,a,[data-cell],[data-pd],.card,.tkmc');if(!b||b.disabled||b.closest('input,select,textarea,label'))return;pend=b;clearTimeout(tm);tm=setTimeout(()=>{if(pend===b&&b.isConnected){pend=null;b.click()}},350)},{capture:true,passive:true});
   document.addEventListener('click',()=>{pend=null},true)})();
 </script>
+<style id="eqPhone">@media(max-width:600px){
+#tab-eqp .mplhead .mtop{width:100%;justify-content:flex-start;margin:0}
+#tab-eqp .mplhead .mtop #eqUp,#tab-eqp .mplhead .mtop .btn:not(#eqAdd){font-size:14px;padding:8px 12px}
+.eqsel{flex-wrap:wrap;gap:8px 10px!important}
+.eqsel #eqBack{white-space:nowrap;padding:8px 12px;font-size:14px}
+.eqsel .eqcur{flex:1 1 auto;min-width:0;font-size:17px}.eqsel .eqcur b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eqsel #eqDelCat{flex:1 1 100%;margin:0!important;order:5;font-size:13px}
+.eqcard{padding:12px!important}
+table.cardrows.eqtbl>tbody>tr{position:relative;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px;padding:12px 40px 12px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+table.cardrows.eqtbl>tbody>tr>td{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:1px!important;font-size:15px!important;border:0!important;min-width:0}
+table.cardrows.eqtbl>tbody>tr>td.cr-t{grid-column:1/-1}
+table.cardrows.eqtbl>tbody>tr>td:last-child:has(.eqdel){position:absolute;top:8px;right:8px}
+table.cardrows.eqtbl>tbody>tr>td:last-child:has(.eqdel)::before{display:none}
+table.cardrows.eqtbl>tbody>tr[data-q]:not(.eqrow)>td:nth-child(6){grid-column:span 2}table.cardrows.eqtbl>tbody>tr[data-q]:not(.eqrow)>td:nth-child(7){grid-column:1/-1}
+table.cardrows.eqtbl>tbody>tr>td small{font-size:12px}
+#tab-eqp{padding-bottom:90px}
+}</style>
 </body></html>
