@@ -27,7 +27,7 @@ document.querySelector('main').insertAdjacentHTML('afterbegin','<section id="tab
 function setMod(id){if(AME.cur&&AME.cur!==id)AME.markSeen(AME.cur);AME.markSeen(id);AME.cur=id;const m=AME.mod(id);const sub=document.querySelector('#brand small');if(sub)sub.textContent=m?m.name:'Apps';
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=>b.classList.toggle('offmod',!m||!(m.tabs||[]).includes(b.dataset.tab)));
   document.body.dataset.mod=id;try{sessionStorage.setItem('ameMod',id)}catch(e){}}
-function renderHome(){const el=document.getElementById('tab-home');if(!el)return;const mods=AME.modules.filter(m=>AME.allowed(m));let soon=AME.modules.filter(m=>m.beta&&!AME.betaOk(m));
+function renderHome(){if(window.__ameDragging)return;const el=document.getElementById('tab-home');if(!el)return;const mods=AME.modules.filter(m=>AME.allowed(m));let soon=AME.modules.filter(m=>m.beta&&!AME.betaOk(m));
   el.innerHTML=`<div class="homehead"><div><h2>Hi ${esc(curUser||'')}</h2><p class="muted">What are you working on?</p></div>${(matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>1)&&mods.some(m=>m.id==='yard')&&window.ameScan?`<button type="button" class="homescan" id="homeScan" title="Scan a barcode / QR" aria-label="Scan a barcode or QR code"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg><span>Scan</span></button>`:''}</div>
   <div class="apps">${mods.length?'':'<p class="muted">No apps are turned on for you yet. Ask Kyle to give you access.</p>'}${mods.map(m=>`<button class="apptile" data-app="${m.id}"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small>${m.beta?'<em class="betatag">Early access</em>':''}${(n=>n?`<span class="appbadge">${n>99?'99+':n}</span>`:'')(AME.count(m))}</button>`).join('')}${soon.map(m=>`<div class="apptile soon" aria-disabled="true"><span class="appic">${m.icon||''}</span><b>${esc(m.name)}</b><small>${esc(m.desc||'')}</small><em class="betatag">Upcoming — in preparation</em></div>`).join('')}
 </div>`;
@@ -90,4 +90,31 @@ document.head.insertAdjacentHTML('beforeend','<style>.homehead{display:flex;alig
   setInterval(()=>{try{if(typeof logs==='undefined'||!logs.length||!curUser)return;const nw=logs.filter(g=>g.ts>since&&g.by!==curUser&&g.action==='DELIV');if(!nw.length){since=logs[0].ts>since?logs[0].ts:since;return}
     since=nw.reduce((a,g)=>g.ts>a?g.ts:a,since);nw.slice(0,3).forEach(g=>window.ameNotify(g.note&&/^Claimed/.test(g.note)?'Delivery claimed':'Delivery at the yard',(g.name||'Delivery')+(g.job?' · Job '+g.job:'')+(g.note&&/^Claimed/.test(g.note)?' · '+g.by:''),'deliv-'+(g.dv||g.ts),{mod:'deliv',dv:g.dv||''}))}catch(e){}},5000);
   if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='open'&&d.mod){try{if(d.dv&&window.ameDelivClaim){window.ameDelivClaim(d.dv)}else AME.open(d.mod)}catch(x){}}});
+})();
+
+/* ---- long-press to reorder (home app tiles, Admin panels); order is remembered per person on this device ---- */
+(function(){
+const okey=n=>'ameOrder:'+n+':'+(typeof curUser!=='undefined'?curUser:'');
+const get=n=>{try{return JSON.parse(localStorage.getItem(okey(n))||'[]')}catch(e){return[]}};
+const put=(n,a)=>{try{localStorage.setItem(okey(n),JSON.stringify(a))}catch(e){}};
+const SP=[{name:'home',root:'#tab-home',box:'.apps',item:'.apptile[data-app]',key:e=>e.dataset.app},{name:'admin',root:'#tab-admin',box:null,item:'.panel[id]',key:e=>e.id}];
+function boxOf(sp){const r=document.querySelector(sp.root);return r?(sp.box?r.querySelector(sp.box):r):null}
+function apply(sp){const box=boxOf(sp);if(!box||box.__ordAp)return;box.__ordAp=1;const ord=get(sp.name);if(!ord.length)return;const els=[...box.querySelectorAll(':scope>'+sp.item)];if(!els.length)return;const tail=els[els.length-1].nextSibling;
+  els.sort((a,b)=>{const ia=ord.indexOf(sp.key(a)),ib=ord.indexOf(sp.key(b));return (ia<0?999:ia)-(ib<0?999:ib)}).forEach(e=>box.insertBefore(e,tail))}
+let d=null,dsp=null,tm=null,sx=0,sy=0,sup=false;
+const findItem=t=>{for(const sp of SP){const el=t&&t.closest&&t.closest(sp.root+' '+(sp.box?sp.box+'>':'')+sp.item);if(el&&el.parentElement===boxOf(sp))return [el,sp]}return [null,null]};
+const start=(t,x,y)=>{if(t.closest('input,select,textarea,a'))return;let [el,sp]=findItem(t);if(!el)return;if(sp.name==='admin'&&t.closest('button')&&!t.closest('h3'))return;sx=x;sy=y;clearTimeout(tm);
+  const k=sp.key(el);tm=setTimeout(()=>{const b=boxOf(sp);el=(b?[...b.querySelectorAll(':scope>'+sp.item)]:[]).find(e=>sp.key(e)===k)||el;d=el;dsp=sp;window.__ameDragging=true;el.classList.add('srt-drag');el.parentElement.classList.add('srt-on');try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}},450)};
+const move=(x,y,ev)=>{if(!d){if(tm&&Math.abs(x-sx)+Math.abs(y-sy)>10){clearTimeout(tm);tm=null}return}if(ev.cancelable)ev.preventDefault();const box=d.parentElement;
+  const o=document.elementFromPoint(x,y)?.closest(dsp.item);if(o&&o!==d&&o.parentElement===box){const r=o.getBoundingClientRect();const wide=r.width>innerWidth*.6;const after=wide?y>r.top+r.height/2:(x>r.left+r.width/2||y>r.bottom-8);box.insertBefore(d,after?o.nextSibling:o)}
+  if(y<80)scrollBy(0,-12);else if(y>innerHeight-80)scrollBy(0,12)};
+const end=()=>{clearTimeout(tm);tm=null;if(!d)return;const box=d.parentElement;d.classList.remove('srt-drag');box&&box.classList.remove('srt-on');put(dsp.name,[...box.querySelectorAll(':scope>'+dsp.item)].map(dsp.key));d=null;window.__ameDragging=false;sup=true;setTimeout(()=>sup=false,400);try{toast('Order saved')}catch(e){}};
+document.addEventListener('touchstart',e=>start(e.target,e.touches[0].clientX,e.touches[0].clientY),{passive:true,capture:true});
+document.addEventListener('touchmove',e=>{if(d||tm)move(e.touches[0].clientX,e.touches[0].clientY,e)},{passive:false});document.addEventListener('touchend',end);document.addEventListener('touchcancel',end);
+document.addEventListener('mousedown',e=>{if(!e.button)start(e.target,e.clientX,e.clientY)},true);document.addEventListener('mousemove',e=>{if(d||tm)move(e.clientX,e.clientY,e)});document.addEventListener('mouseup',end);
+document.addEventListener('click',e=>{if(sup){e.stopPropagation();e.preventDefault();sup=false}},true);
+document.addEventListener('contextmenu',e=>{if(findItem(e.target)[0])e.preventDefault()});
+const hook=()=>{const a=document.getElementById('tab-admin');if(a)[...a.children].forEach((c,i)=>{if(c.classList.contains('panel')&&!c.id)c.id='admP'+(c.querySelector('h3')?.textContent||i).trim().replace(/\W+/g,'').slice(0,20)});SP.forEach(apply)};
+new MutationObserver(hook).observe(document.body,{childList:true,subtree:true});hook();
+document.head.insertAdjacentHTML('beforeend','<style>.srt-drag{opacity:.85;transform:scale(1.03);box-shadow:0 10px 28px rgba(0,0,0,.5)!important;outline:2px dashed var(--hi,#f26a1b);z-index:5;position:relative}.srt-on{user-select:none;-webkit-user-select:none}.srt-on *{cursor:grabbing!important}#tab-home .apptile,#tab-admin>.panel{-webkit-touch-callout:none}</style>');
 })();
