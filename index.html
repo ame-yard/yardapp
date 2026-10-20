@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cut"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.json?v=251"><link rel="apple-touch-icon" href="ame-touch-180.png"><link rel="icon" href="ame-192.png"><meta name="apple-mobile-web-app-title" content="AME"><meta name="theme-color" content="#2b2724"><style>button[data-ck]{min-width:34px;min-height:34px}#dlgRoot .scrim>.dlg{margin-top:auto;margin-bottom:auto}@media(min-width:600px){#lbody td:nth-child(1),#lbody td:nth-child(2),#lbody td:nth-child(4),#lbody td:nth-child(5),#lbody td:nth-child(6),#lbody td:nth-child(8){white-space:nowrap}#lbody td:nth-child(3) .btn.small{margin-left:6px;vertical-align:middle}}input[type=date],input[type=time],input[type=datetime-local]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;width:100%;box-sizing:border-box;display:block}input[type=date]::-webkit-date-and-time-value{text-align:left}
 html.boot section[id^=tab-]{visibility:hidden}
 .dvact{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.dvact .btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;margin:0}.dvact .wide{grid-column:1/-1}.dvact #dvDel{margin-top:8px;grid-column:1/-1}
-.dvphw{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:10px 0}.dvphw img{max-width:100%;max-height:360px;border-radius:10px;cursor:zoom-in}.dvphw.sm img{max-height:90px;max-width:120px;object-fit:cover}.dvphw.sm{flex-direction:row;align-items:center}
+.dvphw{position:relative;display:inline-block;margin:10px 0;max-width:100%}.dvphw img{display:block}.dvphb{position:absolute;top:6px;right:6px;border:0;background:none;padding:0;cursor:pointer;line-height:0}.dvphw.sm .dvphb svg{width:24px;height:24px}.dvphw img{max-width:100%;max-height:360px;border-radius:10px;cursor:zoom-in}.dvphw.sm img{max-height:90px;max-width:120px;object-fit:cover}
 .dvjob{flex:none;margin-left:auto!important;font-size:12px;font-weight:700;padding:4px 10px;border-radius:14px;border:1px solid var(--line,#666);white-space:nowrap}.dvjob.none{border-color:#f47b20;color:#f47b20}
 .mplcard.dvc{padding:10px 14px;gap:4px}.dvc .dvh{display:flex;align-items:center;gap:8px;min-width:0}.dvc .dvh b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.dvc .dvh>*:last-child{flex:none;margin:0}.dvc small{line-height:1.35}
 </style></head><body>
@@ -659,7 +659,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.30',APP_DATE='2026-10-15';
+const APP_VERSION='4.31',APP_DATE='2026-10-15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1774,7 +1774,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="field.js?v=427"></script>
 <script src="trucks.js?v=416"></script>
 <script src="safety.js?v=418"></script>
-<script src="deliv.js?v=430"></script>
+<script src="deliv.js?v=431"></script>
 <script src="admin.js?v=425"></script>
 <script src="lab.js?v=412"></script>
 <script src="labels.js?v=425"></script>
