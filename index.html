@@ -201,7 +201,7 @@ tr.grp td small{font-family:var(--mono);font-weight:400;font-size:12px;color:var
 .oosband{position:absolute;z-index:2;top:12px;left:-6px;background:var(--bad);color:#fff;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:4px 12px;border-radius:0 6px 6px 0}
 .decide.three{grid-template-columns:repeat(3,minmax(0,1fr))}.decide.three .dbtn{font-size:13px;padding:10px 2px}.decide.three svg{display:none}
 .dbtn.rep{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 60%,transparent)}
-.repdest{border-color:var(--warn)!important}
+.names.jobs button.repdest,.names.jobs button.othdest{border-style:dashed;opacity:.92}
 .decide{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
 .dbtn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 6px;border-radius:8px;font-weight:700;font-size:14px;border:2px solid var(--line)}
 .dbtn svg{width:18px;height:18px}
@@ -682,7 +682,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='4.79',APP_DATE='2026-10-20';
+const APP_VERSION='4.80',APP_DATE='2026-10-20';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1243,12 +1243,11 @@ function openCheckout(){
    ${needJob?`<div class="qlabel">Which job?</div>
    <div class="names jobs" id="jobPick">${jobs.filter(j=>j.status!=='Closed').sort((a,b)=>a.no.localeCompare(b.no,undefined,{numeric:true})).map(j=>`<button data-j="${esc(j.no)}" aria-pressed="${j.no===selJob}"><span class="mono">${esc(j.no)}</span><small>${esc(j.name)}</small><small>PM ${esc(j.pm||'—')} · FM ${esc(j.fm||'—')}${j.sfm?' · SFM '+esc(j.sfm):''}</small></button>`).join('')}
    ${act==='OUT'?`<button data-j="__repair" class="repdest" aria-pressed="${selJob==='__repair'}">${IC2.wrench} Repair shop<small>Taking it to be fixed</small></button>`:''}
-   <button data-j="__other" aria-pressed=""${!!selJob&&selJob!=='__repair'&&!jobs.some(j=>j.no===selJob)}">Other / not listed<small>type below</small></button></div>
+   <button data-j="__other" class="othdest" aria-pressed="${!!selJob&&selJob!=='__repair'&&!jobs.some(j=>j.no===selJob)}">Other / not listed<small>type the job #</small></button></div>
    <input id="job" class="search" style="margin-top:8px" inputmode="numeric" placeholder="Type job # (e.g. 512) — it will be added to Jobs" value="${esc(jobs.some(j=>j.no===selJob)?'':selJob)}" ${!selJob||jobs.some(j=>j.no===selJob)?'hidden':''}>`:''}
 
    ${act==='REPAIR'?`<div class="qlabel">What happened?</div><div class="names" id="repopts">${REPOPTS.map(([k,l])=>`<button data-rp="${k}" aria-pressed="${k===selRep}">${l}</button>`).join('')}</div>`:''}
    ${act==='DISPOSE'?`<div class="qlabel">Why?</div><div class="names" id="reasons">${REASONS.map(r=>`<button data-r="${r}" aria-pressed="${r===selReason}">${r}</button>`).join('')}</div>`:''}
-   <div class="qlabel">Note (optional)</div><input id="note" class="search" placeholder="PO #, damage, who has it…">
    <div class="bar" style="align-items:stretch"><button class="btn" id="ckBack">Keep shopping</button><button class="go" id="submit" style="width:auto;flex:1">Confirm ${ACTNAME[act]}</button></div>
   </div></div>`;
   drawCartLines();
@@ -1284,7 +1283,7 @@ function retJob(it,c){if(c.units&&c.units.length){const j=ust(it,c.units[0]).job
   const rj=typeof yGroup==='string'&&yGroup.startsWith('rj:')&&yGroup!=='rj:all'?yGroup.slice(3):'';if(rj&&m[rj]>0)return rj;const best=Object.entries(m).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];return best?best[0]:(it.lastJob||'')}
 async function submit(){
   if(!db){toast('Not connected — changes cannot be saved.');return}
-  $('#submit').disabled=true;const toRepair=act==='OUT'&&selJob==='__repair';const by=selWho, job=act==='OUT'&&!toRepair?normJob(selJob):'', note=$('#note').value.trim(), rc=selCond, now=new Date().toISOString();
+  $('#submit').disabled=true;const toRepair=act==='OUT'&&selJob==='__repair';const by=selWho, job=act==='OUT'&&!toRepair?normJob(selJob):'', note=($('#note')?$('#note').value.trim():''), rc=selCond, now=new Date().toISOString();
   let ok=0;const n=cart.length;
   if(job&&!jobs.some(j=>j.no===job)){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:'',pm:'',fm:'',address:'',status:'Active',notes:'Added from yard by '+by+' — fill in details',autoAdded:true,updatedAt:now})}catch(e){}}
   for(const c of cart){const it=byId(c.id);if(!it)continue;const cj=act==='RETURN'?retJob(it,c):job;
@@ -1866,7 +1865,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="shell.js?v=455"></script>
 <script src="polish.js?v=461"></script>
 <script src="mpl.js?v=396"></script>
-<script src="eqp.js?v=475"></script>
+<script src="eqp.js?v=480"></script>
 <script src="field.js?v=461"></script>
 <script src="trucks.js?v=469"></script>
 <script src="safety.js?v=418"></script>
@@ -1884,15 +1883,18 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
       try{if(r.cart&&r.cart.length){cart=r.cart;renderCartBar()}if(r.mod&&r.mod!=='home'&&AME.mod(r.mod))AME.open(r.mod);if(r.tab&&r.mod==='yard')showTab(r.tab);if(r.act){const b=document.querySelector('#actions .act[data-act="'+r.act+'"]');b&&b.click()}closeDlg&&closeDlg();toast('Updated to '+APP_VERSION+' — everything you were doing is still here')}catch(e){}};setTimeout(go,800)}}catch(e){}
   async function doUpdate(v,btn){btn.disabled=true;btn.textContent='Saving your work…';
     try{for(const h of (window.ameSaveHooks||[]))await h()}catch(e){}
-    try{if(typeof db!=='undefined'&&db&&db.idle)for(let i=0;i<20&&!(await db.idle());i++)await new Promise(r=>setTimeout(r,300))}catch(e){}
+    /* never reload until every pending write has flushed to the server (pending always returns to 0, even on error, so this can't hang) */
+    try{if(typeof db!=='undefined'&&db&&db.idle){let i=0;while(!(await db.idle())){i++;if(i===50)btn.textContent='Still saving — keep this open…';await new Promise(r=>setTimeout(r,300))}}}catch(e){}
+    /* if a save failed (bad connection), do NOT reload and risk losing it — let them retry */
+    if(document.getElementById('syncTxt')?.dataset.s==='error'){btn.disabled=false;btn.textContent='Couldn’t save — check connection & tap to retry';btn.onclick=e=>doUpdate(v,e.target);return}
     try{const tab=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab;const act=document.querySelector('#actions .act[aria-pressed="true"]')?.dataset.act;
       sessionStorage.setItem('ameUpdRestore',JSON.stringify({cart:(typeof cart!=='undefined'?cart:[]),mod:AME.cur,tab,act}))}catch(e){}
     btn.textContent='Updating…';location.replace(location.pathname+'?v='+v)}
   function busy(){const d=document.querySelector('#dlgRoot .dlg');return !!(d&&d.querySelector('input:not([type=hidden]),textarea,select'))}
   function show(v){if(document.getElementById('updDlg'))return;if(busy()){setTimeout(()=>show(v),15000);return}
     const w=document.createElement('div');w.id='updDlg';w.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(10,8,6,.55);display:flex;align-items:center;justify-content:center;padding:20px';
-    w.innerHTML=`<div style="background:var(--panel,#3b3633);border:1px solid var(--line,#5a514a);border-radius:16px;max-width:380px;width:100%;padding:22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)"><div style="line-height:1;color:var(--hi,#f26a1b)"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div><h3 style="margin:10px 0 6px">New version ready</h3><p class="muted" style="margin:0 0 16px">Version ${v} is available. Your cart and anything you're editing are saved first, then the app reloads right where you are.</p><button class="go" id="updGo" style="width:100%;min-height:52px">Update now</button><button class="btn" id="updLater" style="width:100%;margin-top:8px;min-height:44px">Later</button></div>`;
-    document.body.appendChild(w);w.querySelector('#updGo').onclick=e=>doUpdate(v,e.target);w.querySelector('#updLater').onclick=()=>{w.remove();later=Date.now();shown=false}}
+    w.innerHTML=`<div style="background:var(--panel,#3b3633);border:1px solid var(--line,#5a514a);border-radius:16px;max-width:380px;width:100%;padding:22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)"><div style="line-height:1;color:var(--hi,#f26a1b)"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div><h3 style="margin:10px 0 6px">New version ready</h3><p class="muted" style="margin:0 0 16px">Version ${v} is here. Your cart and anything you're editing are saved first, then the app reloads right where you are.</p><button class="go" id="updGo" style="width:100%;min-height:52px">Update now</button></div>`;
+    document.body.appendChild(w);w.querySelector('#updGo').onclick=e=>doUpdate(v,e.target)}
   async function chk(){if(shown||document.hidden||Date.now()-later<30*60e3)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;show(m[1])}}catch(e){}}
   setTimeout(chk,8000);setInterval(chk,120000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
 
