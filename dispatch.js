@@ -3,6 +3,7 @@
    Field Employees Contact workbook (imported in the app — no personal data lives in this file). */
 (function(){
 const sec=document.getElementById('tab-dsp');
+const isPhone=()=>innerWidth<700; /* phones only; iPad & desktop keep every view */
 let dlay=(()=>{try{const v=localStorage.getItem('dsLay')||'cards';return ['cards','compact','table'].includes(v)?v:'cards'}catch(e){return 'cards'}})();
 let dpm=(()=>{try{return localStorage.getItem('dsPM')||''}catch(e){return ''}})();
 const dordKey=()=>'ameDspOrd:'+(typeof curUser!=='undefined'?curUser:'');
@@ -79,11 +80,43 @@ async function copyDay(from){const cur=cd();if(cur==='wk'||from===cur)return;con
 const changed=d=>{const day=DAY[d==='wk'?monOf(date):monOf(d)];if(!day||!day.sent)return false;return JSON.stringify(snap(d))!==JSON.stringify(day.sent.snap||{})};
 const snap=d=>{const o={};rowsFor(d).forEach(r=>o[r.s._id]=r.crew.map(c=>(c.t||'')+'|'+c.n));return o};
 
+/* ---------- foreman personal view ---------- */
+function renderMine(seg,me){const myName=me.name;const mon0=monOf(date);
+  const fmtDays=idxs=>{idxs=[...idxs].sort((a,b)=>a-b);const o=[];let i=0;while(i<idxs.length){let j=i;while(j+1<idxs.length&&idxs[j+1]===idxs[j]+1)j++;o.push(i===j?DOWN[idxs[i]]:DOWN[idxs[i]]+'–'+DOWN[idxs[j]]);i=j+1}return o.join(', ')};
+  const jobs={},offd=[];
+  for(let i=0;i<7;i++){const dd=addD(mon0,i);if(offOn(myName,dd)){offd.push(i);continue}
+    for(const r of rowsFor(dd)){if(r.crew.some(c=>c.n===myName)){const e=jobs[r.s._id]=jobs[r.s._id]||{s:r.s,days:[],crew:new Map()};e.days.push(i);r.crew.forEach(c=>{if(c.n!==myName)e.crew.set(c.n,c)});break}}}
+  const list=Object.values(jobs).sort((a,b)=>Math.min(...a.days)-Math.min(...b.days));
+  const meChip=`<button type="button" class="dschip me" disabled><span class="cn">${dot(myName)}${E(short(myName))}</span><em>${E(lvOf(myName)||'you')}</em></button>`;
+  const cards=list.map(j=>{const s=j.s;const crew=[...j.crew.values()].sort((a,b)=>(['FM','SFM'].includes(lvOf(b.n))-['FM','SFM'].includes(lvOf(a.n)))||short(a.n).localeCompare(short(b.n)));
+    const when=j.days.length>=7?'All week':fmtDays(j.days);
+    return `<div class="panel dscard dsmine" style="--pc:${s.pic?picCol(s.pic):'#6b6460'}">
+      <div class="dsh"><b class="dsno">${E(jno(s.no))}</b><span class="dsnm" style="font-weight:600">${E(s.name||'')}</span><span class="pill dsdaypill" style="margin-left:auto">${E(when)}</span></div>
+      <div class="dsmmeta">${s.pic?`<span class="pill">PM ${E(s.pic)}</span>`:''}${s.start?`<small class="muted">${E(s.sys||'')}</small>`:''}</div>
+      <div class="dsmcrewlab"><small class="muted">Your crew · ${crew.length+1} total</small></div>
+      <div class="dscrew">${meChip}${crew.map(c=>`<button type="button" class="dschip${['FM','SFM'].includes(lvOf(c.n))?' fm':''}" disabled><i>${E(c.t||'')}</i><span class="cn">${dot(c.n)}${E(short(c.n))}</span>${lvOf(c.n)?`<em>${E(lvOf(c.n))}</em>`:''}</button>`).join('')}</div>
+    </div>`}).join('');
+  const offNote=offd.length?`<p class="muted" style="margin:8px 2px 0">You're marked off: ${fmtDays(offd)}</p>`:'';
+  sec.innerHTML=`<div class="mplhead"><h2>My Dispatch</h2></div>${seg}
+    <div class="dsdate"><button class="btn" data-dd="-7" aria-label="Previous week">‹</button><label style="pointer-events:none"><b>${wkLabel(date)}</b><small class="muted">${E(short(myName))} · Mon–Sun</small></label><button class="btn" data-dd="7" aria-label="Next week">›</button>${date!==monOf(today())?'<button class="btn small" id="dsToday">This week</button>':''}</div>
+    ${list.length?`<p class="muted" style="margin:2px 2px 10px">Where you're going this week and who's with you.</p>${cards}${offNote}`:`<div class="panel muted">You're not on the dispatch this week yet. Your PM sets the crews — check with them if you expected to be out.${offNote?' ':''}</div>${offNote}`}`;
+  sec.querySelectorAll('[data-dv]').forEach(b=>b.onclick=()=>{view=b.dataset.dv;render()});
+  sec.querySelectorAll('[data-dd]').forEach(b=>b.onclick=()=>{date=monOf(addD(date,+b.dataset.dd));render()});
+  const tb=sec.querySelector('#dsToday');if(tb)tb.onclick=()=>{date=monOf(today());render()}}
 /* ---------- render ---------- */
 function render(){if(!sec)return;if(dsDrag&&Date.now()-dsDrag<15000)return;/* never redraw mid-drag; 15s safety so a stuck drag can't freeze the board */
   dsDrag=0;document.querySelectorAll('.dsghost,.dscard.dsdrag').forEach(x=>x.remove());document.body.classList.remove('dsdragging');
-  const ed=canEdit();
-  const seg=`<div class="viewseg" style="margin-bottom:12px">${[['day','Dispatch'],['gantt','Schedule'],['sites','Jobs'],['staff','Staff']].map(([k,l])=>`<button data-dv="${k}" aria-pressed="${view===k}">${l}</button>`).join('')}</div>`;
+  const ed=canEdit();const ph=isPhone();
+  /* Field foremen (not office/admin) get a stripped-down personal view: just where they go
+     this week and who's on their crew — no board, no editing, no other tabs. Office/PM/admins
+     keep the full board. */
+  const foreman=(()=>{try{return !isAdmin&&typeof curRole==='function'&&typeof groupOf==='function'&&groupOf(curRole())==='Field'}catch(e){return false}})();
+  if(foreman){document.body.classList.remove('gfull');const me=person(curUser)||STAFF.find(p=>short(p.name)===curUser)||{name:curUser,lv:''};return renderMine('',me);}
+  /* The Schedule (Gantt) timeline needs a wide screen and drag — on a phone it isn't usable,
+     so hide that tab on phones (iPad/desktop keep it). Table & PDF stay: those can be pinch-zoomed. */
+  if(ph&&view==='gantt')view='day';
+  const VWS=[['day','Dispatch'],['gantt','Schedule'],['sites','Jobs'],['staff','Staff']].filter(([k])=>!(ph&&k==='gantt'));
+  const seg=`<div class="viewseg" style="margin-bottom:12px">${VWS.map(([k,l])=>`<button data-dv="${k}" aria-pressed="${view===k}">${l}</button>`).join('')}</div>`;
   if(view!=='gantt')document.body.classList.remove('gfull');if(view==='gantt')return renderGantt(seg,ed);if(view==='sites')return renderSites(seg,ed);if(view==='staff')return renderStaff(seg,ed);
   const rows=rowsFor(cd());const day=DAY[date]||{};const sent=day.sent;const ch=changed(cd());
   const used=new Set(rows.flatMap(r=>r.crew.map(c=>c.n)));const dup=new Set();{const seen=new Set();rows.forEach(r=>r.crew.forEach(c=>{if(seen.has(c.n))dup.add(c.n);seen.add(c.n)}))}
@@ -130,7 +163,7 @@ function render(){if(!sec)return;if(dsDrag&&Date.now()-dsDrag<15000)return;/* ne
   {const b=sec.querySelector('#dsLv');if(b)b.onclick=()=>leaveDlg()}
   sec.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>leaveDlg(LEAVE.find(l=>l._id===b.dataset.lv)));
   sec.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>pick(S.find(s=>s._id===b.dataset.add)));
-  sec.querySelectorAll('[data-sopen]').forEach(b=>b.onclick=()=>{const s=S.find(x=>x._id===b.dataset.sopen);if(s){if(ed)siteDlg(s);else{view='gantt';render()}}});
+  sec.querySelectorAll('[data-sopen]').forEach(b=>b.onclick=()=>{const s=S.find(x=>x._id===b.dataset.sopen);if(s){if(ed)siteDlg(s);else if(!isPhone()){view='gantt';render()}}});
   sec.querySelectorAll('[data-sms]').forEach(b=>b.onclick=()=>textCrew(S.find(s=>s._id===b.dataset.sms)));
   {const sel=sec.querySelector('#dsPMsel');if(sel)sel.onchange=()=>{dpm=sel.value;try{localStorage.setItem('dsPM',dpm)}catch(e){}render()}}
   if(ed&&dpm!=='__grp'){const box=sec.querySelector('#dsRows');sec.querySelectorAll('[data-grip]').forEach(g=>{g.style.touchAction='none';g.onpointerdown=e=>{e.preventDefault();e.stopPropagation();const card=g.closest('.dscard');if(!card)return;const gh=card.cloneNode(true);const rc=card.getBoundingClientRect();gh.className='dscard dsdrag';gh.style.cssText=`position:fixed;left:${rc.left}px;top:${rc.top}px;width:${rc.width}px;z-index:99999;pointer-events:none;opacity:.92;box-shadow:0 12px 30px rgba(0,0,0,.5)`;document.body.appendChild(gh);card.style.opacity='.3';const oy=e.clientY-rc.top;document.body.classList.add("dsdragging");dsDrag=Date.now();g.setPointerCapture(e.pointerId);
@@ -557,6 +590,7 @@ body.gfull #tab-dsp{position:fixed;inset:0;z-index:9990;background:#2b2724;paddi
 .dslist .dschip:hover{border-color:var(--line,#555)}.dslist .dschip .cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dslist .dschip.fm{background:rgba(244,123,32,.14);border-color:rgba(244,123,32,.5)}.dslist .dschip.fm .cn{font-weight:700}
 .dslist .dschip.dup{border-color:#ff6b6b}.dslist .dschip.nw{border:1px dashed #3fb950}.dschip.addp{border:1px dashed #f47b20;color:#f47b20;font-weight:600;justify-content:center;grid-template-columns:1fr;cursor:pointer}.dsempty[role=button]{cursor:pointer}.dsempty[role=button]:hover{color:#f47b20;border-color:#f47b20}.dsempty{padding:14px;text-align:center;font-size:13px;opacity:.6;border:1px dashed var(--line,#555);border-radius:8px}
 .dsgrp{margin-top:8px}.dsgrp>small{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-bottom:4px}.dsgrp .dschip{min-height:30px;padding:4px 9px;font-size:13px}.dschip i:empty{display:none}.dslist .dschip i:empty{display:block}
+.dsmine{border-left:4px solid var(--pc)}.dsmine .dsh{display:flex;align-items:center;gap:8px;margin-bottom:6px}.dsmmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px}.dsmcrewlab{margin:2px 0 6px}.dschip.me{outline:2px solid var(--hi,#c8742c);outline-offset:-1px;background:rgba(200,116,44,.14)}
 .dsbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.dsbar .search{flex:1 1 260px;min-width:0;margin:0}.dslay button{white-space:nowrap}
 .dsbar>.search,.dsbar>.viewseg,.dsbar>select,.dsbar>.dspmsel,.dsbar>.btn{height:44px;min-height:44px;box-sizing:border-box;margin:0;font-size:14px}
 .dsbar>.search{padding:0 14px}.dsbar>.viewseg{align-items:stretch}.dsbar>.viewseg button{display:flex;align-items:center;justify-content:center}
