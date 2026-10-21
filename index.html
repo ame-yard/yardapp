@@ -153,6 +153,7 @@ label.f input,label.f select,label.f textarea{padding:10px 12px;border:1px solid
 .bay.match rect{fill:var(--chip);stroke-width:2}
 .bay.incart rect{fill:var(--hi);stroke:var(--hi)}
 .bay.sel rect{fill:var(--steel);stroke:var(--steel)}
+#rail .cat{-webkit-touch-callout:none;user-select:none}#rail.catarr .cat{border-style:dashed}#rail .cat.catdrag{opacity:.7;outline:2px solid var(--hi,#f47b20);transform:scale(1.03)}
 .mapwrap{min-width:0;max-width:100%}.pwrap .ph .pbig,.pwrap .ph .pbrand{padding-right:46px}.card:has(.oosband) .ph .ptop>span{visibility:hidden}@media(max-width:600px){.pwrap .cam{width:32px;height:32px;bottom:6px;right:6px}.pwrap .cam svg{width:17px;height:17px}.pwrap .ph .pbig,.pwrap .ph .pbrand{padding-right:34px}.oosband{font-size:10px;padding:3px 8px;top:8px}}#mapwrap #elevBtn{position:static;display:block;margin:8px 0 0 auto}#mapwrap #elevBtn[hidden]{display:none}
 #mapwrap .maprow{display:flex;gap:6px;align-items:stretch}#mapwrap .maprow #ymap{flex:1;min-width:0}
 #mapwrap .ystrip{cursor:pointer}#mapwrap .ystrip rect{fill:var(--bg);stroke:var(--line);stroke-width:1.2}#mapwrap .ystrip:hover rect{stroke:var(--hi)}#mapwrap .ystriptx{font:700 12px system-ui;fill:var(--muted);pointer-events:none}
@@ -688,7 +689,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.24',APP_DATE='2026-10-20';
+const APP_VERSION='5.25',APP_DATE='2026-10-20';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -731,6 +732,22 @@ const IC={
  all:'<svg viewBox="0 0 48 48" fill="currentColor"><rect x="6" y="6" width="15" height="15" rx="2"/><rect x="27" y="6" width="15" height="15" rx="2"/><rect x="6" y="27" width="15" height="15" rx="2"/><rect x="27" y="27" width="15" height="15" rx="2"/></svg>'};
 const GROUPS=[['out','Out on Jobs','out'],['ladder','Ladders','ladder'],['power','Power Tools','power'],['hand','Hand Tools','hand'],['equip','Equipment','equip'],['safety','Safety','safety'],
  ['fast','Fasteners & Plates','fast'],['nail','Nails','nail'],['tube','Sealant Tubes','tube'],['pail','Pails & Liquids','pail'],['roll','Rolls & Membrane','roll'],['iso','ISO Board','iso'],['wood','Wood','wood'],['flash','Flashing','flash'],['other','Other','box'],['all','All Items','all']];
+const GROUPS0=JSON.parse(JSON.stringify(GROUPS));
+function applyCatOrder(o){const m=new Map(GROUPS0.map(g=>[g[0],g]));const out=[];(o||[]).forEach(k=>{if(m.has(k)){out.push(m.get(k));m.delete(k)}});GROUPS.splice(0,GROUPS.length,...out,...m.values())}
+/* press & hold (touch) or drag (mouse) a category to reorder it; saved for everyone */
+function catDrag(rail){if(!rail||rail._cd)return;rail._cd=1;let d=null,tm=0,sx=0,sy=0,mp=null;const isCat=t=>t&&GROUPS0.some(g=>g[0]===t.dataset.g);
+  const begin=t=>{d=t;t.classList.add('catdrag');rail.classList.add('catarr');try{navigator.vibrate&&navigator.vibrate(20)}catch(e){}};
+  rail.addEventListener('pointerdown',e=>{if(!isAdmin)return;const t=e.target.closest('.cat');if(!isCat(t)||e.button>0)return;sx=e.clientX;sy=e.clientY;if(e.pointerType==='mouse'){mp=t}else{clearTimeout(tm);tm=setTimeout(()=>begin(t),380)}});
+  const move=(x,y,ev)=>{if(!d&&mp&&Math.hypot(x-sx,y-sy)>8){begin(mp);mp=null}if(!d){if(Math.hypot(x-sx,y-sy)>10)clearTimeout(tm);return}ev.preventDefault();
+    const o=document.elementFromPoint(x,y)?.closest('#rail .cat');if(o&&o!==d&&isCat(o)){const r=o.getBoundingClientRect();const rr=rail.getBoundingClientRect();const vert=rr.height>rr.width;const after=vert?y>r.top+r.height/2:x>r.left+r.width/2;rail.insertBefore(d,after?o.nextSibling:o)}
+    const rb=rail.getBoundingClientRect();if(y<rb.top+40)rail.scrollTop-=10;else if(y>rb.bottom-40)rail.scrollTop+=10};
+  addEventListener('pointermove',e=>{if(d||mp)move(e.clientX,e.clientY,e)},{passive:false});
+  rail.addEventListener('touchmove',e=>{if(d)e.preventDefault()},{passive:false});
+  const end=async()=>{clearTimeout(tm);mp=null;if(!d)return;const t=d;d=null;t.classList.remove('catdrag');rail.classList.remove('catarr');t._dr=1;setTimeout(()=>t._dr=0,350);
+    const vis=[...rail.querySelectorAll('.cat')].map(b=>b.dataset.g).filter(k=>GROUPS0.some(g=>g[0]===k));const me=t.dataset.g,vi=vis.indexOf(me);const full=GROUPS.map(g=>g[0]).filter(k=>k!==me);const nx=vis[vi+1],pv=vis[vi-1];if(nx)full.splice(full.indexOf(nx),0,me);else if(pv)full.splice(full.indexOf(pv)+1,0,me);else full.unshift(me);
+    if(full.join()===GROUPS.map(g=>g[0]).join())return;applyCatOrder(full);try{await db.doc('config/catorder').set({order:full,by:curUser,at:new Date().toISOString()});toast('Category order saved')}catch(e){toast('Could not save: '+(e.message||e))}};
+  addEventListener('pointerup',end);addEventListener('pointercancel',end)}
+
 function grp(i){const c=(i.cat||'').toLowerCase(),t=i.type,u=(i.unit||'').toUpperCase();
   if(c==='ladder')return'ladder';if(t==='Safety')return'safety';if(t==='Equipment')return'equip';
   if(t==='Tools')return c==='power'?'power':'hand';
@@ -959,7 +976,8 @@ function renderYard(){if(!__locMig&&isAdmin)setTimeout(locMig,1200);
     $('#rail').innerHTML=`<button class="cat" data-g="rj:all" aria-pressed="${yGroup==='rj:all'}">${IC.out}All out<small>${outN} items</small></button>`+
       Object.keys(jobOut).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(j=>{const jj=jobs.find(x=>x.no===j);return `<button class="cat" data-g="rj:${esc(j)}" aria-pressed="${yGroup==='rj:'+j}"><span class="mono" style="font-size:18px;font-weight:700">${esc(j)}</span>${jj?.name?esc(jj.name):''}<small>${Object.keys(jobOut[j]).length} items</small></button>`}).join('');
   }else $('#rail').innerHTML=GROUPS.filter(g=>cnt[g[0]]||g[0]==='out').map(([k,l,ic])=>`<button class="cat" data-g="${k}" aria-pressed="${k===yGroup}">${IC[ic]}${l}<small>${cnt[k]||0}</small></button>`).join('');
-  $$('#rail .cat').forEach(b=>b.onclick=()=>{yGroup=b.dataset.g;if(yGroup.startsWith('rj:')&&yGroup!=='rj:all')selJob=yGroup.slice(3);$('#ysearch').value='';renderYard();window.scrollTo({top:0})});
+  if(isAdmin)catDrag($('#rail'));
+  $$('#rail .cat').forEach(b=>b.onclick=()=>{if(b._dr){b._dr=0;return}yGroup=b.dataset.g;if(yGroup.startsWith('rj:')&&yGroup!=='rj:all')selJob=yGroup.slice(3);$('#ysearch').value='';renderYard();window.scrollTo({top:0})});
   $$('.viewseg button[data-v]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===yView));
   const special=['RETURN','RECEIVE','REPAIR','DISPOSE'].includes(act);const isMap=yView==='map'&&!special;$('.viewseg:not(#sheetSeg)').hidden=special;$('#kiosk').classList.toggle('rcvmode',act==='RECEIVE'||act==='DISPOSE');$('#kiosk').classList.toggle('map',isMap);$('#rail').hidden=isMap;$('#mapwrap').hidden=!isMap;
   if($('#rackElev'))$('#rackElev').hidden=true;if($('#elevBtn'))$('#elevBtn').hidden=true;
@@ -1854,7 +1872,8 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
     $('#logoIn').onchange=async e=>{const f=e.target.files[0];if(!f)return;const as=await window.claude?.use?.('assets');if(!as){toast('Logo upload is not available.');return}
       try{const r=await as.upload(f);await db.doc('config/brand').set({logo:r.url,logoId:r.id});toast('Logo updated')}catch(err){toast('Could not upload: '+(err.message||err.code))}}}
   db.doc('config/crew').onSnapshot(s=>{crew=(s.data()?.members)||[];renderCrew();if(!curUser)showLogin();else setUser(curUser)},()=>{});
-  db.doc('config/yardmap').onSnapshot(s=>{const d=s.data()||{};if(mapEdit)return;applyMapCfg(d);renderMap()},()=>{});
+  db.doc('config/catorder').onSnapshot(s=>{const d=s.data()||{};applyCatOrder(d.order);try{render()}catch(e){}},()=>{});
+db.doc('config/yardmap').onSnapshot(s=>{const d=s.data()||{};if(mapEdit)return;applyMapCfg(d);renderMap()},()=>{});
 db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()},()=>{});
   db.doc('config/perms').onSnapshot(s=>{perms=s.data()||{roles:{},grants:[]};if(curUser)setUser(curUser);renderPerms()},()=>{});
   setInterval(()=>{if(curUser)setUser(curUser)},60e3);
