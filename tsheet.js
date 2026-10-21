@@ -49,7 +49,7 @@ async function manualOne(x){const sub=S.querySelector('#tsSub').value.trim(),msg
   const file=new File([await pagePdf(x)],fn(R,x),{type:'application/pdf'});
   if(isTouch()&&canShare(file)){try{await navigator.clipboard.writeText(x.email)}catch(e){}toast('Email address copied — choose Outlook or Mail, then paste it in “To”');try{await navigator.share({files:[file],title:sub,text:body});await logManual(x);render()}catch(e){}return}
   if(!R.zipped){const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove()}
-  setTimeout(()=>{openMail('mailto:'+encodeURIComponent(x.email)+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body+'\n\n(Attach: '+file.name+')'))},R.zipped?0:400);
+  setTimeout(()=>{openMail('mailto:'+encodeURIComponent(x.email)+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body))},R.zipped?0:400);
   toast((R.zipped?'Attach “':'PDF downloaded · drag “')+file.name+'” into the new email');await logManual(x);render()}
 function nextManual(){const x=R.rows.find(r=>!r.skip&&r.on&&r.email&&!r.sent);if(!x){toast('Everyone checked is done.');return}manualOne(x)}
 async function send(){if(R.manual)return nextManual();const L=R.rows.filter(r=>!r.skip&&r.on&&r.email);if(!L.length){toast('Nobody is checked.');return}
