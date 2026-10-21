@@ -44,9 +44,9 @@ async function token(){
 }
 
 /* Send an email from the signed-in user's mailbox (needs Mail.Send; asks once). */
-window.ameMail=async(to,subject,html)=>{const sc={scopes:['Mail.Send'],account};let t;
+window.ameMail=async(to,subject,html,att)=>{const sc={scopes:['Mail.Send'],account};let t;
   try{t=(await msal.acquireTokenSilent(sc)).accessToken}catch(e){t=(await msal.acquireTokenPopup(sc)).accessToken}
-  const r=await fetch(G+'/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({message:{subject,body:{contentType:'HTML',content:html},toRecipients:to.map(a=>({emailAddress:{address:a}}))},saveToSentItems:true})});
+  const r=await fetch(G+'/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({message:{subject,body:{contentType:'HTML',content:html},toRecipients:to.map(a=>({emailAddress:{address:a}})),...(att&&att.length?{attachments:att.map(x=>({'@odata.type':'#microsoft.graph.fileAttachment',name:x.name,contentType:x.type||'application/pdf',contentBytes:x.b64}))}:{})},saveToSentItems:true})});
   if(!r.ok)throw new Error('Mail '+r.status);return true};
 async function gfetch(url,opt={}){
   const t=await token();
