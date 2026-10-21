@@ -686,7 +686,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.08',APP_DATE='2026-10-20';
+const APP_VERSION='5.09',APP_DATE='2026-10-20';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -830,7 +830,7 @@ function renderMap(){
   h+=Object.entries(BAYS).filter(([l])=>bayInScope(l)).map(([l,[x,y,bw=46,bh=40,rot=0]])=>{const n=cnt[l]||0;const c=['bay',n?'':'empty',q&&hit[l]?'match':'',inc[l]?'incart':'',yLoc===l?'sel':''].join(' ');
     return `<g class="${c}" data-loc="${l}"><rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="5"/><text x="${x}" y="${y+5}"${rot?` transform="rotate(${rot*90} ${x} ${y+1})"`:''}>${l}</text></g>`}).join('');}
   if(!sectionView){const zcS=z=>Object.keys(BAYS).filter(l=>l.startsWith(z+'-')).reduce((a,l)=>a+(cnt[l]||0),0);
-    h+=EXTRA_ORD.filter(z=>ZONES.some(x=>x[0]===z)&&STRIPS[z]).map(z=>{const [sx,sy,sw,sh]=STRIPS[z];const cx=sx+sw/2,cy=sy+sh/2;const lab=z==='Y'?'⌄ OUTDOOR':z;return `<g class="ystrip" data-strip="${z}"><rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="6"/><text class="ystriptx" x="${cx}" y="${cy+4}" text-anchor="middle">${esc(lab)}</text></g>`}).join('')}
+    h+=EXTRA_ORD.filter(z=>ZONES.some(x=>x[0]===z)&&STRIPS[z]).map(z=>{const [sx,sy,sw,sh]=STRIPS[z];const cx=sx+sw/2,cy=sy+sh/2;const lab=z==='Y'?'OUTDOOR':z;return `<g class="ystrip" data-strip="${z}"><rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="6"/><text class="ystriptx" x="${cx}" y="${cy+4}" text-anchor="middle">${esc(lab)}</text></g>`}).join('')}
   if(mapEdit){const ze=ZONES.filter(z=>inScope(z[0]));
     h+=ze.map(([z,x,y,w,hh])=>`<rect class="zedit ${mapSel&&mapSel.id===z+'|'+x+'|'+y?'msel':''}" data-zk="${z}|${x}|${y}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="4"/><rect class="zhandle" data-zh="${z}|${x}|${y}" x="${x+w-14}" y="${y+hh-14}" width="14" height="14" rx="2"/>`).join('');
     h+=ze.map(([z,x,y,w,hh])=>`<text class="zlbl" x="${x+6}" y="${y+16}">${esc(z)}</text>`).join('');h+=Object.entries(BAYS).filter(([l])=>bayInScope(l)).map(([l,[x,y,bw=46,bh=40,rot=0]])=>`<g class="bay bedit ${mapSel&&mapSel.id===l?'msel':''}" data-loc="${l}"><rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="5"/><text x="${x}" y="${y+5}"${rot?` transform="rotate(${rot*90} ${x} ${y+1})"`:''}>${l}</text></g>${mapSel&&mapSel.id===l?`<rect class="bhandle" data-bh="${l}" x="${x+bw/2-9}" y="${y+bh/2-9}" width="12" height="12" rx="2"/>`:''}`).join('');
