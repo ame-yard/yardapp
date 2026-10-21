@@ -2,7 +2,7 @@
 (function(){
 const own=()=>typeof isOwner==='function'&&typeof curUser!=='undefined'&&isOwner(curUser);
 const mk=id=>{let s=document.getElementById('tab-'+id);if(!s){s=document.createElement('section');s.id='tab-'+id;s.hidden=true;(document.querySelector('main')||document.body).appendChild(s)}return s};
-const S=mk('tsm');let STAFF=[],LOG=[],R=null,busy=false;
+const S=mk('tsm');let STAFF=[],LOG=[],R=null,busy=false,histAll=false;
 (function w(){if(typeof db!=='undefined'&&db&&db.collection){db.doc('config/staff').onSnapshot(s=>{STAFF=(s.data&&s.data()||{}).list||[];if(AME.cur==='tsm'&&!busy)render()},()=>{});db.collection('tslog').onSnapshot(s=>{LOG=s.docs.map(d=>({...d.data(),_id:d.id}));if(AME.cur==='tsm'&&!busy)render()},()=>{})}else setTimeout(w,400)})();
 const ld=src=>new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
 async function libs(){if(!window.pdfjsLib){await ld('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
@@ -52,12 +52,26 @@ async function send(){if(R.manual)return nextManual();const L=R.rows.filter(r=>!
   try{await db.collection('tslog').add({week:R.week,file:R.file,at:new Date().toISOString(),by:curUser,sent:L.filter(x=>x.sent).map(x=>({emp:x.emp,name:x.name,email:x.email})),failed:bad})}catch(e){}
   busy=false;render();toast(ok+' sent'+(bad.length?' · '+bad.length+' failed':''))}
 
+function histDlg(id){const l0=LOG.find(x=>x._id===id);if(!l0)return;const l={...l0,sent:[...(l0.sent||[])],failed:[...(l0.failed||[])]};
+  const draw=()=>{document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>Sent history</h3>
+   <div class="fields"><label class="f wide">Week<input id="hW" value="${esc(l.week||'')}"></label><label class="f wide">Note<input id="hN" value="${esc(l.note||'')}" placeholder="e.g. resent after fix"></label></div>
+   <p class="muted" style="margin:10px 0 4px">${new Date(l.at).toLocaleString('en-US')} · ${esc(l.by||'')}${l.via?' · '+esc(l.via):''} · ${esc(l.file||'')}</p>
+   <div class="tsh">${l.sent.map((p,i)=>`<div><span>${esc(p.emp||'')}</span><b>${esc(p.name)}</b><small class="muted">${esc(p.email||'')}</small><button type="button" class="eqdel" data-hp="${i}" aria-label="Remove">×</button></div>`).join('')||'<p class="muted">Nobody in this entry.</p>'}</div>
+   ${l.failed.length?`<p style="margin:10px 0 4px"><b>Failed</b></p><div class="tsh">${l.failed.map((n,i)=>`<div><span></span><b>${esc(n)}</b><small></small><button type="button" class="eqdel" data-hf="${i}" aria-label="Remove">×</button></div>`).join('')}</div>`:''}
+   <div class="bar"><button class="btn dng" id="hD">Delete entry</button><span style="flex:1"></span><button class="btn" id="hC">Cancel</button><button class="go" id="hS" style="width:auto">Save</button></div></div></div>`;
+   const rd=()=>{l.week=document.getElementById('hW').value.trim();l.note=document.getElementById('hN').value.trim()};
+   document.querySelectorAll('[data-hp]').forEach(b=>b.onclick=()=>{rd();l.sent.splice(+b.dataset.hp,1);draw()});document.querySelectorAll('[data-hf]').forEach(b=>b.onclick=()=>{rd();l.failed.splice(+b.dataset.hf,1);draw()});
+   document.getElementById('hC').onclick=closeDlg;
+   document.getElementById('hD').onclick=async()=>{if(!confirm('Delete this history entry?'))return;await db.doc('tslog/'+id).delete();closeDlg();toast('Deleted')};
+   document.getElementById('hS').onclick=async()=>{rd();const{_id,...d}=l;try{await db.doc('tslog/'+id).set({...d,edited:new Date().toISOString(),editedBy:curUser});closeDlg();toast('Saved')}catch(e){toast('Could not save')}}};draw()}
 function render(){
-  const lg=[...LOG].sort((a,b)=>String(b.at).localeCompare(a.at)).slice(0,8);
+  const lg=[...LOG].sort((a,b)=>String(b.at).localeCompare(a.at)).slice(0,histAll?999:8);
   S.innerHTML=`<div class="mplhead"><h2>Timesheet Mailer</h2><label class="btn pri" for="tsFile">Upload Timesheet Summary PDF</label><input type="file" id="tsFile" accept="application/pdf" hidden></div>
   <p class="muted" style="margin-top:0">One employee per page → each person is emailed only their own page. Files are made in this browser and are not saved in the app.</p>
   <div id="tsBody">${R?body():'<div class="panel tsdrop" id="tsDrop">Drop the PDF here or use the Upload button.</div>'}</div>
-  ${lg.length?`<h3 style="margin-top:22px">Sent history</h3><div class="tblwrap"><table class="tstbl"><thead><tr><th>Week</th><th>Sent</th><th>By</th><th class="n">People</th><th>Failed</th></tr></thead><tbody>${lg.map(l=>`<tr><td>${esc(l.week||l.file||'')}</td><td>${new Date(l.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</td><td>${esc(l.by||'')}</td><td class="n">${(l.sent||[]).length}</td><td>${esc((l.failed||[]).join(', '))}</td></tr>`).join('')}</tbody></table></div>`:''}`;
+  ${lg.length?`<h3 style="margin-top:22px">Sent history</h3><div class="tblwrap"><table class="tstbl"><thead><tr><th>Week</th><th>Sent</th><th>By</th><th class="n">People</th><th>Failed</th><th></th></tr></thead><tbody>${lg.map(l=>`<tr class="tshr" data-hl="${esc(l._id)}"><td>${esc(l.week||l.file||'')}${l.via?' <small class="muted">· '+esc(l.via)+'</small>':''}</td><td>${new Date(l.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</td><td>${esc(l.by||'')}</td><td class="n">${(l.sent||[]).length}</td><td>${esc((l.failed||[]).join(', '))}</td><td><button type="button" class="eqdel" data-hx="${esc(l._id)}" aria-label="Delete" title="Delete">×</button></td></tr>`).join('')}</tbody></table></div>${LOG.length>8?`<button class="lnk" id="tsHAll" style="margin-top:8px">${histAll?'Show less':'Show all '+LOG.length}</button>`:''}`:''}`;
+  S.querySelectorAll('[data-hx]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const l=LOG.find(x=>x._id===b.dataset.hx);if(!confirm('Delete this history entry'+(l&&l.week?' ('+l.week+')':'')+'? Emails already sent are not affected.'))return;try{await db.doc('tslog/'+b.dataset.hx).delete();toast('Deleted')}catch(err){toast('Could not delete')}});
+  S.querySelectorAll('[data-hl]').forEach(r=>r.onclick=()=>histDlg(r.dataset.hl));{const ha=S.querySelector('#tsHAll');if(ha)ha.onclick=()=>{histAll=!histAll;render()}}
   const f=S.querySelector('#tsFile');f.onchange=()=>{if(f.files[0])load(f.files[0])};
   const dz=S.querySelector('#tsDrop');if(dz){dz.ondragover=e=>{e.preventDefault();dz.classList.add('on')};dz.ondragleave=()=>dz.classList.remove('on');dz.ondrop=e=>{e.preventDefault();const x=e.dataTransfer.files[0];if(x)load(x)}}
   if(!R)return;
@@ -84,6 +98,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .lnk{border:0;background:none;color:var(--hi,#f47b20);font:inherit;font-weight:700;cursor:pointer;padding:0;text-decoration:underline}.tsact{display:flex;gap:6px}
 @media(max-width:1180px){.tstbl{font-size:13px}.tstbl th,.tstbl td{padding:8px 6px}.tsem{width:200px;font-size:16px}.tstbl th:nth-child(8),.tstbl td:nth-child(8),.tstbl th:nth-child(9),.tstbl td:nth-child(9),.tstbl th:nth-child(10),.tstbl td:nth-child(10){display:none}.tstbl input[type=checkbox]{width:22px;height:22px}.tstbl .btn.small{min-height:38px}}
 @media(max-width:900px){.tstbl th:nth-child(5),.tstbl td:nth-child(5),.tstbl th:nth-child(3),.tstbl td:nth-child(3){display:none}.tsem{width:170px}}
+.tshr{cursor:pointer}.tshr:hover td{background:rgba(255,255,255,.03)}.tsh{display:grid;gap:2px;max-height:45vh;overflow:auto}.tsh>div{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(0,1.2fr) 30px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)}.tsh small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tsmail{margin-top:14px;display:grid;gap:8px}.tsmail textarea{width:100%;font:inherit;padding:8px;box-sizing:border-box}
 </style>`);
 const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/><path d="M15 17l2 2 3-3"/></svg>';
