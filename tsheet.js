@@ -2,7 +2,13 @@
 (function(){
 const own=()=>typeof isOwner==='function'&&typeof curUser!=='undefined'&&isOwner(curUser);
 const mk=id=>{let s=document.getElementById('tab-'+id);if(!s){s=document.createElement('section');s.id='tab-'+id;s.hidden=true;(document.querySelector('main')||document.body).appendChild(s)}return s};
-const S=mk('tsm');let STAFF=[],LOG=[],R=null,busy=false,histAll=false;
+const S=mk('tsm');let STAFF=[],LOG=[],R=null,busy=false,histAll=false,SIG='';
+const sigKey=()=>'usersig/'+String(typeof curUser!=='undefined'?curUser:'').replace(/[^\w]+/g,'_');
+(function ws(){if(typeof db!=='undefined'&&db&&db.doc&&typeof curUser!=='undefined'&&curUser){db.doc(sigKey()).onSnapshot(s=>{SIG=((s.data&&s.data())||{}).text||'';if(AME.cur==='tsm'&&!busy&&R)render()},()=>{})}else setTimeout(ws,800)})();
+function sigDlg(){document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>My email signature</h3><p class="muted" style="margin-top:0">Outlook doesn't add your signature to emails the app opens, so it's added here. Plain text only.</p>
+  <textarea id="sgT" rows="9" style="width:100%;box-sizing:border-box;padding:8px;font:inherit" placeholder="Name&#10;Title&#10;Phone&#10;Company">${esc(SIG)}</textarea>
+  <div class="bar"><button class="btn" id="sgC">Cancel</button><button class="go" id="sgS" style="width:auto">Save</button></div></div></div>`;
+  document.getElementById('sgC').onclick=closeDlg;document.getElementById('sgS').onclick=async()=>{const t=document.getElementById('sgT').value.replace(/\s+$/,'');try{await db.doc(sigKey()).set({text:t,user:curUser,at:new Date().toISOString()});SIG=t;closeDlg();render();toast('Signature saved')}catch(e){toast('Could not save')}}}
 (function w(){if(typeof db!=='undefined'&&db&&db.collection){db.doc('config/staff').onSnapshot(s=>{STAFF=(s.data&&s.data()||{}).list||[];if(AME.cur==='tsm'&&!busy)render()},()=>{});db.collection('tslog').onSnapshot(s=>{LOG=s.docs.map(d=>({...d.data(),_id:d.id}));if(AME.cur==='tsm'&&!busy)render()},()=>{})}else setTimeout(w,400)})();
 const ld=src=>new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
 async function libs(){if(!window.pdfjsLib){await ld('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
@@ -26,7 +32,7 @@ async function load(file){busy=true;S.querySelector('#tsBody').innerHTML='<p cla
       if(!h){rows.push({page:i,skip:true});continue}
       const emp=h[1],name=h[2].trim();const m=findStaff(emp,name);
       rows.push({page:i,emp,name,hours:tot?+tot[1]:null,reg:tot?+tot[2]:null,ot:tot?+tot[3]:null,dt:tot?+tot[4]:null,staff:m.p?m.p.name:'',how:m.how,email:mailOf(m.p),on:!!mailOf(m.p)})}
-    R={file:file.name,week,src,rows,pages:pdf.numPages};render()}catch(e){S.querySelector('#tsBody').innerHTML='<p class="muted">Could not read this PDF: '+esc(e.message||e)+'</p>'}busy=false}
+    R={file:file.name,week,src,rows,pages:pdf.numPages,manual:true};render()}catch(e){S.querySelector('#tsBody').innerHTML='<p class="muted">Could not read this PDF: '+esc(e.message||e)+'</p>'}busy=false}
 async function pagePdf(x){const out=await PDFLib.PDFDocument.create();const [pg]=await out.copyPages(R.src,[x.page-1]);out.addPage(pg);return await out.save()}
 async function preview(x){const u=URL.createObjectURL(new Blob([await pagePdf(x)],{type:'application/pdf'}));window.open(u,'_blank')}
 async function zipAll(){const z=new JSZip();for(const x of R.rows.filter(r=>!r.skip))z.file(fn(R,x),await pagePdf(x));const blob=await z.generateAsync({type:'blob'});const name=`Timesheets_${(R.week||'week').replace(/[^\w]+/g,'-')}.zip`;
@@ -38,7 +44,7 @@ const canShare=f=>{try{return !!(navigator.canShare&&navigator.canShare({files:[
 const isTouch=()=>matchMedia('(pointer:coarse)').matches;
 let logId='';
 async function logManual(x){x.sent=x.sent||new Date().toISOString();x.manual=true;try{const sent=R.rows.filter(r=>r.manual).map(r=>({emp:r.emp,name:r.name,email:r.email}));const d={week:R.week,file:R.file,at:new Date().toISOString(),by:curUser,sent,failed:[],via:'Outlook'};if(logId)await db.doc('tslog/'+logId).set(d);else{logId='m'+Date.now().toString(36);await db.doc('tslog/'+logId).set(d)}}catch(e){}}
-async function manualOne(x){const sub=S.querySelector('#tsSub').value.trim(),msg=S.querySelector('#tsMsg').value.trim();const body=`Hi ${x.name.split(' ')[0]},\n\n${msg}`;
+async function manualOne(x){const sub=S.querySelector('#tsSub').value.trim(),msg=S.querySelector('#tsMsg').value.trim();const body=`Hi ${x.name.split(' ')[0]},\n\n${msg}`+(SIG?`\n\n${SIG}`:'');
   const file=new File([await pagePdf(x)],fn(R,x),{type:'application/pdf'});
   if(isTouch()&&canShare(file)){try{await navigator.clipboard.writeText(x.email)}catch(e){}toast('Email address copied — choose Outlook or Mail, then paste it in “To”');try{await navigator.share({files:[file],title:sub,text:body});await logManual(x);render()}catch(e){}return}
   const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
@@ -75,7 +81,7 @@ function render(){
   const f=S.querySelector('#tsFile');f.onchange=()=>{if(f.files[0])load(f.files[0])};
   const dz=S.querySelector('#tsDrop');if(dz){dz.ondragover=e=>{e.preventDefault();dz.classList.add('on')};dz.ondragleave=()=>dz.classList.remove('on');dz.ondrop=e=>{e.preventDefault();const x=e.dataTransfer.files[0];if(x)load(x)}}
   if(!R)return;
-  S.querySelectorAll('[data-mo]').forEach(b=>b.onclick=()=>manualOne(R.rows[+b.dataset.mo]));const mt=S.querySelector('#tsMode');if(mt)mt.onclick=()=>{R.manual=!R.manual;render()};
+  S.querySelectorAll('[data-mo]').forEach(b=>b.onclick=()=>manualOne(R.rows[+b.dataset.mo]));const sg=S.querySelector('#tsSig');if(sg)sg.onclick=sigDlg;
   S.querySelectorAll('[data-pv]').forEach(b=>b.onclick=()=>preview(R.rows[+b.dataset.pv]));
   S.querySelectorAll('[data-on]').forEach(c=>c.onchange=()=>{R.rows[+c.dataset.on].on=c.checked;cnt()});
   S.querySelectorAll('[data-em]').forEach(i=>i.onchange=()=>{const v=i.value.trim();if(v&&!/^\S+@\S+\.\S+$/.test(v)){toast('That email does not look right.');return}saveEmail(R.rows[+i.dataset.em],v).then(()=>render())});
@@ -86,8 +92,8 @@ function body(){const P=R.rows.filter(r=>!r.skip),skip=R.rows.filter(r=>r.skip),
   return `<div class="panel tsinfo"><div><b>${esc(R.week||'Week not found')}</b><br><small class="muted">${esc(R.file)} · ${R.pages} pages · ${P.length} employees${skip.length?' · skipped page '+skip.map(s=>s.page).join(', ')+' (no employee)':''}</small></div>${miss?`<span class="tsmiss">${miss} without email</span>`:'<span class="tsok">Everyone has an email</span>'}<button class="btn" id="tsNew">Start over</button></div>
   <div class="tblwrap"><table class="tstbl"><thead><tr><th><input type="checkbox" id="tsAll" checked aria-label="Select all"></th><th class="n">Page</th><th>Emp #</th><th>Name on timesheet</th><th>Staff match</th><th>Email</th><th class="n">Total</th><th class="n">Reg</th><th class="n">OT</th><th class="n">DT</th><th>Status</th><th></th></tr></thead><tbody>
   ${R.rows.map((x,i)=>x.skip?'':`<tr class="${x.email?'':'tsno'}"><td><input type="checkbox" data-on="${i}" ${x.on?'checked':''} ${x.email?'':'disabled'} aria-label="Send to ${esc(x.name)}"></td><td class="n">${x.page}</td><td>${esc(x.emp)}</td><td><b>${esc(x.name)}</b></td><td>${x.staff?esc(x.staff)+` <small class="muted">· ${esc(x.how)}</small>`:'<span class="tsmiss">Not in Staff</span>'}</td><td><input class="tsem" data-em="${i}" type="email" value="${esc(x.email)}" placeholder="Add email"></td><td class="n">${x.hours??'—'}</td><td class="n">${x.reg??''}</td><td class="n">${x.ot||''}</td><td class="n">${x.dt||''}</td><td>${x.sent?`<span class="tsok">${x.manual?'Opened':'Sent'}</span>`:x.err?`<span class="tsmiss" title="${esc(x.err)}">Failed</span>`:''}</td><td class="tsact"><button class="btn small" data-pv="${i}">View</button>${R.manual&&x.email?`<button class="btn small" data-mo="${i}">Outlook</button>`:''}</td></tr>`).join('')}</tbody></table></div>
-  <div class="panel tsmail"><label class="f">Subject<input id="tsSub" value="Your Timesheet – ${esc(R.week||'')}"></label><label class="f">Message<textarea id="tsMsg" rows="3">Attached is your timesheet for ${esc(R.week||'this week')}. Please review it and let Accounting know right away if anything is wrong.\n\nThank you,\nAME Builders Accounting</textarea></label>
-  <div class="bar" style="justify-content:flex-end"><button class="btn" id="tsZip">Download all as ZIP</button><button class="go" id="tsSend" style="width:auto">Email</button></div><small class="muted">${R.manual?(isTouch()?'Outlook mode: one person at a time — the share sheet opens with their PDF; the email address is copied so you can paste it.':'Outlook mode: one person at a time — their PDF downloads and a new email opens with the address and message filled in. Drag the PDF into it and press Send.'):'Sent from your own Microsoft 365 mailbox; a copy stays in your Sent Items.'} <button class="lnk" id="tsMode">${R.manual?'Try sending from the app':'Use Outlook one by one instead'}</button></small></div>`}
+  <div class="panel tsmail"><label class="f">Subject<input id="tsSub" value="Your Timesheet – ${esc(R.week||'')}"></label><label class="f">Message<textarea id="tsMsg" rows="3">Attached is your timesheet for ${esc(R.week||'this week')}. Please review it and let Accounting know right away if anything is wrong.\n\nThank you,</textarea></label>
+  <div class="bar" style="justify-content:flex-end"><button class="btn" id="tsZip">Download all as ZIP</button><button class="go" id="tsSend" style="width:auto">Email</button></div><small class="muted">${R.manual?(isTouch()?'Outlook mode: one person at a time — the share sheet opens with their PDF; the email address is copied so you can paste it.':'Outlook mode: one person at a time — their PDF downloads and a new email opens with the address and message filled in. Drag the PDF into it and press Send.'):'Sent from your own Microsoft 365 mailbox; a copy stays in your Sent Items.'} <button class="lnk" id="tsSig">${SIG?'Edit my signature':'Add my signature'}</button></small></div>`}
 
 document.head.insertAdjacentHTML('beforeend',`<style>
 #tab-tsm{max-width:1300px;margin:0 auto}.tsdrop{padding:46px;text-align:center;border:2px dashed var(--line);color:var(--muted)}.tsdrop.on{border-color:var(--hi,#f47b20)}
