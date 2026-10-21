@@ -249,6 +249,7 @@ async function moveMany(names,site){const set=new Set(names);
   const tr=rows.find(r=>r.s._id===site._id);const base=(tr?tr.crew:[]).filter(c=>!set.has(c.n));ch[site._id]=sortCrew([...base,...names.map(n=>({n,t:tags[n]||''}))]);await saveRows(cd(),ch);return true}
 async function clearSite(site){const d=cd();const r=rowsFor(d).find(x=>x.s._id===site._id);const n=r?r.crew.length:0;if(!n)return;
   if(!confirm('Take all '+n+' people off '+jno(site.no)+' '+(d==='wk'?'for the whole week':'on '+dLabel(d))+'?'))return;
+  if(!confirm('Are you sure? This removes '+n+' people ('+r.crew.map(c=>short(c.n)).join(', ')+') from '+jno(site.no)+' '+(d==='wk'?'for the whole week, including any single-day plans':'on '+dLabel(d))+'.\nThere is no undo — you would have to add them back by hand.'))return;
   if(d==='wk'){const mon=monOf(date);const day=DAY[mon]||{};const rows={...(day.rows||{})};rows[site._id]={...(rows[site._id]||{}),crew:[]};const days={...(day.days||{})};for(const k in days){if(days[k]&&days[k].rows&&days[k].rows[site._id]){const dd={...days[k]};const rr={...dd.rows};delete rr[site._id];dd.rows=rr;days[k]=dd}}
     await db.doc('dday/'+mon).set({...day,rows,days,rev:(day.rev||0),editAt:new Date().toISOString(),editBy:curUser});if(sunOf(mon)>=today())await db.doc('dsites/'+site._id).update({crew:[],updated:new Date().toISOString()}).catch(()=>{})}
   else await saveRows(d,{[site._id]:[]});toast(jno(site.no)+' cleared')}
