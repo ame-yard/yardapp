@@ -193,44 +193,143 @@ function bidXls(){if(!window.XLSX){toast('Excel library not loaded yet');return}
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(R),'Bid');XLSX.writeFile(wb,`Bid_${cur.name.replace(/[^\w]+/g,'_')}.xlsx`)}
 
 /* ================= MARKUP ================= */
-const M=mk('mkp');const MK={v:null,tool:'pen',color:'#e8594a',w:3,marks:{},cur:null,file:null,name:'',hist:[]};
-function mkRender(){M.innerHTML=`<div class="tkbar"><b class="tkname">Markup</b><span class="muted" style="font-size:12px">Draft · only you</span><label class="btn small pri">Open PDF<input type="file" id="mkF" accept="application/pdf" hidden></label><span class="tkpg"><button class="btn small" id="mkPrev">‹</button><span id="mkPg"></span><button class="btn small" id="mkNext">›</button></span><span class="tkz"><button class="btn small" id="mkZo">−</button><button class="btn small" id="mkFit">Fit</button><button class="btn small" id="mkZi">+</button></span>
-   <span class="mktools">${[['pen','Pen'],['hl','Highlight'],['line','Line'],['arrow','Arrow'],['rect','Box'],['cloud','Cloud'],['text','Text'],['del','Erase']].map(([k,l])=>`<button type="button" data-mt="${k}" aria-pressed="${MK.tool===k}">${l}</button>`).join('')}</span>
-   <span class="mkcol">${['#e8594a','#f47b20','#2f81f7','#3fb950','#111111'].map(c=>`<button type="button" data-mc="${c}" style="background:${c}" aria-pressed="${MK.color===c}"></button>`).join('')}</span><button class="btn small" id="mkUndo">Undo</button><span style="flex:1"></span><button class="btn small pri" id="mkSave">Save PDF</button></div>
-   <div class="tkview mkview" id="mkView"><div class="muted" style="padding:30px;text-align:center">Open a PDF to mark it up. Drag with the right mouse button (or hold Space) to move around; Ctrl + scroll to zoom.</div></div>`;
-  M.querySelector('#mkF').onchange=async e=>{const f=e.target.files[0];if(!f)return;MK.file=f;MK.name=f.name;MK.marks={};MK.hist=[];MK.v=Viewer(M.querySelector('#mkView'),{onRender:mkDraw});bindMk();await MK.v.load(f);mkInfo()};
-  M.querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>{MK.tool=b.dataset.mt;M.querySelectorAll('[data-mt]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
-  M.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{MK.color=b.dataset.mc;M.querySelectorAll('[data-mc]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
-  M.querySelector('#mkPrev').onclick=()=>MK.v&&MK.v.go(MK.v.page-1).then(mkInfo);M.querySelector('#mkNext').onclick=()=>MK.v&&MK.v.go(MK.v.page+1).then(mkInfo);M.querySelector('#mkZo').onclick=()=>MK.v&&MK.v.zoom(1/1.25);M.querySelector('#mkZi').onclick=()=>MK.v&&MK.v.zoom(1.25);M.querySelector('#mkFit').onclick=()=>MK.v&&MK.v.fit();
-  M.querySelector('#mkUndo').onclick=()=>{const l=MK.hist.pop();if(l){const a=MK.marks[l.pg]||[];const i=a.indexOf(l.m);if(i>=0)a.splice(i,1);mkDraw()}};M.querySelector('#mkSave').onclick=mkSave;
-  if(MK.file){MK.v=Viewer(M.querySelector('#mkView'),{onRender:mkDraw});bindMk();MK.v.load(MK.file).then(mkInfo)}}
-function mkInfo(){if(MK.v&&MK.v.pdf)M.querySelector('#mkPg').textContent=` ${MK.v.page} / ${MK.v.pdf.numPages} `}
-function bindMk(){const s=MK.v.svg;let d=null;
-  s.addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=MK.v.pt(e);const pg=MK.v.page;
-    if(MK.tool==='del'){const t=e.target.closest('[data-k]');if(t){const a=MK.marks[pg]||[];a.splice(+t.dataset.k,1);mkDraw()}return}
-    if(MK.tool==='text'){const t=prompt('Text:');if(t){const m={t:'text',c:MK.color,p:[p],s:t};(MK.marks[pg]=MK.marks[pg]||[]).push(m);MK.hist.push({pg,m});mkDraw()}return}
-    d={t:MK.tool,c:MK.color,p:[p]};s.setPointerCapture(e.pointerId)});
-  s.addEventListener('pointermove',e=>{if(!d)return;const p=MK.v.pt(e);if(d.t==='pen'||d.t==='hl')d.p.push(p);else d.p[1]=p;mkDraw(d)});
-  s.addEventListener('pointerup',()=>{if(!d)return;if(d.p.length>1){const pg=MK.v.page;(MK.marks[pg]=MK.marks[pg]||[]).push(d);MK.hist.push({pg,m:d})}d=null;mkDraw()})}
+const M=mk('mkp');const MK={v:null,tool:'sel',color:'#e8594a',w:2,op:1,marks:{},sc:{},file:null,name:'',hist:[],panel:'thumbs',sel:null,chest:[],stamp:'APPROVED'};
+try{MK.chest=JSON.parse(localStorage.getItem('revuChest')||'[]')}catch(e){}
+const RV_I=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const RV_TOOLS=[
+ ['sel','Select',RV_I('<path d="M5 3l14 8-6 2-3 6z"/>'),'nav'],
+ ['text','Text box',RV_I('<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M8 9h8M12 9v7"/>'),'mk'],
+ ['callout','Callout',RV_I('<rect x="9" y="3" width="12" height="9" rx="1"/><path d="M9 10L3 20"/>'),'mk'],
+ ['pen','Pen',RV_I('<path d="M4 20c4-1 5-6 8-9s6-5 8-7"/>'),'mk'],
+ ['hl','Highlight',RV_I('<path d="M4 20h7M14 4l6 6-9 9H5v-6z"/>'),'mk'],
+ ['line','Line',RV_I('<path d="M4 20L20 4"/>'),'mk'],
+ ['arrow','Arrow',RV_I('<path d="M4 20L20 4M11 4h9v9"/>'),'mk'],
+ ['poly','Polyline',RV_I('<path d="M3 18l6-9 5 6 7-11"/>'),'mk'],
+ ['rect','Rectangle',RV_I('<rect x="4" y="6" width="16" height="12"/>'),'mk'],
+ ['ell','Ellipse',RV_I('<ellipse cx="12" cy="12" rx="9" ry="6"/>'),'mk'],
+ ['pgon','Polygon',RV_I('<path d="M5 6l11-2 4 9-7 7-9-4z"/>'),'mk'],
+ ['cloud','Cloud',RV_I('<path d="M6 17a3 3 0 010-6 4 4 0 017-3 3 3 0 015 2 3 3 0 01-1 7z"/>'),'mk'],
+ ['stamp','Stamp',RV_I('<path d="M9 3h6v6l3 3v3H6v-3l3-3zM5 20h14"/>'),'mk'],
+ ['cal','Calibrate',RV_I('<path d="M3 15l12-12 6 6-12 12z"/><path d="M7 11l2 2M10 8l2 2M13 5l2 2"/>'),'ms'],
+ ['len','Length',RV_I('<path d="M3 12h18M3 8v8M21 8v8"/>'),'ms'],
+ ['plen','Polylength',RV_I('<path d="M3 18l6-8 5 5 7-9"/><circle cx="3" cy="18" r="1"/><circle cx="21" cy="6" r="1"/>'),'ms'],
+ ['area','Area',RV_I('<path d="M4 5h12l4 8-6 6H4z" fill="currentColor" fill-opacity=".15"/>'),'ms'],
+ ['perim','Perimeter',RV_I('<path d="M4 5h12l4 8-6 6H4z" stroke-dasharray="3 2"/>'),'ms'],
+ ['count','Count',RV_I('<circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><circle cx="12" cy="17" r="2.5"/>'),'ms'],
+ ['del','Erase',RV_I('<path d="M4 16l9-9 7 7-5 5H8zM10 21h10"/>'),'nav']];
+const RV_STAMPS=['APPROVED','APPROVED AS NOTED','REVISE & RESUBMIT','REJECTED','REVIEWED','FOR CONSTRUCTION','VOID'];
+const RV_ST=['','Accepted','Rejected','Cancelled','Completed','Marked'];
+const MULTI=new Set(['poly','pgon','plen','area','perim']);
+const rvSub={text:'Text Box',callout:'Callout',pen:'Pen',hl:'Highlight',line:'Line',arrow:'Arrow',poly:'Polyline',rect:'Rectangle',ell:'Ellipse',pgon:'Polygon',cloud:'Cloud',stamp:'Stamp',len:'Length',plen:'Polylength',area:'Area',perim:'Perimeter',count:'Count'};
+const ftIn=v=>{const s=v<0?'-':'';v=Math.abs(v);let f=Math.floor(v),i=Math.round((v-f)*12);if(i===12){f++;i=0}return `${s}${f}' ${i}"`};
+const pLen=(P,closed)=>{let s=0;for(let i=1;i<P.length;i++)s+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);if(closed&&P.length>2)s+=Math.hypot(P[0][0]-P[P.length-1][0],P[0][1]-P[P.length-1][1]);return s};
+const pArea=P=>{let a=0;for(let i=0;i<P.length;i++){const[x1,y1]=P[i],[x2,y2]=P[(i+1)%P.length];a+=x1*y2-x2*y1}return Math.abs(a)/2};
+function rvMeas(m,pg){const s=MK.sc[pg];if(!s)return '';if(m.t==='len'||m.t==='plen')return ftIn(pLen(m.p)*s);if(m.t==='perim')return ftIn(pLen(m.p,1)*s);if(m.t==='area')return Math.round(pArea(m.p)*s*s).toLocaleString()+' SF';if(m.t==='count')return m.p.length+' EA';return ''}
+const rvKey=()=>MK.file?'revu:'+MK.name+':'+MK.file.size:'';
+function rvPersist(){try{if(rvKey())localStorage.setItem(rvKey(),JSON.stringify({marks:MK.marks,sc:MK.sc}))}catch(e){}}
+function rvAdd(m){m.id=m.id||Math.random().toString(36).slice(2,9);m.au=m.au||(window.curUser||'');m.at=m.at||new Date().toISOString();m.sub=m.sub||rvSub[m.t]||m.t;m.st=m.st||'';const pg=MK.v.page;(MK.marks[pg]=MK.marks[pg]||[]).push(m);MK.hist.push({pg,m});MK.sel={pg,id:m.id};rvPersist();mkDraw();rvSide()}
+function mkRender(){M.innerHTML=`<div class="rv">
+ <div class="rvmenu"><b>Revu</b><label class="rvmi">Open PDF<input type="file" id="mkF" accept="application/pdf" hidden></label><button class="rvmi" id="mkSave">Save PDF (flatten)</button><button class="rvmi" id="mkCsv">Markups → CSV</button><button class="rvmi" id="mkUndo">Undo</button>
+  <span class="rvsep"></span><button class="rvmi" id="mkPrev">‹</button><span id="mkPg" class="rvpg">–</span><button class="rvmi" id="mkNext">›</button><span class="rvsep"></span><button class="rvmi" id="mkZo">−</button><button class="rvmi" id="mkFit">Fit</button><button class="rvmi" id="mkZi">+</button>
+  <span style="flex:1"></span><span class="rvfile" id="mkName">${esc(MK.name||'No document')}</span></div>
+ <div class="rvprops"><span>Color</span>${['#e8594a','#f47b20','#f2cc60','#2f81f7','#3fb950','#a371f7','#111111'].map(c=>`<button type="button" data-mc="${c}" style="background:${c}" aria-pressed="${MK.color===c}"></button>`).join('')}
+  <span>Line</span><select id="mkW">${[1,2,3,5,8].map(w=>`<option ${MK.w==w?'selected':''}>${w}</option>`).join('')}</select><span>Opacity</span><select id="mkOp">${[1,.75,.5,.25].map(o=>`<option value="${o}" ${MK.op==o?'selected':''}>${o*100}%</option>`).join('')}</select>
+  <span>Stamp</span><select id="mkStamp">${RV_STAMPS.map(s=>`<option ${MK.stamp===s?'selected':''}>${s}</option>`).join('')}</select><span class="rvscale" id="mkScale"></span><span class="rvhint" id="mkHint"></span></div>
+ <div class="rvbody"><div class="rvtabs">${[['thumbs','Thumbnails',RV_I('<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>')],['list','Markups list',RV_I('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>')],['meas','Measurements',RV_I('<path d="M3 15l12-12 6 6-12 12z"/>')],['chest','Tool Chest',RV_I('<rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V4h8v3M3 12h18"/>')]].map(([k,l,i])=>`<button type="button" data-pn="${k}" title="${l}" aria-pressed="${MK.panel===k}">${i}</button>`).join('')}</div>
+  <aside class="rvside" id="mkSide"></aside>
+  <div class="tkview mkview" id="mkView"><div class="rvempty">Open a PDF to start. Right-drag or hold Space to pan · Ctrl + scroll to zoom · double-click or Enter to finish a polygon / polyline · Delete removes the selected markup.</div></div>
+  <div class="rvrail">${RV_TOOLS.map(([k,l,i,g],n)=>`${n&&RV_TOOLS[n-1][3]!==g?'<i></i>':''}<button type="button" data-mt="${k}" title="${l}" aria-pressed="${MK.tool===k}">${i}</button>`).join('')}</div></div></div>`;
+  const q=s=>M.querySelector(s);
+  q('#mkF').onchange=async e=>{const f=e.target.files[0];if(!f)return;MK.file=f;MK.name=f.name;MK.marks={};MK.sc={};MK.hist=[];MK.sel=null;try{const o=JSON.parse(localStorage.getItem(rvKey())||'null');if(o){MK.marks=o.marks||{};MK.sc=o.sc||{}}}catch(x){}q('#mkName').textContent=f.name;MK.v=Viewer(q('#mkView'),{onRender:()=>{mkDraw();mkInfo()}});bindMk();await MK.v.load(f);mkInfo();rvSide()};
+  M.querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>rvTool(b.dataset.mt));
+  M.querySelectorAll('[data-pn]').forEach(b=>b.onclick=()=>{MK.panel=MK.panel===b.dataset.pn?'':b.dataset.pn;M.querySelectorAll('[data-pn]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.pn===MK.panel));rvSide()});
+  M.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{MK.color=b.dataset.mc;M.querySelectorAll('[data-mc]').forEach(x=>x.setAttribute('aria-pressed',x===b));rvApplySel({c:MK.color})});
+  q('#mkW').onchange=e=>{MK.w=+e.target.value;rvApplySel({w:MK.w})};q('#mkOp').onchange=e=>{MK.op=+e.target.value;rvApplySel({op:MK.op})};q('#mkStamp').onchange=e=>{MK.stamp=e.target.value};
+  q('#mkPrev').onclick=()=>MK.v&&MK.v.go(MK.v.page-1);q('#mkNext').onclick=()=>MK.v&&MK.v.go(MK.v.page+1);q('#mkZo').onclick=()=>MK.v&&MK.v.zoom(1/1.25);q('#mkZi').onclick=()=>MK.v&&MK.v.zoom(1.25);q('#mkFit').onclick=()=>MK.v&&MK.v.fit();
+  q('#mkUndo').onclick=rvUndo;q('#mkSave').onclick=mkSave;q('#mkCsv').onclick=rvCsv;
+  if(MK.file){MK.v=Viewer(q('#mkView'),{onRender:()=>{mkDraw();mkInfo()}});bindMk();MK.v.load(MK.file).then(mkInfo)}rvSide();rvTool(MK.tool)}
+function rvTool(t){MK.tool=t;MK.draft=null;M.querySelectorAll('[data-mt]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.mt===t));const H={sel:'Click a markup to select it, drag to move. Delete key removes it.',cal:'Click two points on a known dimension, then type its real length.',count:'Click each item to count. Esc to start a new count.',del:'Click a markup to erase it.'};const h=M.querySelector('#mkHint');if(h)h.textContent=H[t]||(MULTI.has(t)?'Click points · double-click or Enter to finish · Esc to cancel':'');if(MK.v)mkDraw()}
+function rvUndo(){const l=MK.hist.pop();if(l){const a=MK.marks[l.pg]||[];const i=a.indexOf(l.m);if(i>=0)a.splice(i,1);MK.sel=null;rvPersist();mkDraw();rvSide()}}
+function rvFind(){if(!MK.sel)return null;return (MK.marks[MK.sel.pg]||[]).find(m=>m.id===MK.sel.id)||null}
+function rvApplySel(o){const m=rvFind();if(m){Object.assign(m,o);rvPersist();mkDraw();rvSide()}}
+function mkInfo(){if(MK.v&&MK.v.pdf){M.querySelector('#mkPg').textContent=` ${MK.v.page} / ${MK.v.pdf.numPages} `;const s=MK.sc[MK.v.page];M.querySelector('#mkScale').innerHTML=s?`Scale: 1" = ${ftIn(s*72)} <button class="rvmi" id="mkCalX">Clear</button>`:'<b style="color:#f47b20">Not calibrated</b>';const x=M.querySelector('#mkCalX');if(x)x.onclick=()=>{delete MK.sc[MK.v.page];rvPersist();mkInfo();mkDraw()};M.querySelectorAll('.rvth').forEach(t=>t.classList.toggle('on',+t.dataset.pg===MK.v.page))}}
+function bindMk(){const s=MK.v.svg;let drag=null;
+  const fin=()=>{const d=MK.draft;if(!d)return;MK.draft=null;const need=(d.t==='pgon'||d.t==='area'||d.t==='perim')?3:2;if(d.p.length>=need)rvAdd(d);else mkDraw()};
+  s.addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=MK.v.pt(e);const pg=MK.v.page;const tg=e.target.closest('[data-id]');
+    if(MK.tool==='sel'){if(tg){MK.sel={pg,id:tg.dataset.id};const m=rvFind();drag={m,p0:p,orig:JSON.parse(JSON.stringify(m.p))};s.setPointerCapture(e.pointerId)}else MK.sel=null;mkDraw();rvSide();return}
+    if(MK.tool==='del'){if(tg){const a=MK.marks[pg]||[];const i=a.findIndex(m=>m.id===tg.dataset.id);if(i>=0)a.splice(i,1);rvPersist();mkDraw();rvSide()}return}
+    if(MK.tool==='text'||MK.tool==='callout'){const t=prompt(MK.tool==='callout'?'Callout text:':'Text:');if(!t)return;if(MK.tool==='text'){rvAdd({t:'text',c:MK.color,w:MK.w,op:MK.op,p:[p],s:t})}else{MK.draft={t:'callout',c:MK.color,w:MK.w,op:MK.op,p:[p],s:t,co:1};MK.v.svg.setPointerCapture(e.pointerId)}return}
+    if(MK.tool==='stamp'){rvAdd({t:'stamp',c:MK.color==='#111111'?'#e8594a':MK.color,w:2,op:MK.op,p:[p],s:MK.stamp});return}
+    if(MK.tool==='count'){const d=MK.draft&&MK.draft.t==='count'?MK.draft:null;if(d){d.p.push(p);mkDraw()}else{MK.draft={t:'count',c:MK.color,w:MK.w,op:1,p:[p]};mkDraw()}return}
+    if(MULTI.has(MK.tool)){if(!MK.draft)MK.draft={t:MK.tool,c:MK.color,w:MK.w,op:MK.op,p:[p,p]};else MK.draft.p.splice(MK.draft.p.length-1,0,p);mkDraw();return}
+    MK.draft={t:MK.tool,c:MK.color,w:MK.w,op:MK.op,p:[p]};s.setPointerCapture(e.pointerId)});
+  s.addEventListener('pointermove',e=>{const p=MK.v.pt(e);if(drag){const dx=p[0]-drag.p0[0],dy=p[1]-drag.p0[1];drag.m.p=drag.orig.map(([x,y])=>[x+dx,y+dy]);mkDraw();return}const d=MK.draft;if(!d)return;
+    if(MULTI.has(d.t)){d.p[d.p.length-1]=p;mkDraw();return}if(d.t==='count')return;if(d.co){d.p[1]=p;mkDraw();return}if(d.t==='pen'||d.t==='hl')d.p.push(p);else d.p[1]=p;mkDraw()});
+  s.addEventListener('pointerup',()=>{if(drag){drag=null;rvPersist();rvSide();return}const d=MK.draft;if(!d||MULTI.has(d.t)||d.t==='count')return;
+    if(d.co){MK.draft=null;if(d.p.length<2)d.p[1]=[d.p[0][0]+60,d.p[0][1]-40];rvAdd(d);return}
+    MK.draft=null;if(d.p.length<2){mkDraw();return}
+    if(d.t==='cal'){const px=Math.hypot(d.p[1][0]-d.p[0][0],d.p[1][1]-d.p[0][1]);const v=prompt('Real length of this line (e.g. 25\' 6" or 25.5):');const f=feet(v);if(f&&px){MK.sc[MK.v.page]=f/px;if(MK.v.pdf.numPages>1&&confirm('Use this scale on every page?'))for(let i=1;i<=MK.v.pdf.numPages;i++)MK.sc[i]=f/px;rvPersist();mkInfo();rvSide();toast('Calibrated')}mkDraw();return}
+    rvAdd(d)});
+  s.addEventListener('dblclick',e=>{if(MK.draft&&MULTI.has(MK.draft.t)){MK.draft.p.pop();const d=MK.draft;if(d.p.length>2&&Math.hypot(d.p[d.p.length-1][0]-d.p[d.p.length-2][0],d.p[d.p.length-1][1]-d.p[d.p.length-2][1])<1)d.p.pop();fin()}});
+  if(!window.__rvKeys){window.__rvKeys=1;window.addEventListener('keydown',e=>{if(!document.getElementById('tab-mkp')||document.getElementById('tab-mkp').hidden)return;const tg=document.activeElement&&document.activeElement.tagName;if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT')return;
+    if(e.key==='Enter'&&MK.draft){if(MULTI.has(MK.draft.t))MK.draft.p.pop();fin()}
+    else if(e.key==='Escape'){if(MK.draft&&MK.draft.t==='count'){fin()}else{MK.draft=null;mkDraw()}}
+    else if((e.key==='Delete'||e.key==='Backspace')&&MK.sel){const a=MK.marks[MK.sel.pg]||[];const i=a.findIndex(m=>m.id===MK.sel.id);if(i>=0){a.splice(i,1);MK.sel=null;rvPersist();mkDraw();rvSide()}}
+    else if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();rvUndo()}})}}
 function cloudPath(x1,y1,x2,y2,r){const L=Math.min(x1,x2),R=Math.max(x1,x2),T=Math.min(y1,y2),Bt=Math.max(y1,y2);let p=`M${L},${T}`;const arc=(x,y)=>p+=` A${r},${r} 0 0,1 ${x},${y}`;
   for(let x=L+r*2;x<=R;x+=r*2)arc(x,T);for(let y=T+r*2;y<=Bt;y+=r*2)arc(R,y);for(let x=R-r*2;x>=L;x-=r*2)arc(x,Bt);for(let y=Bt-r*2;y>=T;y-=r*2)arc(L,y);return p}
-function markSvg(m,k){const sw=(m.t==='hl'?14:3);const P=m.p;
-  if(m.t==='pen'||m.t==='hl')return `<polyline data-k="${k}" points="${P.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${m.t==='hl'?'#f2cc60':m.c}" stroke-opacity="${m.t==='hl'?.4:1}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const[a,b]=[P[0],P[1]||P[0]];
-  if(m.t==='line'||m.t==='arrow'){const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),h=12;return `<g data-k="${k}"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${m.c}" stroke-width="3"/>${m.t==='arrow'?`<polygon points="${b[0]},${b[1]} ${b[0]-h*Math.cos(ang-.4)},${b[1]-h*Math.sin(ang-.4)} ${b[0]-h*Math.cos(ang+.4)},${b[1]-h*Math.sin(ang+.4)}" fill="${m.c}"/>`:''}</g>`}
-  if(m.t==='rect')return `<rect data-k="${k}" x="${Math.min(a[0],b[0])}" y="${Math.min(a[1],b[1])}" width="${Math.abs(b[0]-a[0])}" height="${Math.abs(b[1]-a[1])}" fill="none" stroke="${m.c}" stroke-width="3"/>`;
-  if(m.t==='cloud')return `<path data-k="${k}" d="${cloudPath(a[0],a[1],b[0],b[1],8)}" fill="none" stroke="${m.c}" stroke-width="2.5"/>`;
-  if(m.t==='text')return `<text data-k="${k}" x="${a[0]}" y="${a[1]}" style="font:700 14px system-ui;fill:${m.c}">${esc(m.s)}</text>`;return ''}
-function mkDraw(live){if(!MK.v)return;const a=MK.marks[MK.v.page]||[];MK.v.svg.innerHTML=a.map(markSvg).join('')+(live?markSvg(live,-1):'');MK.v.svg.style.cursor=MK.tool==='del'?'not-allowed':'crosshair'}
+function stampBox(m){const fs=16,w=m.s.length*fs*.62+20,h=fs+16;return {x:m.p[0][0]-w/2,y:m.p[0][1]-h/2,w,h,fs}}
+function markSvg(m,pg,live){const c=m.c,sw=m.w||2,op=m.op??1,P=m.p,id=live?'':` data-id="${m.id}"`,sel=MK.sel&&MK.sel.id===m.id;const lbl=rvMeas(m,pg);
+  const L=(x,y,t)=>t?`<text x="${x}" y="${y}" class="rvlbl" style="fill:${c}">${esc(t)}</text>`:'';let g='';
+  const pts=P.map(p=>p.join(',')).join(' ');const[a,b]=[P[0],P[1]||P[0]];
+  if(m.t==='pen'||m.t==='hl')g=`<polyline points="${pts}" fill="none" stroke="${m.t==='hl'?'#f2cc60':c}" stroke-opacity="${m.t==='hl'?.4:op}" stroke-width="${m.t==='hl'?14:sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  else if(m.t==='line'||m.t==='arrow'||m.t==='len'||m.t==='cal'){const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),h=10+sw*2;g=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${c}" stroke-width="${sw}" stroke-opacity="${op}" ${m.t==='cal'?'stroke-dasharray="6 4"':''}/>`;
+    if(m.t==='arrow')g+=`<polygon points="${b[0]},${b[1]} ${b[0]-h*Math.cos(ang-.4)},${b[1]-h*Math.sin(ang-.4)} ${b[0]-h*Math.cos(ang+.4)},${b[1]-h*Math.sin(ang+.4)}" fill="${c}"/>`;
+    if(m.t==='len'){const nx=-Math.sin(ang)*6,ny=Math.cos(ang)*6;g+=`<line x1="${a[0]-nx}" y1="${a[1]-ny}" x2="${a[0]+nx}" y2="${a[1]+ny}" stroke="${c}" stroke-width="${sw}"/><line x1="${b[0]-nx}" y1="${b[1]-ny}" x2="${b[0]+nx}" y2="${b[1]+ny}" stroke="${c}" stroke-width="${sw}"/>`+L((a[0]+b[0])/2,(a[1]+b[1])/2-6,lbl||'calibrate first')}}
+  else if(m.t==='poly'||m.t==='plen')g=`<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-opacity="${op}"/>`+(m.t==='plen'?L(P[P.length-1][0]+6,P[P.length-1][1]-6,lbl||'calibrate first'):'');
+  else if(m.t==='pgon'||m.t==='area'||m.t==='perim'){const cx=P.reduce((s,p)=>s+p[0],0)/P.length,cy=P.reduce((s,p)=>s+p[1],0)/P.length;g=`<polygon points="${pts}" fill="${m.t==='area'?c:'none'}" fill-opacity="${m.t==='area'?.18:0}" stroke="${c}" stroke-width="${sw}" stroke-opacity="${op}" ${m.t==='perim'?'stroke-dasharray="7 4"':''}/>`+(m.t!=='pgon'?L(cx,cy,lbl||'calibrate first'):'')}
+  else if(m.t==='rect')g=`<rect x="${Math.min(a[0],b[0])}" y="${Math.min(a[1],b[1])}" width="${Math.abs(b[0]-a[0])}" height="${Math.abs(b[1]-a[1])}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-opacity="${op}"/>`;
+  else if(m.t==='ell')g=`<ellipse cx="${(a[0]+b[0])/2}" cy="${(a[1]+b[1])/2}" rx="${Math.abs(b[0]-a[0])/2}" ry="${Math.abs(b[1]-a[1])/2}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-opacity="${op}"/>`;
+  else if(m.t==='cloud')g=`<path d="${cloudPath(a[0],a[1],b[0],b[1],8)}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-opacity="${op}"/>`;
+  else if(m.t==='text')g=`<text x="${a[0]}" y="${a[1]}" style="font:700 14px system-ui;fill:${c};fill-opacity:${op}">${esc(m.s)}</text>`;
+  else if(m.t==='callout'){const tw=m.s.length*7.6+12;g=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${c}" stroke-width="${sw}"/><circle cx="${a[0]}" cy="${a[1]}" r="2.5" fill="${c}"/><rect x="${b[0]}" y="${b[1]-12}" width="${tw}" height="24" fill="#fff" fill-opacity=".92" stroke="${c}" stroke-width="${sw}"/><text x="${b[0]+6}" y="${b[1]+5}" style="font:700 13px system-ui;fill:${c}">${esc(m.s)}</text>`}
+  else if(m.t==='stamp'){const s=stampBox(m);g=`<rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="5" fill="none" stroke="${c}" stroke-width="2.5" stroke-opacity="${op}"/><text x="${m.p[0][0]}" y="${m.p[0][1]+6}" text-anchor="middle" style="font:800 ${s.fs}px system-ui;fill:${c};fill-opacity:${op};letter-spacing:1px">${esc(m.s)}</text>`}
+  else if(m.t==='count')g=P.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="7" fill="${c}" fill-opacity=".85"/><text x="${p[0]}" y="${p[1]+4}" text-anchor="middle" style="font:700 10px system-ui;fill:#fff">${i+1}</text>`).join('');
+  const bb=sel?(()=>{const xs=(m.t==='stamp'?[stampBox(m).x,stampBox(m).x+stampBox(m).w]:P.map(p=>p[0])),ys=(m.t==='stamp'?[stampBox(m).y,stampBox(m).y+stampBox(m).h]:P.map(p=>p[1]));const x0=Math.min(...xs)-6,y0=Math.min(...ys)-(m.t==='text'?20:6);return `<rect class="rvselbox" x="${x0}" y="${y0}" width="${Math.max(...xs)-x0+6+(m.t==='text'?m.s.length*8:0)}" height="${Math.max(...ys)-y0+6}"/>`})():'';
+  return `<g${id} class="rvm">${g}${bb}</g>`}
+function mkDraw(){if(!MK.v)return;const pg=MK.v.page;const a=MK.marks[pg]||[];MK.v.svg.innerHTML=a.map(m=>markSvg(m,pg)).join('')+(MK.draft?markSvg(MK.draft,pg,1):'');MK.v.svg.style.cursor=MK.tool==='sel'?'default':MK.tool==='del'?'not-allowed':'crosshair'}
+function rvAll(){const R=[];Object.entries(MK.marks).forEach(([pg,a])=>a.forEach(m=>R.push({pg:+pg,m})));return R.sort((x,y)=>x.pg-y.pg)}
+function rvSide(){const S=M.querySelector('#mkSide');if(!S)return;S.hidden=!MK.panel;if(!MK.panel)return;const n=MK.v&&MK.v.pdf?MK.v.pdf.numPages:0;
+  if(MK.panel==='thumbs'){S.innerHTML=`<h4>Thumbnails</h4>${n?Array.from({length:n},(_,i)=>`<button type="button" class="rvth ${MK.v.page===i+1?'on':''}" data-pg="${i+1}"><canvas></canvas><span>${i+1}${(MK.marks[i+1]||[]).length?` · ${(MK.marks[i+1]||[]).length} mk`:''}</span></button>`).join(''):'<p class="muted">No document</p>'}`;
+    S.querySelectorAll('.rvth').forEach(b=>b.onclick=()=>MK.v.go(+b.dataset.pg));(async()=>{const T=[...S.querySelectorAll('.rvth')].slice(0,80);for(const b of T){if(!document.body.contains(b))return;const pg=await MK.v.pdf.getPage(+b.dataset.pg);const vp=pg.getViewport({scale:1});const z=150/vp.width;const v2=pg.getViewport({scale:z});const cv=b.querySelector('canvas');cv.width=v2.width;cv.height=v2.height;try{await pg.render({canvasContext:cv.getContext('2d'),viewport:v2}).promise}catch(e){}}})();return}
+  if(MK.panel==='list'){const R=rvAll();const m=rvFind();
+    S.innerHTML=`<h4>Markups list <small>${R.length}</small></h4>${m?`<div class="rvprop"><b>${esc(m.sub)}</b><label>Subject<input id="rpSub" value="${esc(m.sub)}"></label>${m.s!=null?`<label>Text<input id="rpS" value="${esc(m.s)}"></label>`:''}<label>Comment<textarea id="rpCm" rows="2">${esc(m.cm||'')}</textarea></label><label>Status<select id="rpSt">${RV_ST.map(s=>`<option ${m.st===s?'selected':''}>${s}</option>`).join('')}</select></label><button class="rvmi" id="rpTool">Add to Tool Chest</button></div>`:''}
+    <table class="rvtbl"><thead><tr><th>Pg</th><th>Subject</th><th>Measure</th><th>Status</th></tr></thead><tbody>${R.map(({pg,m:x})=>`<tr data-g="${pg}|${x.id}" class="${MK.sel&&MK.sel.id===x.id?'on':''}"><td>${pg}</td><td><i style="background:${x.c}"></i>${esc(x.sub)}${x.s?`<small>${esc(x.s)}</small>`:''}${x.cm?`<small>${esc(x.cm)}</small>`:''}</td><td>${esc(rvMeas(x,pg))}</td><td>${esc(x.st||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">No markups yet</td></tr>'}</tbody></table>`;
+    S.querySelectorAll('[data-g]').forEach(r=>r.onclick=async()=>{const[pg,id]=r.dataset.g.split('|');MK.sel={pg:+pg,id};if(MK.v.page!==+pg)await MK.v.go(+pg);else mkDraw();rvSide()});
+    if(m){const u=(k,el)=>{el.onchange=()=>{m[k]=el.value;rvPersist();mkDraw();rvSide()}};u('sub',S.querySelector('#rpSub'));if(S.querySelector('#rpS'))u('s',S.querySelector('#rpS'));u('cm',S.querySelector('#rpCm'));u('st',S.querySelector('#rpSt'));
+      S.querySelector('#rpTool').onclick=()=>{MK.chest.push({t:m.t,c:m.c,w:m.w,op:m.op,sub:m.sub,s:m.t==='stamp'?m.s:undefined});try{localStorage.setItem('revuChest',JSON.stringify(MK.chest))}catch(e){}toast('Added to Tool Chest')}}return}
+  if(MK.panel==='meas'){const R=rvAll().filter(({m})=>['len','plen','area','perim','count'].includes(m.t));const tot={};R.forEach(({pg,m})=>{const s=MK.sc[pg];if(!s&&m.t!=='count')return;const k=m.sub+'|'+m.t;const v=m.t==='count'?m.p.length:m.t==='area'?pArea(m.p)*s*s:pLen(m.p,m.t==='perim')*s;tot[k]=(tot[k]||0)+v});
+    S.innerHTML=`<h4>Measurements</h4><p class="muted" style="font-size:12px">Calibrated pages: ${Object.keys(MK.sc).length||'none'}. Use the Calibrate tool on a known dimension first.</p><table class="rvtbl"><thead><tr><th>Subject</th><th>Total</th></tr></thead><tbody>${Object.entries(tot).map(([k,v])=>{const t=k.split('|')[1];return `<tr><td>${esc(k.split('|')[0])}</td><td><b>${t==='count'?v+' EA':t==='area'?Math.round(v).toLocaleString()+' SF':ftIn(v)}</b></td></tr>`}).join('')||'<tr><td colspan="2" class="muted">No measurements yet</td></tr>'}</tbody></table>`;return}
+  if(MK.panel==='chest'){S.innerHTML=`<h4>Tool Chest</h4><p class="muted" style="font-size:12px">Select a markup → Markups list → “Add to Tool Chest”. Click a tool here to draw with the same style.</p>${MK.chest.map((t,i)=>`<div class="rvchest"><button type="button" data-ch="${i}"><i style="background:${t.c}"></i>${esc(t.sub)}${t.s?` · ${esc(t.s)}`:''}</button><button type="button" class="rvx" data-chx="${i}">×</button></div>`).join('')||'<p class="muted">Empty</p>'}`;
+    S.querySelectorAll('[data-ch]').forEach(b=>b.onclick=()=>{const t=MK.chest[+b.dataset.ch];MK.color=t.c;MK.w=t.w||2;MK.op=t.op??1;if(t.s)MK.stamp=t.s;mkRender();rvTool(t.t)});
+    S.querySelectorAll('[data-chx]').forEach(b=>b.onclick=()=>{MK.chest.splice(+b.dataset.chx,1);try{localStorage.setItem('revuChest',JSON.stringify(MK.chest))}catch(e){}rvSide()})}}
+function rvCsv(){const R=rvAll();if(!R.length){toast('No markups yet');return}const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const rows=[['Page','Subject','Type','Text','Measurement','Comment','Status','Author','Date','Color']].concat(R.map(({pg,m})=>[pg,m.sub,rvSub[m.t]||m.t,m.s||'',rvMeas(m,pg),m.cm||'',m.st||'',m.au||'',(m.at||'').slice(0,16).replace('T',' '),m.c]));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'}));a.download=MK.name.replace(/\.pdf$/i,'')+'_markups.csv';document.body.appendChild(a);a.click();a.remove()}
 async function mkSave(){if(!MK.file){toast('Open a PDF first.');return}await pdflib();const{PDFDocument,rgb,StandardFonts}=PDFLib;const doc=await PDFDocument.load(await MK.file.arrayBuffer());const font=await doc.embedFont(StandardFonts.HelveticaBold);
   const col=h=>{const n=parseInt(h.slice(1),16);return rgb((n>>16&255)/255,(n>>8&255)/255,(n&255)/255)};
-  doc.getPages().forEach((pg,i)=>{const A=MK.marks[i+1]||[];if(!A.length)return;const H=pg.getHeight();const Y=y=>H-y;
-    A.forEach(m=>{const c=col(m.t==='hl'?'#f2cc60':m.c);const P=m.p;
-      if(m.t==='pen'||m.t==='hl'){for(let k=1;k<P.length;k++)pg.drawLine({start:{x:P[k-1][0],y:Y(P[k-1][1])},end:{x:P[k][0],y:Y(P[k][1])},thickness:m.t==='hl'?14:3,color:c,opacity:m.t==='hl'?.4:1})}
-      else if(m.t==='line'||m.t==='arrow'){const[a,b]=P;pg.drawLine({start:{x:a[0],y:Y(a[1])},end:{x:b[0],y:Y(b[1])},thickness:3,color:c});if(m.t==='arrow'){const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),h=12;[ang-.4,ang+.4].forEach(t=>pg.drawLine({start:{x:b[0],y:Y(b[1])},end:{x:b[0]-h*Math.cos(t),y:Y(b[1]-h*Math.sin(t))},thickness:3,color:c}))}}
-      else if(m.t==='rect'){const[a,b]=P;pg.drawRectangle({x:Math.min(a[0],b[0]),y:Y(Math.max(a[1],b[1])),width:Math.abs(b[0]-a[0]),height:Math.abs(b[1]-a[1]),borderColor:c,borderWidth:3})}
-      else if(m.t==='cloud'){const[a,b]=P;pg.drawSvgPath(cloudPath(a[0],a[1],b[0],b[1],8),{x:0,y:H,borderColor:c,borderWidth:2.5})}
-      else if(m.t==='text')pg.drawText(m.s,{x:P[0][0],y:Y(P[0][1]),size:14,font,color:c})})});
+  doc.getPages().forEach((pg,i)=>{const A=MK.marks[i+1]||[];if(!A.length)return;const H=pg.getHeight();const Y=y=>H-y;const ln=(a,b,t,c,o)=>pg.drawLine({start:{x:a[0],y:Y(a[1])},end:{x:b[0],y:Y(b[1])},thickness:t,color:c,opacity:o});const tx=(s,x,y,size,c,o)=>pg.drawText(String(s),{x,y:Y(y),size,font,color:c,opacity:o});
+    A.forEach(m=>{const c=col(m.t==='hl'?'#f2cc60':m.c),w=m.w||2,o=m.op??1,P=m.p;const lbl=rvMeas(m,i+1);const[a,b]=[P[0],P[1]||P[0]];
+      if(m.t==='pen'||m.t==='hl'){for(let k=1;k<P.length;k++)ln(P[k-1],P[k],m.t==='hl'?14:w,c,m.t==='hl'?.4:o)}
+      else if(['line','arrow','len'].includes(m.t)){ln(a,b,w,c,o);if(m.t==='arrow'){const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),h=10+w*2;[ang-.4,ang+.4].forEach(t=>ln(b,[b[0]-h*Math.cos(t),b[1]-h*Math.sin(t)],w,c,o))}if(lbl)tx(lbl,(a[0]+b[0])/2,(a[1]+b[1])/2-6,11,c,1)}
+      else if(m.t==='poly'||m.t==='plen'){for(let k=1;k<P.length;k++)ln(P[k-1],P[k],w,c,o);if(lbl)tx(lbl,P[P.length-1][0]+6,P[P.length-1][1]-6,11,c,1)}
+      else if(['pgon','area','perim'].includes(m.t)){const d='M'+P.map(p=>p.join(',')).join(' L')+' Z';pg.drawSvgPath(d,{x:0,y:H,borderColor:c,borderWidth:w,borderOpacity:o,color:m.t==='area'?c:undefined,opacity:m.t==='area'?.18:undefined});if(lbl){const cx=P.reduce((s,p)=>s+p[0],0)/P.length,cy=P.reduce((s,p)=>s+p[1],0)/P.length;tx(lbl,cx,cy,11,c,1)}}
+      else if(m.t==='rect')pg.drawRectangle({x:Math.min(a[0],b[0]),y:Y(Math.max(a[1],b[1])),width:Math.abs(b[0]-a[0]),height:Math.abs(b[1]-a[1]),borderColor:c,borderWidth:w,borderOpacity:o});
+      else if(m.t==='ell')pg.drawEllipse({x:(a[0]+b[0])/2,y:Y((a[1]+b[1])/2),xScale:Math.abs(b[0]-a[0])/2,yScale:Math.abs(b[1]-a[1])/2,borderColor:c,borderWidth:w,borderOpacity:o});
+      else if(m.t==='cloud')pg.drawSvgPath(cloudPath(a[0],a[1],b[0],b[1],8),{x:0,y:H,borderColor:c,borderWidth:w,borderOpacity:o});
+      else if(m.t==='text')tx(m.s,a[0],a[1],14,c,o);
+      else if(m.t==='callout'){ln(a,b,w,c,1);const tw=m.s.length*7.6+12;pg.drawRectangle({x:b[0],y:Y(b[1]+12),width:tw,height:24,borderColor:c,borderWidth:w,color:rgb(1,1,1),opacity:.92});tx(m.s,b[0]+6,b[1]+5,13,c,1)}
+      else if(m.t==='stamp'){const s=stampBox(m);pg.drawRectangle({x:s.x,y:Y(s.y+s.h),width:s.w,height:s.h,borderColor:c,borderWidth:2.5,borderOpacity:o});tx(m.s,s.x+10,m.p[0][1]+6,s.fs,c,o)}
+      else if(m.t==='count')P.forEach((p,k)=>{pg.drawCircle({x:p[0],y:Y(p[1]),size:7,color:c,opacity:.85});tx(k+1,p[0]-3,p[1]+4,9,rgb(1,1,1),1)})})});
   const out=await doc.save();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'application/pdf'}));a.download=MK.name.replace(/\.pdf$/i,'')+'_markup.pdf';document.body.appendChild(a);a.click();a.remove();toast('Saved with markups')}
 
 /* ---------------- import: OST (.osp) and Quick Bid (.qbp) ---------------- */
@@ -297,6 +396,21 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .tkbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.tkname{font-size:16px;margin:0 6px}.tkpg,.tkz{display:inline-flex;gap:3px;align-items:center}.tkscale{font-size:12px}.tkwarn{color:#e8594a;font-weight:800}
 .tkmain{display:grid;grid-template-columns:270px 1fr;gap:10px;height:calc(100vh - 190px);min-height:480px}.tkside{border:1px solid var(--line);border-radius:12px;padding:10px;overflow:auto;background:var(--panel)}.tkhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .tkc{display:grid;grid-template-columns:10px 18px 1fr auto 22px;gap:6px;align-items:center;padding:7px 6px;border-radius:8px;cursor:pointer;font-size:13px;border:1px solid transparent}.tkc.on{border-color:var(--hi);background:rgba(244,123,32,.1)}.tksw{width:10px;height:10px;border-radius:3px;display:inline-block}.tkcq{text-align:right;font-weight:700;white-space:nowrap}.tkcq small{display:block;font-weight:500;opacity:.7}.tkce{border:0;background:none;color:inherit;cursor:pointer;font-weight:800}
+.rv{display:flex;flex-direction:column;gap:0;background:#2b2b2b;color:#ddd;border-radius:10px;overflow:hidden;border:1px solid #1a1a1a}
+.rvmenu{display:flex;align-items:center;gap:4px;flex-wrap:wrap;background:#111;padding:4px 8px;font-size:13px}.rvmenu b{color:#fff;margin-right:8px}
+.rvmi{background:none;border:0;color:#ddd;font:inherit;font-size:12.5px;padding:5px 8px;border-radius:5px;cursor:pointer}.rvmi:hover{background:#333}.rvsep{width:1px;height:18px;background:#444;margin:0 4px}.rvpg{font-size:12px;min-width:48px;text-align:center}.rvfile{font-size:12px;color:#aaa;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rvprops{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#333;padding:5px 10px;font-size:12px;border-bottom:1px solid #1a1a1a}.rvprops>span{color:#999;margin-left:6px}.rvprops [data-mc]{width:18px;height:18px;border-radius:50%;border:2px solid #333;cursor:pointer;padding:0}.rvprops [data-mc][aria-pressed=true]{outline:2px solid #fff}.rvprops select{background:#222;color:#ddd;border:1px solid #555;border-radius:4px;font-size:12px;padding:2px 4px}.rvscale{margin-left:auto!important;color:#ddd!important}.rvhint{color:#8ab4f8!important;flex-basis:100%;margin-left:0!important}
+.rvbody{display:flex;min-height:0;height:calc(100vh - 200px);min-height:500px}
+.rvtabs{width:34px;background:#222;display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;border-right:1px solid #1a1a1a}.rvtabs button,.rvrail button{width:28px;height:28px;display:grid;place-items:center;background:none;border:0;color:#bbb;border-radius:4px;cursor:pointer;padding:0}.rvtabs svg,.rvrail svg{width:17px;height:17px}.rvtabs button[aria-pressed=true],.rvrail button[aria-pressed=true]{background:#2f81f7;color:#fff}.rvtabs button:hover,.rvrail button:hover{background:#3a3a3a}
+.rvside{width:260px;background:#2b2b2b;border-right:1px solid #1a1a1a;overflow:auto;padding:8px;font-size:12px}.rvside h4{margin:2px 0 8px;font-size:13px;color:#ccc}.rvside h4 small{color:#888;font-weight:400}
+.rvth{display:block;width:100%;background:none;border:2px solid transparent;border-radius:4px;padding:4px;margin-bottom:6px;color:#aaa;cursor:pointer;text-align:center}.rvth canvas{width:100%;background:#fff;display:block}.rvth span{font-size:11px}.rvth.on{border-color:#2f81f7}
+.rvtbl{width:100%;border-collapse:collapse;font-size:11.5px}.rvtbl th{text-align:left;color:#888;font-weight:600;border-bottom:1px solid #444;padding:3px}.rvtbl td{border-bottom:1px solid #383838;padding:4px 3px;vertical-align:top}.rvtbl tr[data-g]{cursor:pointer}.rvtbl tr.on td{background:#1f3b63}.rvtbl i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}.rvtbl small{display:block;color:#999}
+.rvprop{background:#222;border-radius:6px;padding:8px;margin-bottom:10px;display:grid;gap:5px}.rvprop label{display:grid;gap:2px;color:#999}.rvprop input,.rvprop textarea,.rvprop select{background:#111;color:#eee;border:1px solid #444;border-radius:4px;font:inherit;padding:4px}
+.rvchest{display:flex;gap:4px;margin-bottom:4px}.rvchest button{flex:1;text-align:left;background:#222;border:1px solid #444;color:#ddd;border-radius:4px;padding:5px;cursor:pointer;font-size:12px}.rvchest i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}.rvchest .rvx{flex:0;padding:5px 8px}
+.rv .mkview{flex:1;height:auto;min-height:0;border:0;border-radius:0;background:#4b4b4b}.rvempty{padding:40px;text-align:center;color:#bbb}
+.rvrail{width:36px;background:#222;border-left:1px solid #1a1a1a;display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;overflow:auto}.rvrail i{width:22px;height:1px;background:#444;margin:4px 0}
+.rvlbl{font:700 12px system-ui;paint-order:stroke;stroke:#fff;stroke-width:3px}.rvselbox{fill:none;stroke:#2f81f7;stroke-width:1.2;stroke-dasharray:4 3}.rvm{cursor:inherit}
+@media(max-width:700px){.rvside{position:absolute;z-index:5;height:60%;width:80%}.rvbody{position:relative}}
 .tkhelp{font-size:12px;margin-top:10px}.tkview{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#555;position:relative}.mkview{height:calc(100vh - 190px);min-height:480px}
 .pvwrap{position:absolute;inset:0;overflow:auto}.pvstage{position:relative;margin:10px}.pvstage canvas{display:block;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.4)}.pvsvg{position:absolute;left:0;top:0;touch-action:none}.tkl{font-weight:800;fill:#111;paint-order:stroke;stroke:#fff;stroke-width:3px;text-anchor:middle}
 .bdgrid{display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start}.bdc{margin-bottom:10px}.bdch{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}.bdch select{padding:6px;font:inherit;font-size:13px}
@@ -310,6 +424,6 @@ const IC_B='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 const IC_M='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/><path d="M8 17l3-1 5-5-2-2-5 5z"/></svg>';
 AME.register({id:'tko',devOnly:true,name:'Takeoff',desc:'Plans · scale · area, linear & count takeoff (draft)',allow:dev,tabs:['tko'],section:'tab-tko',icon:IC_T,open:()=>{showTab('tko');if(cur&&TK.v)return;tkList()},onShow:()=>{if(!TK.v)tkList()}});
 AME.register({id:'bid',devOnly:true,name:'Bid',desc:'Takeoff quantities × assemblies → bid total (draft)',allow:dev,tabs:['bid'],section:'tab-bid',icon:IC_B,open:()=>{showTab('bid');bidRender()},onShow:bidRender});
-AME.register({id:'mkp',devOnly:true,name:'Markup',desc:'Open a PDF · pen, cloud, arrow, text · save PDF (draft)',allow:dev,tabs:['mkp'],section:'tab-mkp',icon:IC_M,open:()=>{showTab('mkp');mkRender()},onShow:()=>{if(!M.innerHTML)mkRender()}});
+AME.register({id:'mkp',devOnly:true,name:'Revu',desc:'PDF markup like Bluebeam Revu · calibrate, measure, markups list, stamps',allow:dev,tabs:['mkp'],section:'tab-mkp',icon:IC_M,open:()=>{showTab('mkp');mkRender()},onShow:()=>{if(!M.innerHTML)mkRender()}});
 window.__tko={feet,polyArea,polyLen,cloudPath,readCab};
 })();
