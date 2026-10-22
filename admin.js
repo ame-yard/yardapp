@@ -209,7 +209,7 @@ document.head.insertAdjacentHTML('beforeend','<style>.admnav{position:sticky;top
 
 AME.register({id:'admin',name:'Admin',desc:'Crew list · PINs · permissions · who’s using',tabs:['admin'],section:'tab-admin',allow:isAdm,
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
-  open:()=>{if(apwOk())showTab('admin');else apwDlg(()=>showTab('admin'))},onShow:()=>{if(!isAdm()){AME.home();return}if(!apwOk()){AME.home();apwDlg(()=>AME.open('admin'));return}renderAccess();try{renderBk();renderMaint()}catch(e){}try{renderCrew();renderPerms();renderOnline()}catch(e){}setTimeout(admTidy,60)}});
+  open:()=>{if(apwOk())showTab('admin');else{const p=AME.cur;setTimeout(()=>{if(AME.cur==='admin')(window.ameSetMod||(()=>{}))(p&&p!=='admin'?p:'home')},0);apwDlg(()=>showTab('admin'))}},onShow:()=>{if(!isAdm()){AME.home();return}if(!apwOk()){AME.home();apwDlg(()=>AME.open('admin'));return}renderAccess();try{renderBk();renderMaint()}catch(e){}try{renderCrew();renderPerms();renderOnline()}catch(e){}setTimeout(admTidy,60)}});
 const _ar=window.applyRole;window.applyRole=function(){_ar();const ok=isAdm();document.body.classList.toggle('ameadm',ok);const b=document.querySelector('nav.tabs [data-tab="admin"]');if(b)b.hidden=!ok;if(AME.cur==='admin'&&!ok)AME.home();if(AME.cur==='admin')renderAccess()};
 
 /* Admin lives in the top bar (gear), not on the home tiles */
