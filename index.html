@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.73',APP_DATE='2026-10-22';
+const APP_VERSION='6.74',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -928,7 +928,7 @@ const allNames=()=>[...new Set([...crew.map(c=>c.name),...people])].sort((a,b)=>
 const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.name);if(cur&&!opts.includes(cur))opts.unshift(cur);
   return `<select id="${id}"><option value="">— select ${role} —</option>${opts.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}</select>`};
 async function saveCrew(list){if(!list.some(c=>isOwner(c.name))){const o=crew.find(c=>isOwner(c.name));if(o)list=[...list,{...o,editor:true}]}list=list.map(c=>isOwner(c.name)?{...c,editor:true}:c);try{await db.doc('config/crew').set({members:list})}catch(e){toast('Could not save crew: '+(e.message||e.code))}}
-function renderPerms(){const box=$('#permPeople');if(!box||!isAdmin)return;
+function renderPerms(){if(window.admBusy&&window.admBusy(renderPerms))return;const box=$('#permPeople');if(!box||!isAdmin)return;
   const T=$('#lvTbl');if(T){const LVE=LVS.filter(l=>l[2]);const APPS=[['Yard Inventory',[['YARD','Open the app'],['OUT','Take out'],['RETURN','Return'],['PHOTO','Add photos'],['ADD','Add new items'],['UNITS','Set unit numbers'],['JOBS','Add / edit / delete jobs'],['REPAIR','Send to repair'],['DELITEM','Remove items'],['AUDIT','Audit (count & photos)'],['DISPOSE','See removed log']]],['Deliveries',[['RECEIVE','Receive deliveries']]],['Mobilization Prep List',[['MPL','Open & edit']]],['Equipment Prices',[['EQP','Open & edit']]],['Dispatch',[['DISPATCH','Edit crews & schedule']]]];const can0=(L,f)=>levelFeats(L).includes(f);const own=isOwner(curUser);
     T.innerHTML=`<thead><tr><th>App · what they can do</th>${LVS.map(l=>`<th class="c">${l[1]}</th>`).join('')}</tr></thead><tbody>${APPS.map(([a,F])=>`<tr class="lvapp"><td colspan="${LVS.length+1}">${a}</td></tr>`+F.map(([f,lab])=>`<tr><td>${lab}</td>${LVS.map(l=>l[2]?`<td class="c"><input type="checkbox" data-lvf="${l[0]}|${f}" ${can0(l[0],f)?'checked':''} ${own?'':'disabled'}></td>`:'<td class="c">✓</td>').join('')}</tr>`).join('')).join('')}<tr class="lvapp"><td colspan="${LVS.length+1}">Office tools</td></tr><tr><td>Edit items, jobs, crew, sheet · Admin section</td>${LVS.map(l=>`<td class="c">${l[2]?'<span class="muted">–</span>':'✓'}</td>`).join('')}</tr></tbody>`;
     T.querySelectorAll('[data-lvf]').forEach(c=>c.onchange=()=>{const[L,f]=c.dataset.lvf.split('|');const M=JSON.parse(JSON.stringify(perms.lvmap||{}));M[L]=M[L]||{};if(c.checked===baseFeats(L).includes(f))delete M[L][f];else M[L][f]=c.checked;if(!Object.keys(M[L]).length)delete M[L];savePerms({...perms,lvmap:M});toast('Saved — applies right away')})}
@@ -955,7 +955,7 @@ function tempDlg(n){const cur=effLevel(n);const up=LVS.filter(l=>LVI(l[0])>LVI(c
      if(T==='today'){d.setHours(23,59,59,0);until=+d}else if(T==='tmrw'){d.setDate(d.getDate()+1);d.setHours(7,0,0,0);from=+d;const e=new Date(d);e.setHours(17,0,0,0);until=+e}else if(T==='custom'){from=$('#tpF').value?+new Date($('#tpF').value):null;until=$('#tpU').value?+new Date($('#tpU').value):null;if(!until){toast('Pick the end time.');return}}else until=Date.now()+Number(T)*3600e3;
      const now=Date.now();savePerms({...perms,grants:[...(perms.grants||[]).filter(g=>!g.until||g.until>now),{id:'g'+now.toString(36),name:n,level:L,feats:[],until,...(from?{from}:{}),by:curUser,at:new Date().toISOString()}]});closeDlg()}};draw()}
 async function savePerms(p){try{await db.doc('config/perms').set(p);toast('Permissions saved')}catch(e){toast('Could not save: '+(e.message||e.code))}}
-function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none';const dv=isDev(curUser);if($('#savePin'))$('#savePin').hidden=!dv;if($('#newPin'))$('#newPin').hidden=!dv}if($('#pinState'))$('#pinState').textContent=[pinOf(curUser)?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',isDev(curUser)?(officePin?'Editor PIN is set.':'No editor PIN yet.'):''].join(' ');
+function renderCrew(){if(window.admBusy&&window.admBusy(renderCrew))return;const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none';const dv=isDev(curUser);if($('#savePin'))$('#savePin').hidden=!dv;if($('#newPin'))$('#newPin').hidden=!dv}if($('#pinState'))$('#pinState').textContent=[pinOf(curUser)?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',isDev(curUser)?(officePin?'Editor PIN is set.':'No editor PIN yet.'):''].join(' ');
   el.innerHTML=crew.length?['HQ','Field'].filter(g=>crew.some(c=>groupOf(c.role)===g)).map(g=>`<div class="crewgrp"><b>${g}</b><div class="crewchips">${crew.map((c,k)=>({...c,k})).filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<span class="crewchip" data-ce="${c.k}">${esc(c.name)}<small>${esc(RL(c.role))}</small>${isOwner(c.name)?'<span class="edtag">Admin</span>':c.editor?'<span class="edtag">Editor</span>':''}${isOwner(c.name)?'':`<button class="admin-only" data-ed="${c.k}" title="${c.editor?'Remove editor access':'Make editor'}">${c.editor?'−Ed':'+Ed'}</button><button class="admin-only" data-ck="${c.k}" aria-label="Remove ${esc(c.name)}" title="Remove">✕</button>`}</span>`).join('')}</div></div>`).join('')
    :'<div class="muted" style="padding:8px 0">No crew yet. Add PMs, FMs and SFMs above.</div>';
   if(isAdmin)$$('#crewList [data-ce]').forEach(ch=>{ch.title='Press and hold to edit';lp(ch,()=>editCrew(Number(ch.dataset.ce)))});
@@ -1722,7 +1722,7 @@ async function beat(){if(document.hidden||!db)return;const t=$$('nav.tabs button
 function startPresence(){beat();setInterval(beat,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()})}
 function ago(ts){const s=Math.round((Date.now()-new Date(ts))/1000);return s<60?'just now':s<3600?Math.round(s/60)+' min ago':Math.round(s/3600)+' h ago'}
 function appLabel(t){try{const m=AME.mod&&AME.mod(t);if(m&&m.name)return m.name}catch(e){}return ({yard:'Yard Inventory',home:'Home',admin:'Admin',dsp:'Dispatch',eqp:'Equipment Prices',deliv:'Deliveries',trucks:'Truck Reservations',field:'Field Reports',safety:'Safety',mpl:'Mobilization Prep List',labels:'Labels',vlog:'Version log',ytest:'Inventory (Test)'})[t]||t}
-function renderOnline(){const el=$('#onlineList');if(!el)return;const now=Date.now();
+function renderOnline(){if(window.admBusy&&window.admBusy(renderOnline))return;const el=$('#onlineList');if(!el)return;const now=Date.now();
   const on=presence.filter(p=>now-new Date(p.ts)<150000).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
   const rec=presence.filter(p=>{const d=now-new Date(p.ts);return d>=150000&&d<86400000}).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
   $('#onlineN').textContent=on.length?'· '+on.length+' online now':'· nobody online';
@@ -2020,7 +2020,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="dispatch.js?v=6.64"></script>
 <script src="hr.js?v=1"></script>
 <script src="notice.js?v=6.64"></script>
-<script src="admin.js?v=493"></script>
+<script src="admin.js?v=6.74"></script>
 <script src="lab.js?v=414"></script>
 <script src="lunch.js?v=5"></script>
 <script src="ai.js?v=1"></script>
