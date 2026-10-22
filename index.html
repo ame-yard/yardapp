@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.99',APP_DATE='2026-10-22';
+const APP_VERSION='7.00',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -758,9 +758,10 @@ function catDrag(rail){if(!rail||rail._cd)return;rail._cd=1;let d=null,tm=0,sx=0
 function grp(i){const c=(i.cat||'').toLowerCase(),t=i.type,u=(i.unit||'').toUpperCase();
   if(c==='ladder')return'ladder';if(t==='Safety')return'safety';if(t==='Equipment')return'equip';
   if(t==='Tools')return c==='power'?'power':'hand';
-  if(c==='fastener'||c==='plate')return'fast';if(c==='nail')return'nail';if(c==='iso')return'iso';if(c==='wood')return'wood';if(c==='flashing')return'flash';
-  if(c==='sealant'||u==='TUBE')return'tube';if(['pvc','sheet','membrane','fabric','single ply'].includes(c)||u==='RL')return'roll';
-  if(c==='liquid'||u==='PL'||u==='DRUM')return'pail';return'other'}
+  /* match on words so "Screws", "Fasteners & Plates", "Nails" etc. all land in the right tile */
+  if(/\bnails?\b/.test(c))return'nail';if(/fasten|screw|plate|anchor|rivet|bolt/.test(c))return'fast';if(/\biso\b|insulation|polyiso|cover ?board/.test(c))return'iso';if(/wood|lumber|plywood/.test(c))return'wood';if(/flash/.test(c))return'flash';
+  if(/sealant|caulk/.test(c)||u==='TUBE')return'tube';if(/pvc|tpo|sheet|membrane|fabric|single ply|roll|underlay|felt/.test(c)||u==='RL')return'roll';
+  if(/liquid|coating|primer|adhesive|pail/.test(c)||u==='PL'||u==='DRUM')return'pail';return'other'}
 const SUBRULES={
  ladder:[['Extension',/extension|walkthru/],['A-Frame',/./]],
  power:[['Chargers',/charger/],['Nailers',/nail/],['Lights',/light/],['Saws & Cutters',/saw|grind|cutter|oscillat|router|biscuit/],['Drills & Drivers',/drill|driver|screwdriver|power unit/],['Sanders & Mixers',/sander|mixer/],['Other',/./]],
