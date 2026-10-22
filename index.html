@@ -635,7 +635,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
       <div class="qlabel">By role</div>
       <div class="tblwrap"><table class="permtbl" id="permRoles"></table></div>
       <div class="qlabel" style="margin-top:16px">Temporary access for one person</div>
-      <div class="filters"><select id="gName"></select><select id="gDur"><option value="1">1 hour</option><option value="4">4 hours</option><option value="today" selected>Until end of today</option><option value="168">7 days</option><option value="0">Until I remove it</option></select></div>
+      <div class="filters"><select id="gName"></select><select id="gDur"><option value="1">1 hour</option><option value="4">4 hours</option><option value="today" selected>Until end of today</option><option value="tmrw">Tomorrow 7 AM – 5 PM</option><option value="168">7 days</option><option value="0">Until I remove it</option></select></div>
       <div class="units" id="gFeats"></div>
       <div style="margin-top:8px"><button class="btn pri" id="gAdd">Give access</button></div>
       <div id="gList" style="margin-top:12px"></div>
@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.52',APP_DATE='2026-10-21';
+const APP_VERSION='5.53',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -904,7 +904,7 @@ function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const role
   if(!$('#gFeats').dataset.init){$('#gFeats').innerHTML=FEATS.map(([k,l])=>`<button type="button" data-gf="${k}" aria-pressed="false"><b>${k==='EDIT'?'Office tools':l}</b></button>`).join('');$('#gFeats').dataset.init=1;
     $$('#gFeats [data-gf]').forEach(b=>b.onclick=()=>b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')!=='true'))}
   const now=Date.now();const G=(perms.grants||[]).filter(g=>!g.until||g.until>now);
-  $('#gList').innerHTML=G.length?G.map((g,k)=>`<div class="cntsum"><span><b>${esc(g.name)}</b> · ${g.feats.map(f=>FEATS.find(x=>x[0]===f)?.[1].split(' (')[0]||f).join(', ')} · ${g.until?'until '+new Date(g.until).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'no end date'} · by ${esc(g.by||'')}</span><button class="btn dng" data-gr="${g.id}">Remove</button></div>`).join(''):'<div class="muted" style="font-size:13px">No temporary access right now.</div>';
+  $('#gList').innerHTML=G.length?G.map((g,k)=>`<div class="cntsum"><span><b>${esc(g.name)}</b> · ${g.feats.map(f=>FEATS.find(x=>x[0]===f)?.[1].split(' (')[0]||f).join(', ')} · ${g.from?'from '+new Date(g.from).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' ':''}${g.until?'until '+new Date(g.until).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'no end date'} · by ${esc(g.by||'')}</span><button class="btn dng" data-gr="${g.id}">Remove</button></div>`).join(''):'<div class="muted" style="font-size:13px">No temporary access right now.</div>';
   $$('#gList [data-gr]').forEach(b=>b.onclick=()=>savePerms({...perms,grants:(perms.grants||[]).filter(g=>g.id!==b.dataset.gr)}))}
 async function savePerms(p){try{await db.doc('config/perms').set(p);toast('Permissions saved')}catch(e){toast('Could not save: '+(e.message||e.code))}}
 function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none'}if($('#pinState'))$('#pinState').textContent=[ownerPinH?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',officePin?'Editor PIN is set.':'No editor PIN yet.'].join(' ');
@@ -955,7 +955,7 @@ async function writeItem(id,upd){if(upd&&upd.loc)upd.loc=fixLoc(upd.loc);const s
 const FEATS=[['YARD','App: Yard Inventory'],['MPL','App: Mobilization Prep List'],['EQP','App: Equipment Prices'],['OUT','Take Out'],['RETURN','Return'],['RECEIVE','App: Deliveries (receive)'],['PHOTO','Photos'],['REPAIR','Repair'],['DISPOSE','Removed log'],['AUDIT','Audit (count & photos)'],['ADD','Add new items'],['JOBS','Add / edit / delete jobs'],['UNITS','Set unit numbers'],['DELITEM','Remove items'],['EDIT','Office tools (edit items, jobs, crew, sheet, counts)'],['DISPATCH','App: Dispatch (edit crews & schedule)']];
 const DEF_ON=['YARD','OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UNITS'];
 let perms={roles:{},grants:[]};
-function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now))}
+function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now)&&(!g.from||g.from<=now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
   if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
   const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')||(['MPL','EQP','DISPATCH'].includes(f)&&['President','PM','Office'].includes(curRole()))}
@@ -1589,8 +1589,8 @@ $('#jstat').onchange=()=>renderJobs();
 $('#saveOwnPin').onclick=async()=>{if(!isOwner(curUser))return;const p=$('#ownPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({ownerPinH:await sha(p)});$('#ownPin').value='';toast('Your personal PIN is saved. Use it next time you sign in.')}catch(e){toast('Could not save: '+(e.message||e.code))}};
 $('#savePin').onclick=async()=>{if(!isOwner(curUser)){toast('Only Kyle can change the editor PIN.');return}const p=$('#newPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({officePinH:await sha(p),officePin:null});$('#newPin').value='';toast('Office PIN saved')}catch(e){toast('Could not save: '+(e.message||e.code))}};
 $('#gAdd').onclick=()=>{const name=$('#gName').value;const feats=$$('#gFeats [data-gf][aria-pressed="true"]').map(b=>b.dataset.gf);if(!name||!feats.length){toast('Pick a person and at least one permission.');return}
-  const d=$('#gDur').value;let until=null;if(d==='today'){const t=new Date();t.setHours(23,59,59,0);until=+t}else if(d!=='0')until=Date.now()+Number(d)*3600e3;
-  const now=Date.now();savePerms({...perms,grants:[...(perms.grants||[]).filter(g=>!g.until||g.until>now),{id:'g'+now.toString(36),name,feats,until,by:curUser,at:new Date().toISOString()}]});$$('#gFeats [data-gf]').forEach(b=>b.setAttribute('aria-pressed','false'))};
+  const d=$('#gDur').value;let until=null,from=null;if(d==='today'){const t=new Date();t.setHours(23,59,59,0);until=+t}else if(d==='tmrw'){const a=new Date();a.setDate(a.getDate()+1);a.setHours(7,0,0,0);from=+a;const b=new Date(a);b.setHours(17,0,0,0);until=+b}else if(d!=='0')until=Date.now()+Number(d)*3600e3;
+  const now=Date.now();savePerms({...perms,grants:[...(perms.grants||[]).filter(g=>!g.until||g.until>now),{id:'g'+now.toString(36),name,feats,until,...(from?{from}:{}),by:curUser,at:new Date().toISOString()}]});$$('#gFeats [data-gf]').forEach(b=>b.setAttribute('aria-pressed','false'))};
 $('#cAdd').onclick=()=>{const name=$('#cName').value.trim(),role=$('#cRole').value;if(!name){toast('Enter a name.');return}
   if(crew.some(c=>c.name.toLowerCase()===name.toLowerCase()&&c.role===role)){toast(name+' is already listed as '+role);return}
   saveCrew([...crew,{name,role}]);$('#cName').value='';$('#cName').focus()};$('#addJob').onclick=()=>openJob('');
