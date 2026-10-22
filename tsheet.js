@@ -91,7 +91,7 @@ function histDlg(id){const l0=LOG.find(x=>x._id===id);if(!l0)return;const l={...
    document.getElementById('hS').onclick=async()=>{rd();const{_id,...d}=l;try{await db.doc('tslog/'+id).set({...d,edited:new Date().toISOString(),editedBy:curUser});closeDlg();toast('Saved')}catch(e){toast('Could not save')}}};draw()}
 function render(){
   const lg=[...LOG].sort((a,b)=>String(b.at).localeCompare(a.at)).slice(0,histAll?999:8);
-  S.innerHTML=`<div class="mplhead"><h2>Timesheet Mailer</h2><label class="btn pri" for="tsFile">Upload Timesheet Summary PDF</label><input type="file" id="tsFile" accept="application/pdf" hidden></div>
+  S.innerHTML=`<div class="mplhead"><h2>Accounting</h2></div><div class="viewseg" style="margin-bottom:12px"><button aria-pressed="true">Timesheet Mailer</button></div><div class="mplhead"><h3 style="margin:0">Timesheet Mailer</h3><label class="btn pri" for="tsFile">Upload Timesheet Summary PDF</label><input type="file" id="tsFile" accept="application/pdf" hidden></div>
   <p class="muted" style="margin-top:0">One employee per page → each person is emailed only their own page. Files are made in this browser and are not saved in the app.</p>
   <div id="tsBody">${R?body():'<div class="panel tsdrop" id="tsDrop">Drop the PDF here or use the Upload button.</div>'}</div>
   ${lg.length?`<h3 style="margin-top:22px">Sent history</h3><div class="tblwrap"><table class="tstbl"><thead><tr><th>Week</th><th>Sent</th><th>By</th><th class="n">People</th><th>Failed</th><th></th></tr></thead><tbody>${lg.map(l=>`<tr class="tshr" data-hl="${esc(l._id)}"><td>${esc(l.week||l.file||'')}${l.via?' <small class="muted">· '+esc(l.via)+'</small>':''}</td><td>${new Date(l.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</td><td>${esc(l.by||'')}</td><td class="n">${(l.sent||[]).length}</td><td>${esc((l.failed||[]).join(', '))}</td><td><button type="button" class="eqdel" data-hx="${esc(l._id)}" aria-label="Delete" title="Delete">×</button></td></tr>`).join('')}</tbody></table></div>${LOG.length>8?`<button class="lnk" id="tsHAll" style="margin-top:8px">${histAll?'Show less':'Show all '+LOG.length}</button>`:''}`:''}`;
@@ -128,5 +128,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 </style>`);
 const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/><path d="M15 17l2 2 3-3"/></svg>';
 window.__tsLoad=f=>load(f);
-AME.register({id:'tsm',devOnly:true,name:'Timesheet Mailer',desc:'Accounting · split the weekly timesheet PDF · email each person',allow:own,tabs:['tsm'],section:'tab-tsm',icon:ICON,open:()=>{showTab('tsm');render()},onShow:render});
+AME.register({id:'tsm',devOnly:true,name:'Accounting',desc:'Timesheet Mailer · split the weekly timesheet PDF · email each person (more accounting tools coming)',allow:own,tabs:['tsm'],section:'tab-tsm',icon:ICON,open:()=>{showTab('tsm');render()},onShow:render});
 })();
