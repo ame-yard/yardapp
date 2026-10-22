@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.11',APP_DATE='2026-10-22';
+const APP_VERSION='6.12',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1873,7 +1873,9 @@ function showLogin(){if(curUser)return;{const me=myName();if(me&&crew.some(c=>c.
 function showNotLinked(){try{logLogin('',true)}catch(e){}
   $('#loginRoot').innerHTML=`<div class="login"><div class="loginbox"><img src="${$('#logoImg').src}" alt="AME Builders" class="loginlogo"><h2>Almost there</h2>
    <p>You are signed in as <b>${esc(msEmail)}</b>, but this account is not linked to anyone in the AME app yet.</p><p class="muted">Ask Kyle to add this email to your name. Then tap <b>Try again</b>.</p>
+   ${/@amebuilders\.net$/.test(msEmail)?`<p style="margin-top:14px"><b>Or tap your name / O toque su nombre:</b></p><div class="nlpick" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-height:40vh;overflow:auto">${crew.filter(c=>!c.email&&!isOwner(c.name)).map(c=>`<button class="btn" data-nl="${esc(c.name)}">${esc(c.name)}</button>`).join('')}</div>`:''}
    <div class="bar" style="justify-content:center"><button class="btn" id="nlOut">Use another account</button><button class="go" id="nlTry" style="width:auto">Try again</button></div></div></div>`;
+  $$('[data-nl]').forEach(b=>b.onclick=async()=>{const n=b.dataset.nl;if(!confirm('Link '+msEmail+' to '+n+'?'))return;b.disabled=true;try{await saveCrew(crew.map(x=>x.name===n&&!x.email?{...x,email:msEmail}:x));setUser(n);try{logLogin(n,false)}catch(e){}}catch(e){toast('Could not link — ask Kyle');b.disabled=false}});
   $('#nlTry').onclick=()=>location.reload();$('#nlOut').onclick=()=>{try{window.msSignOut()}catch(e){location.reload()}}}
 function showLoginPicker(){
   const names=[...crew];
