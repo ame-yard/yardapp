@@ -1,0 +1,17 @@
+/* Estimate — one app for Takeoff + Bid (same project, shared conditions). Takeoff and Bid stay as tabs inside it. */
+(function(){
+const dev=()=>typeof isDev==='function'&&typeof curUser!=='undefined'&&isDev(curUser);
+const IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M6 16l4-10 4 6 4-4"/><circle cx="18" cy="8" r="1.5"/></svg>';
+const TABS=[['tko','Takeoff','<path d="M3 5h18v14H3z"/><path d="M7 15l3-4 3 3 4-5"/>'],['bid','Bid','<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>']];
+const last=()=>{try{return localStorage.getItem('estTab')||'tko'}catch(e){return 'tko'}};
+function bar(id){const sec=document.getElementById('tab-'+id);if(!sec)return;let b=sec.querySelector(':scope>.estbar');
+  if(!b){b=document.createElement('div');b.className='estbar';sec.prepend(b)}
+  b.innerHTML=`<span class="estname"><i>${IC}</i>Estimate</span><div class="estseg">${TABS.map(([k,l,ic])=>`<button type="button" data-est="${k}" class="${k===id?'on':''}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ic}</svg>${l}</button>`).join('')}</div>`;
+  b.querySelectorAll('[data-est]').forEach(x=>x.onclick=()=>{if(x.dataset.est!==id)go(x.dataset.est)})}
+function go(id){try{localStorage.setItem('estTab',id)}catch(e){}const m=AME.mod(id);if(!m)return;const sm=window.ameSetMod||(()=>{});m.open();sm('est');bar(id)}
+if(!document.getElementById('estCss'))document.head.insertAdjacentHTML('beforeend','<style id="estCss">.estbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 14px}.estname{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px}.estname i{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:#8957e5;color:#fff}.estname i svg{width:18px;height:18px}.estseg{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.estseg button{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:14px;padding:7px 16px;border-radius:9px;cursor:pointer}.estseg button.on{background:#8957e5;color:#fff}</style>');
+(function w(){if(typeof AME==='undefined'||!AME.mod||!AME.mod('tko')||!AME.mod('bid')){setTimeout(w,200);return}
+  ['tko','bid'].forEach(id=>{const m=AME.mod(id);m.homeHide=true;const o=m.open;m.open=function(){const r=o.apply(this,arguments);setTimeout(()=>bar(id),0);return r}});
+  AME.register({id:'est',name:'Estimate',desc:'Takeoff · Bid · Proposal — one project, quantities flow into the bid',allow:dev,tabs:[],icon:IC,open:()=>go(last())});
+  try{window.ameHomeGroup&&window.ameHomeGroup(sessionStorage.getItem('ameHG')||'')}catch(e){}})();
+})();
