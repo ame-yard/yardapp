@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.55',APP_DATE='2026-10-21';
+const APP_VERSION='5.56',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -907,7 +907,7 @@ function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const role
   $('#gList').innerHTML=G.length?G.map((g,k)=>`<div class="cntsum"><span><b>${esc(g.name)}</b> · ${g.feats.map(f=>FEATS.find(x=>x[0]===f)?.[1].split(' (')[0]||f).join(', ')} · ${g.from?'from '+new Date(g.from).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' ':''}${g.until?'until '+new Date(g.until).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'no end date'} · by ${esc(g.by||'')}</span><button class="btn dng" data-gr="${g.id}">Remove</button></div>`).join(''):'<div class="muted" style="font-size:13px">No temporary access right now.</div>';
   $$('#gList [data-gr]').forEach(b=>b.onclick=()=>savePerms({...perms,grants:(perms.grants||[]).filter(g=>g.id!==b.dataset.gr)}))}
 async function savePerms(p){try{await db.doc('config/perms').set(p);toast('Permissions saved')}catch(e){toast('Could not save: '+(e.message||e.code))}}
-function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none'}if($('#pinState'))$('#pinState').textContent=[ownerPinH?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',officePin?'Editor PIN is set.':'No editor PIN yet.'].join(' ');
+function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none'}if($('#pinState'))$('#pinState').textContent=[pinOf(curUser)?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',officePin?'Editor PIN is set.':'No editor PIN yet.'].join(' ');
   el.innerHTML=crew.length?['HQ','Field'].filter(g=>crew.some(c=>groupOf(c.role)===g)).map(g=>`<div class="crewgrp"><b>${g}</b><div class="crewchips">${crew.map((c,k)=>({...c,k})).filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<span class="crewchip" data-ce="${c.k}">${esc(c.name)}<small>${esc(RL(c.role))}</small>${isOwner(c.name)?'<span class="edtag">Admin</span>':c.editor?'<span class="edtag">Editor</span>':''}${isOwner(c.name)?'':`<button class="admin-only" data-ed="${c.k}" title="${c.editor?'Remove editor access':'Make editor'}">${c.editor?'−Ed':'+Ed'}</button><button class="admin-only" data-ck="${c.k}" aria-label="Remove ${esc(c.name)}" title="Remove">✕</button>`}</span>`).join('')}</div></div>`).join('')
    :'<div class="muted" style="padding:8px 0">No crew yet. Add PMs, FMs and SFMs above.</div>';
   if(isAdmin)$$('#crewList [data-ce]').forEach(ch=>{ch.title='Press and hold to edit';lp(ch,()=>editCrew(Number(ch.dataset.ce)))});
@@ -1586,7 +1586,7 @@ $('#addItem').onclick=()=>openItem('');
 
 /* jobs */
 $('#jstat').onchange=()=>renderJobs();
-$('#saveOwnPin').onclick=async()=>{if(!isOwner(curUser))return;const p=$('#ownPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({ownerPinH:await sha(p)});$('#ownPin').value='';toast('Your personal PIN is saved. Use it next time you sign in.')}catch(e){toast('Could not save: '+(e.message||e.code))}};
+$('#saveOwnPin').onclick=async()=>{if(!isOwner(curUser))return;const p=$('#ownPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{const h=await sha(p);await db.doc('config/security').update(curUser===OWNER?{ownerPinH:h}:{ownerPins:{...ownPins,[curUser]:h}});$('#ownPin').value='';toast('Your personal PIN is saved. Use it next time you sign in.')}catch(e){toast('Could not save: '+(e.message||e.code))}};
 $('#savePin').onclick=async()=>{if(!isOwner(curUser)){toast('Only Kyle can change the editor PIN.');return}const p=$('#newPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({officePinH:await sha(p),officePin:null});$('#newPin').value='';toast('Office PIN saved')}catch(e){toast('Could not save: '+(e.message||e.code))}};
 $('#gAdd').onclick=()=>{const name=$('#gName').value;const feats=$$('#gFeats [data-gf][aria-pressed="true"]').map(b=>b.dataset.gf);if(!name||!feats.length){toast('Pick a person and at least one permission.');return}
   const d=$('#gDur').value;let until=null,from=null;if(d==='today'){const t=new Date();t.setHours(23,59,59,0);until=+t}else if(d==='tmrw'){const a=new Date();a.setDate(a.getDate()+1);a.setHours(7,0,0,0);from=+a;const b=new Date(a);b.setHours(17,0,0,0);until=+b}else if(d!=='0')until=Date.now()+Number(d)*3600e3;
@@ -1796,7 +1796,7 @@ function render(){const v=x=>!$('#tab-'+x).hidden;for(const k in __dirty)__dirty
 function renderIfDirty(t){renderCartBar();if(!__dirty[t])return;__dirty[t]=0;({yard:renderYard,inv:renderInv,jobs:renderJobs,log:renderLog,sheet:()=>{renderSheet();renderUndo()}})[t]?.()}
 
 renderPeople();render();
-let ownerPinH='';async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ame-yard:'+t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+let ownerPinH='',ownPins={};function pinOf(n){return n===OWNER?ownerPinH:(ownPins[n]||'')}async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ame-yard:'+t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 let curUser='',accountAdmin=false,officePin='',officePinH='',pinFails=0,pinLockUntil=0,lastAct=Date.now();
 function isOwnerName(n){return ['Don S.','DON'].includes(n)}
 try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3&&!(isOwnerName(u.n)&&u.n!==OWNER))curUser=u.n}catch(e){}
@@ -1836,11 +1836,11 @@ function showLoginPicker(){
   $('#guestForm').onsubmit=e=>{e.preventDefault();const n=$('#guestName').value.trim().replace(/\s+/g,' ');if(n.length<2){toast('Type your name first.');return}
     const m=crew.find(c=>c.name.toLowerCase()===n.toLowerCase());if(m){$$('#loginRoot [data-u]').find(b=>b.dataset.u===m.name)?.click();return}setUser(n)};
   $$('#loginRoot [data-u]').forEach(b=>b.onclick=()=>{const n=b.dataset.u;
-    if(!isEditor(n)||!(isOwner(n)&&ownerPinH?1:officePin)||viewAs==='__login'&&false){if(isEditor(n)&&!accountAdmin)toast('This device has basic access only — office tools stay hidden.');setUser(n);return}
-    let pin='';const draw=()=>{$('#pinArea').innerHTML=`<div class="pinbox"><div class="qlabel">${isOwner(n)&&ownerPinH?'Personal PIN':'Editor PIN'} for ${esc(n)}</div><div class="pindots">${[0,1,2,3].map(k=>`<span class="${k<pin.length?'on':''}"></span>`).join('')}</div>
+    if(!isEditor(n)||!(isOwner(n)&&pinOf(n)?1:officePin)||viewAs==='__login'&&false){if(isEditor(n)&&!accountAdmin)toast('This device has basic access only — office tools stay hidden.');setUser(n);return}
+    let pin='';const draw=()=>{$('#pinArea').innerHTML=`<div class="pinbox"><div class="qlabel">${isOwner(n)&&pinOf(n)?'Personal PIN':'Editor PIN'} for ${esc(n)}</div><div class="pindots">${[0,1,2,3].map(k=>`<span class="${k<pin.length?'on':''}"></span>`).join('')}</div>
       <div class="pinpad">${['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('')}</div><button class="btn" id="pinCancel">Cancel</button></div>`;
       $$('#pinArea [data-k]').forEach(x=>x.onclick=()=>{const k=x.dataset.k;if(k==='⌫')pin=pin.slice(0,-1);else if(pin.length<4)pin+=k;
-        if(pin.length===4){const p=pin;pin='';(async()=>{if(Date.now()<pinLockUntil){toast('Too many wrong PINs — try again in '+Math.ceil((pinLockUntil-Date.now())/1000)+' s');draw();return}const h=await sha(p);const ok=isOwner(n)&&ownerPinH?h===ownerPinH:(officePinH?h===officePinH:p===officePin);if(ok){pinFails=0;setUser(n);return}pinFails++;if(pinFails>=5){pinFails=0;pinLockUntil=Date.now()+60000;toast('Too many wrong PINs — locked for 1 minute');try{logLogin(n+' (wrong PIN x5)',true)}catch(e){}}else toast('Wrong PIN');draw()})();return}draw()});
+        if(pin.length===4){const p=pin;pin='';(async()=>{if(Date.now()<pinLockUntil){toast('Too many wrong PINs — try again in '+Math.ceil((pinLockUntil-Date.now())/1000)+' s');draw();return}const h=await sha(p);const ok=isOwner(n)&&pinOf(n)?h===pinOf(n):(officePinH?h===officePinH:p===officePin);if(ok){pinFails=0;setUser(n);return}pinFails++;if(pinFails>=5){pinFails=0;pinLockUntil=Date.now()+60000;toast('Too many wrong PINs — locked for 1 minute');try{logLogin(n+' (wrong PIN x5)',true)}catch(e){}}else toast('Wrong PIN');draw()})();return}draw()});
       $('#pinCancel').onclick=()=>{$('#pinArea').innerHTML=''}};draw()});
 }
 
@@ -1891,7 +1891,7 @@ db.doc('config/yardmap').onSnapshot(s=>{const d=s.data()||{};if(mapEdit)return;a
 db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()},()=>{});
   db.doc('config/perms').onSnapshot(s=>{perms=s.data()||{roles:{},grants:[]};if(curUser)setUser(curUser);renderPerms()},()=>{});
   setInterval(()=>{if(curUser)setUser(curUser)},60e3);
-  db.doc('config/security').onSnapshot(async s=>{const d=s.data()||{};officePinH=d.officePinH||'';officePin=officePinH||d.officePin||'';ownerPinH=d.ownerPinH||'';if(d.officePin&&isOwner(curUser)){try{await db.doc('config/security').update({officePinH:officePinH||await sha(d.officePin),officePin:null})}catch(e){}}renderCrew()},()=>{});
+  db.doc('config/security').onSnapshot(async s=>{const d=s.data()||{};officePinH=d.officePinH||'';officePin=officePinH||d.officePin||'';ownerPinH=d.ownerPinH||'';ownPins=d.ownerPins||{};if(d.officePin&&isOwner(curUser)){try{await db.doc('config/security').update({officePinH:officePinH||await sha(d.officePin),officePin:null})}catch(e){}}renderCrew()},()=>{});
   db.collection('presence').onSnapshot(s=>{presence=s.docs.map(d=>({...d.data(),_id:d.id}));renderOnline()},()=>{});
   startPresence();
   db.collection('jobs').onSnapshot(s=>{jobs=s.docs.map(d=>({...d.data(),_id:d.id}));render()},()=>{});
@@ -1948,7 +1948,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
 <script src="dispatch.js?v=510"></script>
-<script src="admin.js?v=471"></script>
+<script src="admin.js?v=472"></script>
 <script src="lab.js?v=414"></script>
 <script src="lunch.js?v=5"></script>
 <script src="tsheet.js?v=11"></script>
