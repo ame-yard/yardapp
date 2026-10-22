@@ -200,6 +200,7 @@ new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>n.nodeType===1&&(
 
 /* ---------- downloads ---------- */
 const downloads={save:async({filename,data})=>{
+  try{if(typeof db!=='undefined'&&db&&typeof curUser!=='undefined')db.collection('logs').add({ts:new Date().toISOString(),action:'EXPORT',itemId:'',name:String(filename||''),size:'',unit:'',loc:'',n:0,before:'',after:'',job:'',by:curUser||'',note:'Downloaded '+String(filename||''),cond:''}).catch(()=>{})}catch(e){}
   const u=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));
   const a=document.createElement('a');a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(u),30000);
