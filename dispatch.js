@@ -42,7 +42,7 @@ function matchStaff(raw){const n=raw.trim().toLowerCase();if(!n)return null;let 
 const PRI=[['','No priority','transparent'],['1','1st','#29b6f6'],['2','2nd','#8bc34a'],['3','3rd','#ffd400'],['4','4th','#8e44ad']];const prOf=n=>String((person(n)||{}).pr||'');const prCol=n=>(PRI.find(x=>x[0]===prOf(n))||PRI[0])[2];const prRank=n=>+prOf(n)||9;const dot=n=>prOf(n)?`<b class="prd" style="--p:${prCol(n)}" title="Priority ${prOf(n)}"></b>`:'<b class="prd none"></b>';
 let LVC={};const lvOf=n=>(person(n)||{}).lv||LVC[n]||'';
 const short=n=>{const p=person(n);return p&&p.short||n};
-window.ameStaff=()=>STAFF;window.ameStaffFind=person;
+window.ameStaff=()=>STAFF;window.ameStaffFind=person;window.ameDspSites=()=>S.filter(s=>(s.status||'Active')==='Active');window.ameDspCrews=d=>{try{return rowsFor(d).map(r=>({site:{id:r.s._id,no:r.s.no||'',name:r.s.name||'',pic:r.s.pic||'',sys:r.s.sys||''},crew:(r.crew||[]).map(c=>c.n)}))}catch(e){return []}};
 
 (function w(){if(typeof db!=='undefined'&&db&&db.collection){
   db.collection('dsites').onSnapshot(s=>{S=s.docs.map(d=>({...d.data(),_id:d.id}));LVC={};S.forEach(x=>(x.asg||[]).forEach(a=>{if(a.lv)LVC[a.n]=a.lv}));if(AME.cur==='dsp')render()},()=>{});

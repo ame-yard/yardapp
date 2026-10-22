@@ -683,7 +683,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
   <section id="tab-mpl" hidden></section>
   <section id="tab-eqp" hidden></section>
   <section id="tab-field" hidden></section>
-  <section id="tab-dsp" hidden></section>
+  <section id="tab-ts" hidden></section><section id="tab-dsp" hidden></section>
   <section id="tab-trucks" hidden></section>
   <section id="tab-safety" hidden></section>
   <section id="tab-deliv" hidden></section>
@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.98',APP_DATE='2026-10-22';
+const APP_VERSION='6.99',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -2009,7 +2009,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=6.98"></script>
+<script src="shell.js?v=6.99"></script>
 <script src="polish.js?v=462"></script>
 <script src="mpl.js?v=399"></script>
 <script src="eqp.js?v=484"></script>
@@ -2017,7 +2017,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=474"></script>
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
-<script src="dispatch.js?v=6.97"></script>
+<script src="dispatch.js?v=6.99"></script>
 <script src="hr.js?v=1"></script>
 <script src="notice.js?v=6.64"></script>
 <script src="admin.js?v=6.96"></script>
@@ -2029,7 +2029,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="bid.js?v=2"></script><script src="est.js?v=2"></script>
 <script src="revu.js?v=4"></script>
 <script src="names.js?v=11"></script>
-<script src="tsheet.js?v=6.92"></script>
+<script src="tsheet.js?v=6.92"></script><script src="timesheets.js?v=1"></script>
 <script src="labels.js?v=425"></script>
 <script src="scan.js?v=424"></script>
 <script>
