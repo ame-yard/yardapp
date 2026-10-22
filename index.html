@@ -266,7 +266,7 @@ header .wrap nav.tabs{margin-left:0}
 .pchip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 6px 4px 10px;font-size:12px;font-weight:700;background:rgba(244,123,32,.18);color:var(--hi)}.pchip button{border:0;background:none;color:inherit;font-size:15px;cursor:pointer;padding:0 4px}
 .lvhelp{margin:4px 0 6px}.lvhelp summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--hi)}.lvtbl td,.lvtbl th{padding:6px 8px;font-size:13px}.lvtbl td.c{text-align:center}
 .tpseg{display:flex;flex-wrap:wrap;gap:6px}.tpseg button{border:1px solid var(--line);background:none;color:inherit;font:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:8px 12px;cursor:pointer}.tpseg button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:#fff}
-@media(max-width:700px){.prow{grid-template-columns:1fr 130px}.pext{grid-column:1/-1}}
+@media(max-width:700px){.prow{grid-template-columns:1fr auto}.pext{grid-column:1/-1}}
 .permtbl th{font-size:11px;white-space:normal;text-align:center}.permtbl td.c{text-align:center}.permtbl input{width:22px;height:22px;accent-color:var(--hi)}
 body.nophoto .cam,body.nophoto #e_photoLbl{display:none!important}
 @media (max-width:600px){
@@ -692,7 +692,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.58',APP_DATE='2026-10-21';
+const APP_VERSION='5.59',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
