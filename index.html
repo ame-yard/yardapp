@@ -5,7 +5,7 @@ html.boot section[id^=tab-]{visibility:hidden}
 .dvphw{position:relative;display:inline-block;margin:10px 0;max-width:100%}.dvphw img{display:block}.dvmin{position:absolute;top:8px;right:8px;border:0;background:none;padding:2px;color:var(--muted,#bbb);cursor:pointer;line-height:0}.dvmin:hover{color:#fff}.dvphb{position:absolute;top:6px;right:6px;border:0;background:none;padding:0;cursor:pointer;line-height:0}.dvphw.sm .dvphb svg{width:24px;height:24px}.dvphw img{max-width:100%;max-height:360px;border-radius:10px;cursor:zoom-in}.dvphw.sm img{max-height:90px;max-width:120px;object-fit:cover}
 .dvjob{flex:none;margin-left:auto!important;font-size:12px;font-weight:700;padding:4px 10px;border-radius:14px;border:1px solid var(--line,#666);white-space:nowrap}.dvjob.none{border-color:#f47b20;color:#f47b20}
 .mplcard.dvc{padding:10px 14px;gap:4px}.dvc .dvh{display:flex;align-items:center;gap:8px;min-width:0}.dvc .dvh b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.dvc .dvh>*:last-child{flex:none;margin:0}.dvc small{line-height:1.35}
-</style><script>(function(){try{var t=localStorage.getItem('ameTheme')||'dark';if(t==='auto')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()</script>
+.lvd{width:100%;border-collapse:collapse}.lvd th,.lvd td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}.lvd .c,.lvd th{text-align:center}.lvd th:first-child{text-align:left}.lvd input{width:20px;height:20px}#lvTbl tr[data-lvb]:hover td{background:rgba(255,255,255,.04)}</style><script>(function(){try{var t=localStorage.getItem('ameTheme')||'dark';if(t==='auto')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()</script>
 <style id="themeLight">
 html[data-theme=light]{--bg:#f3efeb;--panel:#ffffff;--ink:#2b2420;--muted:#6f655d;--line:#d6ccc2;--chip:#ece5de;--ok:#2e8b57;--warn:#a87400;--bad:#d14334;color-scheme:light}
 html[data-theme=light] body{background:var(--bg);color:var(--ink)}
@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.20',APP_DATE='2026-10-22';
+const APP_VERSION='6.21',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -915,13 +915,21 @@ const ADDONS=[['MPL','Prep List'],['EQP','Equipment Prices'],['DISPATCH','Dispat
 function defLevel(role){return ({Crew:'crew',Guest:'crew',FM:'field',SFM:'field',Yard:'yard'})[role]||'office'}
 function baseLevel(n){const c=crew.find(x=>x.name===n);return (perms.levels||{})[n]||defLevel(c?c.role:'Guest')}
 function effLevel(n){let L=baseLevel(n);activeGrants(n).forEach(g=>{if(g.level&&LVI(g.level)>LVI(L))L=g.level});return L}
-function levelFeats(L){const r=LVS.find(x=>x[0]===L);if(!r||!r[2])return FEATS.map(f=>f[0]);return r[2].flatMap(b=>LVB.find(x=>x[0]===b)[3])}
+function baseFeats(L){const r=LVS.find(x=>x[0]===L);if(!r||!r[2])return FEATS.map(f=>f[0]);return r[2].flatMap(b=>LVB.find(x=>x[0]===b)[3])}
+function levelFeats(L){const b=baseFeats(L);const r=LVS.find(x=>x[0]===L);if(!r||!r[2])return b;const o=((typeof perms!=='undefined'&&perms.lvmap)||{})[L]||{};const set=new Set(b);Object.keys(o).forEach(f=>{if(o[f])set.add(f);else set.delete(f)});return [...set]}
+function lvDlg(bk){const B=LVB.find(x=>x[0]===bk);if(!B||!isOwner(curUser))return;const FL=f=>(FEATS.find(x=>x[0]===f)||[f,f])[1].replace(/^App: /,'');const LV=LVS.filter(l=>l[2]);let M=JSON.parse(JSON.stringify(perms.lvmap||{}));
+  const on=(L,f)=>{const o=(M[L]||{})[f];return o===undefined?baseFeats(L).includes(f):!!o};
+  const draw=()=>{$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" style="max-width:620px"><h3>${esc(B[1])} · who can do what</h3><p class="muted" style="margin-top:0">Tick each action per level. Editors and Admins can always do everything.</p>
+   <table class="lvd"><thead><tr><th></th>${LV.map(l=>`<th>${l[1]}</th>`).join('')}</tr></thead><tbody>${B[3].map(f=>`<tr><td>${esc(FL(f))}</td>${LV.map(l=>`<td class="c"><input type="checkbox" data-lv="${l[0]}|${f}" ${on(l[0],f)?'checked':''}></td>`).join('')}</tr>`).join('')}</tbody></table>
+   <div class="bar"><button class="btn" id="lvR">Reset this group</button><span style="flex:1"></span><button class="btn" id="lvC">Cancel</button><button class="go" id="lvS" style="width:auto">Save</button></div></div></div>`;
+   $$('[data-lv]').forEach(i=>i.onchange=()=>{const[L,f]=i.dataset.lv.split('|');M[L]=M[L]||{};if(i.checked===baseFeats(L).includes(f))delete M[L][f];else M[L][f]=i.checked;if(!Object.keys(M[L]).length)delete M[L]});
+   $('#lvR').onclick=()=>{LV.forEach(l=>{if(M[l[0]])B[3].forEach(f=>delete M[l[0]][f]);if(M[l[0]]&&!Object.keys(M[l[0]]).length)delete M[l[0]]});draw()};$('#lvC').onclick=closeDlg;$('#lvS').onclick=()=>{savePerms({...perms,lvmap:M});closeDlg();toast('Saved — applies right away')}};draw()}
 const allNames=()=>[...new Set([...crew.map(c=>c.name),...people])].sort((a,b)=>a.localeCompare(b));
 const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.name);if(cur&&!opts.includes(cur))opts.unshift(cur);
   return `<select id="${id}"><option value="">— select ${role} —</option>${opts.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}</select>`};
 async function saveCrew(list){if(!list.some(c=>isOwner(c.name))){const o=crew.find(c=>isOwner(c.name));if(o)list=[...list,{...o,editor:true}]}list=list.map(c=>isOwner(c.name)?{...c,editor:true}:c);try{await db.doc('config/crew').set({members:list})}catch(e){toast('Could not save crew: '+(e.message||e.code))}}
 function renderPerms(){const box=$('#permPeople');if(!box||!isAdmin)return;
-  const T=$('#lvTbl');if(T)T.innerHTML=`<thead><tr><th></th>${LVS.map(l=>`<th>${l[1]}</th>`).join('')}</tr></thead><tbody>${LVB.map(b=>`<tr><td><b>${b[1]}</b><br><small class="muted">${b[2]}</small></td>${LVS.map(l=>`<td class="c">${!l[2]||l[2].includes(b[0])?'✓':'<span class="muted">–</span>'}</td>`).join('')}</tr>`).join('')}<tr><td><b>Office tools</b><br><small class="muted">Edit items, jobs, crew, sheet · Admin section</small></td>${LVS.map(l=>`<td class="c">${l[2]?'<span class="muted">–</span>':'✓'}</td>`).join('')}</tr></tbody>`;
+  const T=$('#lvTbl');if(T)T.innerHTML=`<thead><tr><th></th>${LVS.map(l=>`<th>${l[1]}</th>`).join('')}</tr></thead><tbody>${LVB.map(b=>`<tr data-lvb="${b[0]}" style="cursor:pointer" title="Click to adjust each action"><td><b>${b[1]}</b> <small style="color:var(--hi)">Adjust ›</small><br><small class="muted">${b[2]}</small></td>${LVS.map(l=>{if(!l[2])return '<td class="c">✓</td>';const F=levelFeats(l[0]);const n=b[3].filter(f=>F.includes(f)).length;return `<td class="c">${n===b[3].length?'✓':n?`<span title="${n} of ${b[3].length}" style="color:var(--hi)">${n}/${b[3].length}</span>`:'<span class="muted">–</span>'}</td>`}).join('')}</tr>`).join('')}<tr><td><b>Office tools</b><br><small class="muted">Edit items, jobs, crew, sheet · Admin section</small></td>${LVS.map(l=>`<td class="c">${l[2]?'<span class="muted">–</span>':'✓'}</td>`).join('')}</tr></tbody>`;if(T)T.querySelectorAll('[data-lvb]').forEach(r=>r.onclick=()=>lvDlg(r.dataset.lvb));
   const now=Date.now();const fmt=t=>new Date(t).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   const row=c=>{const n=c.name;const own=isOwner(n),ced=!!c.editor;const lv=(perms.levels||{})[n];const def=defLevel(c.role);const ex=(perms.extra||{})[n]||[];
     const G=(perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now));
