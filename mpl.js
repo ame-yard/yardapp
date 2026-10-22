@@ -54,7 +54,7 @@ function bestYard(name){const a=norm(name);if(!a.length)return null;let best=nul
 function yardFor(line){if(line.yid&&byId(line.yid))return byId(line.yid);if(line.nolink)return null;const m=line.rid&&mapItem(line.rid);if(m)return m;return line.rid?bestYard(line.name):null}
 
 /* ---------- data ---------- */
-let NAMES={};const applyNames=()=>{if(REF&&REF.its)REF.its.forEach(r=>{if(r._o==null)r._o=r[1];r[1]=NAMES[r[0]]||r._o})};
+let NAMES={};const applyNames=()=>{if(REF&&REF.its)REF.its.forEach(r=>{if(r._o==null)r._o=r[1];r[1]=(NAMES._live&&NAMES[r[0]])||r._o})};
 function load(){db.doc('mplref/ref').onSnapshot(s=>{REF=s.data()||null;applyNames();if(isOn())render()},()=>{});db.doc('config/mplnames').onSnapshot(s=>{NAMES=s.data()||{};applyNames();if(isOn())render()},()=>{});
   db.collection('mpl').onSnapshot(s=>{MPLS=s.docs.map(d=>({...d.data(),_id:d.id}));AME.badges&&AME.badges();if(isOn())render()},()=>{});
   db.doc('config/spectrum').onSnapshot(s=>{SPC=s.data()||null},()=>{});
