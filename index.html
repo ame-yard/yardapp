@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.53',APP_DATE='2026-10-21';
+const APP_VERSION='5.54',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1644,18 +1644,20 @@ function devName(){const u=navigator.userAgent;return /iPad/.test(u)||(/Macintos
 let msAcct='';
 /* ---- device lock: a name can only be used from the devices it was first used on (Kyle can use any) ---- */
 function hashStr(t){let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return (h>>>0).toString(36)}
-let DEVB={},msEmail='',myIp='',devbOk=false,secReadyRes;const secReady=new Promise(r=>secReadyRes=r);
-function devKey(){return (msEmail||'?')+'|'+devName()}
+let DEVB={},msEmail='',myIp='',devbOk=false,secReadyRes;
+const ipP=(async()=>{try{const c=new AbortController();setTimeout(()=>c.abort(),4000);myIp=(await (await fetch('https://api.ipify.org?format=json',{signal:c.signal})).json()).ip||''}catch(e){}return myIp})();const ipRes=()=>{};
+const ipWait=()=>Promise.race([ipP,new Promise(r=>setTimeout(r,4500))]);const secReady=new Promise(r=>secReadyRes=r);
+function devKey(){return (msEmail||'?')+'|'+devName()+'|'+devId}
 async function secInit(){try{const u=await window.claude.use('user');msEmail=(u?.email?.()||'').toLowerCase();msAcct=u?.name?.()||msAcct}catch(e){}
   try{db.doc('config/devbind').onSnapshot(x=>{DEVB=x.data()||{};if(!devbOk){devbOk=true;secReadyRes();if(!curUser&&typeof showLogin==='function'&&crew.length)showLogin()}},()=>{secReadyRes()})}catch(e){secReadyRes()}
-  try{myIp=(await (await fetch('https://api.ipify.org?format=json')).json()).ip||''}catch(e){}
+  ipRes();
   secReady.then(()=>{if(curUser&&isOwner(curUser)&&msEmail&&!(DEVB.__owners||[]).includes(msEmail))bindName(curUser)})}
-function logLogin(n,blocked){try{db.collection('logins').add({ts:new Date().toISOString(),name:n,acct:msAcct,email:msEmail,dev:devName(),key:devKey(),ip:myIp,ua:navigator.userAgent.slice(0,160),blocked:!!blocked})}catch(e){}}
+async function logLogin(n,blocked){await ipWait();try{db.collection('logins').add({ts:new Date().toISOString(),name:n,acct:msAcct,email:msEmail,dev:devName(),key:devKey(),ip:myIp,ua:navigator.userAgent.slice(0,160),blocked:!!blocked})}catch(e){}}
 function canUseName(n){if(!n||n===curUser||!devbOk||!msEmail)return true;const own=(DEVB.__owners||[]);if(isOwner(n)){return true}
   if(msEmail&&own.includes(msEmail))return true;const b=DEVB[n]||[];return !b.length||b.some(x=>x.key===devKey()||String(x.key).split('|')[0]===msEmail)}
-async function bindName(n){await secReady;if(!msEmail)return;const k=devKey();const own=new Set(DEVB.__owners||[]);let ch=false;if(isOwner(n)&&msEmail&&!own.has(msEmail)){own.add(msEmail);ch=true}
+async function bindName(n){await secReady;if(!msEmail)return;await ipWait();const k=devKey();const own=new Set(DEVB.__owners||[]);let ch=false;if(isOwner(n)&&msEmail&&!own.has(msEmail)){own.add(msEmail);ch=true}
   const b=[...(DEVB[n]||[])];const i=b.findIndex(x=>x.key===k);const now=new Date().toISOString();
-  if(i<0&&!(msEmail&&own.has(msEmail)&&!isOwner(n))){b.push({key:k,acct:msAcct,dev:devName(),first:now,last:now});ch=true}else if(i>=0){if(Date.now()-new Date(b[i].last||0)>36e5){b[i]={...b[i],last:now};ch=true}}
+  if(i<0&&!(msEmail&&own.has(msEmail)&&!isOwner(n))){b.push({key:k,acct:msAcct,dev:devName(),first:now,last:now,ip:myIp||''});ch=true}else if(i>=0){if(Date.now()-new Date(b[i].last||0)>36e5||(myIp&&b[i].ip!==myIp)){b[i]={...b[i],last:now,ip:myIp||b[i].ip||''};ch=true}}
   if(ch){DEVB={...DEVB,[n]:b,__owners:[...own]};try{await db.doc('config/devbind').update({[n]:b,__owners:[...own]})}catch(e){}}}
 
 async function beat(){if(document.hidden||!db)return;const t=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab||'yard';
@@ -1946,7 +1948,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
 <script src="dispatch.js?v=510"></script>
-<script src="admin.js?v=469"></script>
+<script src="admin.js?v=470"></script>
 <script src="lab.js?v=414"></script>
 <script src="lunch.js?v=5"></script>
 <script src="tsheet.js?v=11"></script>
