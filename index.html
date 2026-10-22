@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.35',APP_DATE='2026-10-22';
+const APP_VERSION='6.36',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1680,7 +1680,10 @@ function renderOutJobs(){
 }
 /* log */
 $('#lsearch').oninput=renderLog;
-function isOther(g){return g.dev?g.dev!==devId:g.by!==curUser}
+function rankOf(n){if(!n)return -1;try{if(isOwner(n))return 100;if(((perms&&perms.admins)||[]).includes(n))return 90;return LVI(effLevel(n))}catch(e){return 0}}
+/* hide what people above you did (they see yours; you don't see theirs) */
+function canSeeLog(g){if(!g||!g.by||g.by===curUser)return true;if(isDev(curUser))return true;return rankOf(g.by)<=rankOf(curUser)}
+function isOther(g){return (g.dev?g.dev!==devId:g.by!==curUser)&&canSeeLog(g)}
 function seenTs(){try{return localStorage.getItem('ameSeenDev')||''}catch(e){return ''}}
 function markSeen(){try{localStorage.setItem('ameSeenDev',new Date().toISOString())}catch(e){}updBell()}
 function updBell(){const b=$('#bellBtn');if(!b)return;b.hidden=!curUser;if(!curUser)return;const s=seenTs();const n=s?logs.filter(g=>g.ts>s&&isOther(g)).length:0;if(!s&&logs.length){markSeen();return}$('#bellN').hidden=!n;$('#bellN').textContent=n>99?'99+':n}
@@ -1924,7 +1927,7 @@ $('#lSelDel').onclick=async()=>{const ids=[...lPick];if(!ids.length||!confirm('D
   b.textContent='Delete';lSel=false;lPick.clear();renderLog()};
 $('#brand').onclick=()=>{closeDlg&&closeDlg();yView='map';yLoc='';act='OUT';selMode=false;repMode=false;repPick.clear();picked.clear();showTab('yard');renderYard();scrollTo({top:0,behavior:'smooth'})};
 $('#bellBtn').onclick=e=>{e.stopPropagation();let p=$('#bellPop');if(p){p.remove();return}
-  const seen=seenTs();const ck='ameBellClr:'+curUser;let clr='';try{clr=localStorage.getItem(ck)||''}catch(x){}let hid=[];try{hid=JSON.parse(localStorage.getItem(ck+':h')||'[]')}catch(x){}const hk=g=>g.ts+'|'+(g.itemId||g.name||'');const l=[...logs,...(isDev(curUser)?LOGINS:[])].sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).filter(g=>(!clr||g.ts>clr)&&!hid.includes(hk(g))).slice(0,20);p=document.createElement('div');p.id='bellPop';
+  const seen=seenTs();const ck='ameBellClr:'+curUser;let clr='';try{clr=localStorage.getItem(ck)||''}catch(x){}let hid=[];try{hid=JSON.parse(localStorage.getItem(ck+':h')||'[]')}catch(x){}const hk=g=>g.ts+'|'+(g.itemId||g.name||'');const l=[...logs,...(isDev(curUser)?LOGINS:[])].filter(canSeeLog).sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).filter(g=>(!clr||g.ts>clr)&&!hid.includes(hk(g))).slice(0,20);p=document.createElement('div');p.id='bellPop';
   p.innerHTML=`<div class="bph"><b>Recent updates</b><small class="muted">${logs.filter(g=>g.ts>seen&&isOther(g)).length} new</small>${'Notification' in window&&Notification.permission!=='granted'?'<button type="button" class="btn small" id="bellNotif" title="Get truck and delivery alerts on this device">Turn on alerts</button>':''}${l.length?'<button type="button" class="btn small" id="bellClr" style="margin-left:auto">Clear</button>':''}</div>`+(l.length?l.map(g=>`<div class="bpi ${isOther(g)&&g.ts>seen?'new':''}" data-vi="${esc(g.itemId||'')}" ${g.action==='DELIV'&&g.dv?`data-dvc="${esc(g.dv)}"`:''}${g.action==='DISPATCH'?'data-dsp="1"':''} style="cursor:pointer" title="Open this item">${thumb(byId(g.itemId))}<div><b>${esc(g.by||'')}</b> <span class="a-${g.action}">${ACTNAME[g.action]||g.action}</span> · ${esc(g.name||'')}${g.n?` <span class="muted">(${g.n} ${esc(g.unit||'')})</span>`:''}${g.job?` <span class="muted">${esc(g.job)}</span>`:''}<small class="muted">${fmtD(g.ts)}${g.note?' · '+esc(g.note):''}</small></div><button type="button" class="bpx" data-bh="${esc(hk(g))}" aria-label="Remove this notification" title="Remove">×</button></div>`).join(''):`<div class="muted" style="padding:12px">${clr?'All caught up. Everything is still in Activity.':'No activity yet.'}</div>`);
   p.querySelectorAll('[data-vi]').forEach(x=>x.onclick=()=>{p.remove();if(x.dataset.vi==='__login'){AME.open('admin');return}if(x.dataset.dsp){AME.open('dsp');return}if(x.dataset.dvc&&window.ameDelivClaim){window.ameDelivClaim(x.dataset.dvc);return}viewItem(x.dataset.vi)});p.querySelectorAll('[data-bh]').forEach(x=>x.onclick=ev=>{ev.stopPropagation();hid=[x.dataset.bh,...hid].slice(0,300);try{localStorage.setItem(ck+':h',JSON.stringify(hid))}catch(e){}x.closest('.bpi').remove()});{const nb=p.querySelector('#bellNotif');if(nb)nb.onclick=ev=>{ev.stopPropagation();p.remove();window.ameNotifyAsk&&window.ameNotifyAsk()}}{const cb=p.querySelector('#bellClr');if(cb)cb.onclick=ev=>{ev.stopPropagation();try{localStorage.setItem(ck,(logs[0]&&logs[0].ts)||new Date().toISOString())}catch(x){}p.remove();markSeen();$('#bellBtn').click()}}document.body.appendChild(p);const r=$('#bellBtn').getBoundingClientRect();p.style.top=(r.bottom+8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';markSeen()};
 document.addEventListener('click',e=>{const p=$('#bellPop');if(p&&!p.contains(e.target))p.remove()});
