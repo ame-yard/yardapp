@@ -78,6 +78,7 @@ const lockOf=mon=>(DAY[mon]||{}).lock||null;
 const isLocked=mon=>{const l=lockOf(mon);return !!(l&&l.st==='approved')};
 const wkEditable=mon=>!isLocked(mon)||dAdm();
 const dPM=()=>{try{return dAdm()||(typeof curRole==='function'&&curRole()==='PM')}catch(e){return false}};
+const dHR=()=>{try{return dPM()||(typeof curRole==='function'&&curRole()==='HR')}catch(e){return false}};
 const frozenMon=mon=>!!(DAY[mon]&&DAY[mon].frozen);
 /* first Monday a schedule-level change may touch: never the past, never a frozen (complete/approved) week */
 function cutoff(){let m=monOf(today());Object.keys(DAY).filter(k=>frozenMon(k)).sort().forEach(k=>{if(addD(k,7)>m)m=addD(k,7)});return m}
@@ -146,7 +147,7 @@ function render(){if(!sec)return;try{sessionStorage.setItem('dsView',view)}catch
      so hide that tab on phones (iPad/desktop keep it). Table & PDF stay: those can be pinch-zoomed. */
   if(ph&&view==='gantt')view='day';
   const evOK=typeof isOwner==='function'&&isOwner(curUser);if(view==='eval'&&!evOK)view='day';
-  const VWS=[['day','Dispatch'],['gantt','Schedule'],['sites','Jobs'],['staff','Staff'],...(evOK?[['eval','Evaluation']]:[]),...(dPM()?[['skills','Skills']]:[])].filter(([k])=>!(ph&&k==='gantt'));
+  const VWS=[['day','Dispatch'],['gantt','Schedule'],['sites','Jobs'],['staff','Staff'],...(evOK?[['eval','Evaluation']]:[]),...(dHR()?[['skills','Skills']]:[])].filter(([k])=>!(ph&&k==='gantt'));
   const seg=`<div class="viewseg" style="margin-bottom:12px">${VWS.map(([k,l])=>`<button data-dv="${k}" aria-pressed="${view===k}">${l}</button>`).join('')}</div>`;
   if(view!=='gantt')document.body.classList.remove('gfull');if(view==='gantt')return renderGantt(seg,ed);if(view==='sites')return renderSites(seg,ed);if(view==='staff')return renderStaff(seg,ed);if(view==='eval')return renderEval(seg);if(view==='skills')return renderSkills(seg,ed);
   const ed0=ed;const lk=lockOf(date);if(ed&&!wkEditable(date))ed=false;
@@ -727,7 +728,7 @@ function addPersonDlg(){const d=dlg(`<h3>Add person</h3><div class="fields"><lab
   d.querySelector('#apO').onclick=async()=>{const n=d.querySelector('#apN').value.trim().replace(/\s+/g,' ');if(!n){toast('Enter a name');return}if(STAFF.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast('Already on the list');return}const lv=d.querySelector('#apL').value;const p={name:n,emp:d.querySelector('#apE').value.trim(),lv,cls:lv==='Office'?'Office':d.querySelector('#apC').value,st:d.querySelector('#apT').value,cell:d.querySelector('#apP').value.trim(),hire:d.querySelector('#apH').value||'',short:d.querySelector('#apS').value.trim()||d.querySelector('#apS').placeholder||'',added:new Date().toISOString(),addedBy:curUser};
     const list=[...STAFF,p];STAFF=list;await db.doc('config/staff').set({list,updated:new Date().toISOString(),by:curUser});closeDlg();toast(n+' added');render()}}
 /* ---- the Skills view ---- */
-function renderSkills(seg,ed){const C=skCfg();const ok=dPM();if(!ok){view='day';return render()}
+function renderSkills(seg,ed){const C=skCfg();const ok=dHR();if(typeof curRole==='function'&&curRole()==='HR')ed=true;if(!ok){view='day';return render()}
   const P=STAFF.filter(p=>p.cls!=='Office'&&p.st==='Active'&&(!skQ||(p.name+' '+(p.short||'')+' #'+(p.emp||'')).toLowerCase().includes(skQ))&&(!skLv||(skLv==='FM'?['FM','SFM'].includes(p.lv):skLv==='A'?/^A\d/.test(p.lv||''):p.lv===skLv)));
   const soon=CERT.length?STAFF.filter(p=>p.st==='Active').flatMap(p=>Object.values(certsOf(p.name)).filter(c=>['exp','soon'].includes(certState(c).k)).map(c=>({p,c}))):[];
   const tabs=`<div class="viewseg" style="margin-bottom:10px">${[['matrix','Skill set'],['cert','Certifications'+(soon.length?` <b class="skbadge">${soon.length}</b>`:'')],['rate','Ratings'],['score','Score & priority']].map(([k,l])=>`<button data-skt="${k}" aria-pressed="${skTab===k}">${l}</button>`).join('')}</div>`;
