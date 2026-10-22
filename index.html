@@ -261,6 +261,12 @@ header .wrap nav.tabs{margin-left:0}
 .units button b,.ubadge b{font-family:var(--mono);font-size:14px}
 .units small,.ubadge small{font-size:11.5px;color:var(--muted)}
 .units button[aria-pressed="true"]{border-color:var(--hi);background:var(--panel);box-shadow:inset 0 0 0 2px var(--hi)}
+.prow{display:grid;grid-template-columns:170px 150px 1fr;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line)}.pnm{display:flex;flex-direction:column}.pnm small{font-size:11px}.plv select{width:100%;padding:7px 8px;font:inherit}.pfix{font-weight:800;color:var(--hi)}.pext{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.padd,.ptemp{border:1px dashed var(--line);background:none;color:var(--muted);font:inherit;font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;cursor:pointer}.padd[aria-pressed=true]{border-style:solid;border-color:var(--hi);color:var(--hi);background:rgba(244,123,32,.1)}.ptemp{border-style:solid;color:var(--ink)}
+.pchip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 6px 4px 10px;font-size:12px;font-weight:700;background:rgba(244,123,32,.18);color:var(--hi)}.pchip button{border:0;background:none;color:inherit;font-size:15px;cursor:pointer;padding:0 4px}
+.lvhelp{margin:4px 0 6px}.lvhelp summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--hi)}.lvtbl td,.lvtbl th{padding:6px 8px;font-size:13px}.lvtbl td.c{text-align:center}
+.tpseg{display:flex;flex-wrap:wrap;gap:6px}.tpseg button{border:1px solid var(--line);background:none;color:inherit;font:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:8px 12px;cursor:pointer}.tpseg button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:#fff}
+@media(max-width:700px){.prow{grid-template-columns:1fr 130px}.pext{grid-column:1/-1}}
 .permtbl th{font-size:11px;white-space:normal;text-align:center}.permtbl td.c{text-align:center}.permtbl input{width:22px;height:22px;accent-color:var(--hi)}
 body.nophoto .cam,body.nophoto #e_photoLbl{display:none!important}
 @media (max-width:600px){
@@ -631,14 +637,9 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <div class="panel admin-only owner-only" style="margin-bottom:18px"><h3 style="margin-top:0">Who's using the app <small class="muted" id="onlineN"></small></h3><div id="onlineList" class="muted">Loading…</div></div>
     <div class="panel admin-only owner-only permpanel" style="margin-bottom:18px">
       <h3 style="margin:0">Permissions</h3>
-      <p class="muted" style="font-size:13px;margin:4px 0 10px">Editors always have everything. Changes apply right away on every device.</p>
-      <div class="qlabel">By role</div>
-      <div class="tblwrap"><table class="permtbl" id="permRoles"></table></div>
-      <div class="qlabel" style="margin-top:16px">Temporary access for one person</div>
-      <div class="filters"><select id="gName"></select><select id="gDur"><option value="1">1 hour</option><option value="4">4 hours</option><option value="today" selected>Until end of today</option><option value="tmrw">Tomorrow 7 AM – 5 PM</option><option value="168">7 days</option><option value="0">Until I remove it</option></select></div>
-      <div class="units" id="gFeats"></div>
-      <div style="margin-top:8px"><button class="btn pri" id="gAdd">Give access</button></div>
-      <div id="gList" style="margin-top:12px"></div>
+      <p class="muted" style="font-size:13px;margin:4px 0 10px">Pick one level for each person. Admins and Editors can do everything. Changes apply right away.</p>
+      <details class="lvhelp"><summary>What each level can do</summary><div class="tblwrap"><table class="lvtbl" id="lvTbl"></table></div></details>
+      <div id="permPeople"></div>
     </div>
     <h3>Out on Jobs</h3>
     <p class="muted">Taken out minus returned, by job. Materials used up on a job stay here until someone returns leftovers.</p>
@@ -691,7 +692,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.57',APP_DATE='2026-10-21';
+const APP_VERSION='5.58',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -891,21 +892,47 @@ const RL=r=>r==='President'?'Admin':r;
 let crew=[];const ROLES=['President','PM','Office','Intern','Yard','FM','SFM','Crew'];
 const FIELD=['FM','SFM','Crew'];const groupOf=r=>FIELD.includes(r)?'Field':'HQ';
 const OWNER='Kyle K.',OWNERS=[OWNER,'Don S.','DON'];const isOwner=n=>OWNERS.includes(n);const isDev=n=>n===OWNER;
-const isEditor=n=>isOwner(n)||!!crew.find(c=>c.name===n&&c.editor)||!!(typeof perms!=='undefined'&&(perms.admins||[]).includes(n));
+const isEditor=n=>isOwner(n)||!!crew.find(c=>c.name===n&&c.editor)||!!(typeof perms!=='undefined'&&((perms.admins||[]).includes(n)||(perms.levels||{})[n]==='editor'||activeGrants(n).some(g=>g.level==='editor')));
+/* access levels: each person has one level; bundles of features */
+const LVB=[['use','Yard basics','Take out · return · photos · add items · jobs · unit numbers · deliveries',['YARD','OUT','RETURN','RECEIVE','PHOTO','ADD','JOBS','UNITS']],
+  ['care','Yard care','Repair · remove items',['REPAIR','DELITEM']],
+  ['check','Yard check','Audit (count & photos) · removed log',['AUDIT','DISPOSE']],
+  ['apps','Office apps','Mobilization Prep List · Equipment Prices · Dispatch',['MPL','EQP','DISPATCH']]];
+const LVS=[['crew','Crew',['use']],['field','Field',['use','care']],['yard','Yard',['use','care','check']],['office','Office',['use','care','check','apps']],['editor','Editor',null]];
+const LVN=k=>(LVS.find(x=>x[0]===k)||[k,k])[1];const LVI=k=>LVS.findIndex(x=>x[0]===k);
+const ADDONS=[['MPL','Prep List'],['EQP','Equipment Prices'],['DISPATCH','Dispatch']];
+function defLevel(role){return ({Crew:'crew',Guest:'crew',FM:'field',SFM:'field',Yard:'yard'})[role]||'office'}
+function baseLevel(n){const c=crew.find(x=>x.name===n);return (perms.levels||{})[n]||defLevel(c?c.role:'Guest')}
+function effLevel(n){let L=baseLevel(n);activeGrants(n).forEach(g=>{if(g.level&&LVI(g.level)>LVI(L))L=g.level});return L}
+function levelFeats(L){const r=LVS.find(x=>x[0]===L);if(!r||!r[2])return FEATS.map(f=>f[0]);return r[2].flatMap(b=>LVB.find(x=>x[0]===b)[3])}
 const allNames=()=>[...new Set([...crew.map(c=>c.name),...people])].sort((a,b)=>a.localeCompare(b));
 const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.name);if(cur&&!opts.includes(cur))opts.unshift(cur);
   return `<select id="${id}"><option value="">— select ${role} —</option>${opts.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}</select>`};
 async function saveCrew(list){if(!list.some(c=>isOwner(c.name))){const o=crew.find(c=>isOwner(c.name));if(o)list=[...list,{...o,editor:true}]}list=list.map(c=>isOwner(c.name)?{...c,editor:true}:c);try{await db.doc('config/crew').set({members:list})}catch(e){toast('Could not save crew: '+(e.message||e.code))}}
-function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const roles=ROLES.concat('Guest');
-  T.innerHTML=`<thead><tr><th>Role</th>${FEATS.map(([k,l])=>`<th title="${l}">${k==='EDIT'?'Office tools':l}</th>`).join('')}</tr></thead><tbody>${roles.map(r=>`<tr><td><b>${RL(r)}</b> <small class="muted">${groupOf(r)==='Field'||r==='Guest'?'Field':'HQ'}</small></td>${FEATS.map(([k])=>{const v=perms.roles?.[r]&&k in perms.roles[r]?perms.roles[r][k]:(DEF_ON.includes(k)||(k==='AUDIT'&&r==='Intern')||(['MPL','EQP'].includes(k)&&['President','PM','Office'].includes(r)));return `<td class="c"><input type="checkbox" data-pr="${r}" data-pf="${k}" ${v?'checked':''} aria-label="${r} ${k}"></td>`}).join('')}</tr>`).join('')}</tbody>`;
-  $$('#permRoles input').forEach(x=>x.onchange=async()=>{const p=JSON.parse(JSON.stringify(perms));p.roles=p.roles||{};p.roles[x.dataset.pr]={...(p.roles[x.dataset.pr]||{}),[x.dataset.pf]:x.checked};await savePerms(p)});
-  const names=crew.map(c=>c.name).filter(n=>!isEditor(n));const cur=$('#gName').value;
-  $('#gName').innerHTML=names.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
-  if(!$('#gFeats').dataset.init){$('#gFeats').innerHTML=FEATS.map(([k,l])=>`<button type="button" data-gf="${k}" aria-pressed="false"><b>${k==='EDIT'?'Office tools':l}</b></button>`).join('');$('#gFeats').dataset.init=1;
-    $$('#gFeats [data-gf]').forEach(b=>b.onclick=()=>b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')!=='true'))}
-  const now=Date.now();const G=(perms.grants||[]).filter(g=>!g.until||g.until>now);
-  $('#gList').innerHTML=G.length?G.map((g,k)=>`<div class="cntsum"><span><b>${esc(g.name)}</b> · ${g.feats.map(f=>FEATS.find(x=>x[0]===f)?.[1].split(' (')[0]||f).join(', ')} · ${g.from?'from '+new Date(g.from).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' ':''}${g.until?'until '+new Date(g.until).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'no end date'} · by ${esc(g.by||'')}</span><button class="btn dng" data-gr="${g.id}">Remove</button></div>`).join(''):'<div class="muted" style="font-size:13px">No temporary access right now.</div>';
-  $$('#gList [data-gr]').forEach(b=>b.onclick=()=>savePerms({...perms,grants:(perms.grants||[]).filter(g=>g.id!==b.dataset.gr)}))}
+function renderPerms(){const box=$('#permPeople');if(!box||!isAdmin)return;
+  const T=$('#lvTbl');if(T)T.innerHTML=`<thead><tr><th></th>${LVS.map(l=>`<th>${l[1]}</th>`).join('')}</tr></thead><tbody>${LVB.map(b=>`<tr><td><b>${b[1]}</b><br><small class="muted">${b[2]}</small></td>${LVS.map(l=>`<td class="c">${!l[2]||l[2].includes(b[0])?'✓':'<span class="muted">–</span>'}</td>`).join('')}</tr>`).join('')}<tr><td><b>Office tools</b><br><small class="muted">Edit items, jobs, crew, sheet · Admin section</small></td>${LVS.map(l=>`<td class="c">${l[2]?'<span class="muted">–</span>':'✓'}</td>`).join('')}</tr></tbody>`;
+  const now=Date.now();const fmt=t=>new Date(t).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  const row=c=>{const n=c.name;const own=isOwner(n),ced=!!c.editor;const lv=(perms.levels||{})[n];const def=defLevel(c.role);const ex=(perms.extra||{})[n]||[];
+    const G=(perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now));
+    const temps=G.map(g=>`<span class="pchip tmp">${g.level?LVN(g.level):(g.feats||[]).map(f=>(FEATS.find(x=>x[0]===f)||[f,f])[1].replace('App: ','').split(' (')[0]).join(', ')}${g.from&&g.from>now?' · from '+fmt(g.from):''}${g.until?' · until '+fmt(g.until):''}<button type="button" data-gr="${g.id}" aria-label="Remove">×</button></span>`).join('');
+    const lvl=own?'<span class="pfix">Admin</span>':ced?'<span class="pfix">Editor</span>':`<select data-lv="${esc(n)}">${LVS.map(l=>`<option value="${l[0]}" ${(lv||def)===l[0]?'selected':''}>${l[1]}${!lv&&l[0]===def?' (default)':''}</option>`).join('')}</select>`;
+    const adds=own||ced||LVI(lv||def)>=LVI('office')?'':ADDONS.map(([f,l])=>`<button type="button" class="padd" data-ad="${esc(n)}|${f}" aria-pressed="${ex.includes(f)}">+ ${l}</button>`).join('');
+    return `<div class="prow"><div class="pnm"><b>${esc(n)}</b><small class="muted">${esc(RL(c.role))}</small></div><div class="plv">${lvl}</div><div class="pext">${adds}${temps}${own||ced?'':`<button type="button" class="ptemp" data-tp="${esc(n)}">Temporary access</button>`}</div></div>`};
+  box.innerHTML=['HQ','Field'].map(g=>{const L=crew.filter(c=>groupOf(c.role)===g);return L.length?`<div class="qlabel" style="margin-top:12px">${g==='HQ'?'Office (HQ)':'Field'}</div>${L.map(row).join('')}`:''}).join('');
+  box.querySelectorAll('[data-lv]').forEach(x=>x.onchange=()=>{const p=JSON.parse(JSON.stringify(perms));p.levels=p.levels||{};const c=crew.find(y=>y.name===x.dataset.lv);if(c&&x.value===defLevel(c.role))delete p.levels[x.dataset.lv];else p.levels[x.dataset.lv]=x.value;savePerms(p)});
+  box.querySelectorAll('[data-ad]').forEach(b=>b.onclick=()=>{const[n,f]=b.dataset.ad.split('|');const p=JSON.parse(JSON.stringify(perms));p.extra=p.extra||{};const e=new Set(p.extra[n]||[]);e.has(f)?e.delete(f):e.add(f);p.extra[n]=[...e];savePerms(p)});
+  box.querySelectorAll('[data-gr]').forEach(b=>b.onclick=()=>savePerms({...perms,grants:(perms.grants||[]).filter(g=>g.id!==b.dataset.gr)}));
+  box.querySelectorAll('[data-tp]').forEach(b=>b.onclick=()=>tempDlg(b.dataset.tp))}
+function tempDlg(n){const cur=effLevel(n);const up=LVS.filter(l=>LVI(l[0])>LVI(cur));let L=(up[0]||LVS[LVS.length-1])[0],T='today';
+  const draw=()=>{$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" style="max-width:460px"><h3>Temporary access · ${esc(n)}</h3><p class="muted" style="margin-top:0">Now: <b>${LVN(cur)}</b>. Pick the level to give for a while.</p>
+   <div class="qlabel">Level</div><div class="tpseg">${LVS.filter(l=>LVI(l[0])>LVI(cur)).map(l=>`<button type="button" data-tl="${l[0]}" aria-pressed="${L===l[0]}">${l[1]}</button>`).join('')||'<span class="muted">Already at the top level.</span>'}</div>
+   <div class="qlabel" style="margin-top:12px">For how long</div><div class="tpseg">${[['1','1 hour'],['today','Rest of today'],['tmrw','Tomorrow 7 AM – 5 PM'],['168','7 days'],['custom','Pick dates']].map(([k,l])=>`<button type="button" data-tt="${k}" aria-pressed="${T===k}">${l}</button>`).join('')}</div>
+   ${T==='custom'?`<div class="fields" style="margin-top:10px"><label class="f">From<input type="datetime-local" id="tpF"></label><label class="f">Until<input type="datetime-local" id="tpU"></label></div>`:''}
+   <div class="bar"><button class="btn" id="tpC">Cancel</button><button class="go" id="tpS" style="width:auto">Give access</button></div></div></div>`;
+   $$('[data-tl]').forEach(b=>b.onclick=()=>{L=b.dataset.tl;draw()});$$('[data-tt]').forEach(b=>b.onclick=()=>{T=b.dataset.tt;draw()});$('#tpC').onclick=closeDlg;
+   $('#tpS').onclick=()=>{if(!up.length){closeDlg();return}let from=null,until=null;const d=new Date();
+     if(T==='today'){d.setHours(23,59,59,0);until=+d}else if(T==='tmrw'){d.setDate(d.getDate()+1);d.setHours(7,0,0,0);from=+d;const e=new Date(d);e.setHours(17,0,0,0);until=+e}else if(T==='custom'){from=$('#tpF').value?+new Date($('#tpF').value):null;until=$('#tpU').value?+new Date($('#tpU').value):null;if(!until){toast('Pick the end time.');return}}else until=Date.now()+Number(T)*3600e3;
+     const now=Date.now();savePerms({...perms,grants:[...(perms.grants||[]).filter(g=>!g.until||g.until>now),{id:'g'+now.toString(36),name:n,level:L,feats:[],until,...(from?{from}:{}),by:curUser,at:new Date().toISOString()}]});closeDlg()}};draw()}
 async function savePerms(p){try{await db.doc('config/perms').set(p);toast('Permissions saved')}catch(e){toast('Could not save: '+(e.message||e.code))}}
 function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none';const dv=isDev(curUser);if($('#savePin'))$('#savePin').hidden=!dv;if($('#newPin'))$('#newPin').hidden=!dv}if($('#pinState'))$('#pinState').textContent=[pinOf(curUser)?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',isDev(curUser)?(officePin?'Editor PIN is set.':'No editor PIN yet.'):''].join(' ');
   el.innerHTML=crew.length?['HQ','Field'].filter(g=>crew.some(c=>groupOf(c.role)===g)).map(g=>`<div class="crewgrp"><b>${g}</b><div class="crewchips">${crew.map((c,k)=>({...c,k})).filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<span class="crewchip" data-ce="${c.k}">${esc(c.name)}<small>${esc(RL(c.role))}</small>${isOwner(c.name)?'<span class="edtag">Admin</span>':c.editor?'<span class="edtag">Editor</span>':''}${isOwner(c.name)?'':`<button class="admin-only" data-ed="${c.k}" title="${c.editor?'Remove editor access':'Make editor'}">${c.editor?'−Ed':'+Ed'}</button><button class="admin-only" data-ck="${c.k}" aria-label="Remove ${esc(c.name)}" title="Remove">✕</button>`}</span>`).join('')}</div></div>`).join('')
@@ -957,8 +984,8 @@ const DEF_ON=['YARD','OUT','RETURN','RECEIVE','PHOTO','ADD','DELITEM','JOBS','UN
 let perms={roles:{},grants:[]};
 function activeGrants(n){const now=Date.now();return (perms.grants||[]).filter(g=>g.name===n&&(!g.until||g.until>now)&&(!g.from||g.from<=now))}
 function can(f){if(!curUser)return false;if(isEditor(curUser))return true;
-  if(activeGrants(curUser).some(g=>g.feats.includes(f)))return true;
-  const r=perms.roles?.[curRole()];if(r&&f in r)return !!r[f];return DEF_ON.includes(f)||(f==='AUDIT'&&curRole()==='Intern')||(['MPL','EQP','DISPATCH'].includes(f)&&['President','PM','Office'].includes(curRole()))}
+  if(levelFeats(effLevel(curUser)).includes(f))return true;if(((perms.extra||{})[curUser]||[]).includes(f))return true;
+  if(activeGrants(curUser).some(g=>(g.feats||[]).includes(f)))return true;return false}
 function applyRole(){try{updBell()}catch(e){}document.body.classList.toggle('owner',isOwner(curUser));$$('nav.tabs button[data-tab]').forEach(b=>{if(['jobs','log','sheet'].includes(b.dataset.tab))b.hidden=!isAdmin});{const cur=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true');if(cur&&cur.hidden)showTab('yard')}$$('#actions .act').forEach(b=>b.hidden=!can(b.dataset.act));$('#actions').style.gridTemplateColumns=innerWidth>700?`repeat(${Math.max(2,$$('#actions .act:not([hidden])').length)},minmax(0,1fr))`:'';
   document.body.classList.toggle('nophoto',!can('PHOTO'));{if($('#addJob'))$('#addJob').hidden=!can('JOBS');const a=can('ADD');if($('#rackAdd'))$('#rackAdd').hidden=!a;if($('#addItem'))$('#addItem').hidden=!a}
   if(!can(act)){act=['OUT','RETURN','RECEIVE','REPAIR','DISPOSE'].find(can)||'OUT';$$('#actions .act').forEach(x=>x.setAttribute('aria-pressed',x.dataset.act===act))}
@@ -1588,7 +1615,7 @@ $('#addItem').onclick=()=>openItem('');
 $('#jstat').onchange=()=>renderJobs();
 $('#saveOwnPin').onclick=async()=>{if(!isOwner(curUser))return;const p=$('#ownPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{const h=await sha(p);await db.doc('config/security').update(curUser===OWNER?{ownerPinH:h}:{ownerPins:{...ownPins,[curUser]:h}});$('#ownPin').value='';toast('Your personal PIN is saved. Use it next time you sign in.')}catch(e){toast('Could not save: '+(e.message||e.code))}};
 $('#savePin').onclick=async()=>{if(!isDev(curUser)){toast('Only Kyle can change the editor PIN.');return}const p=$('#newPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN must be 4 digits.');return}try{await db.doc('config/security').update({officePinH:await sha(p),officePin:null});$('#newPin').value='';toast('Office PIN saved')}catch(e){toast('Could not save: '+(e.message||e.code))}};
-$('#gAdd').onclick=()=>{const name=$('#gName').value;const feats=$$('#gFeats [data-gf][aria-pressed="true"]').map(b=>b.dataset.gf);if(!name||!feats.length){toast('Pick a person and at least one permission.');return}
+if($('#gAdd'))$('#gAdd').onclick=()=>{const name=$('#gName').value;const feats=$$('#gFeats [data-gf][aria-pressed="true"]').map(b=>b.dataset.gf);if(!name||!feats.length){toast('Pick a person and at least one permission.');return}
   const d=$('#gDur').value;let until=null,from=null;if(d==='today'){const t=new Date();t.setHours(23,59,59,0);until=+t}else if(d==='tmrw'){const a=new Date();a.setDate(a.getDate()+1);a.setHours(7,0,0,0);from=+a;const b=new Date(a);b.setHours(17,0,0,0);until=+b}else if(d!=='0')until=Date.now()+Number(d)*3600e3;
   const now=Date.now();savePerms({...perms,grants:[...(perms.grants||[]).filter(g=>!g.until||g.until>now),{id:'g'+now.toString(36),name,feats,until,...(from?{from}:{}),by:curUser,at:new Date().toISOString()}]});$$('#gFeats [data-gf]').forEach(b=>b.setAttribute('aria-pressed','false'))};
 $('#cAdd').onclick=()=>{const name=$('#cName').value.trim(),role=$('#cRole').value;if(!name){toast('Enter a name.');return}
