@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.44',APP_DATE='2026-10-21';
+const APP_VERSION='5.45',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -889,7 +889,7 @@ function pic(i){if(i.photo)return `<img src="${esc(i.photo)}" alt="" loading="la
   return `<span class="ph" style="--h:${HUE[g]??90}"><span class="ptop"><span>${esc(sub(i)||gl?.[1]||'')}</span>${IC[gl?.[2]||'box']}</span><span><span class="pbig">${esc(bigTxt(i))}</span><span class="pbrand">${esc(i.mfgr||i.cat||'')}</span></span></span>`}
 let crew=[];const ROLES=['President','PM','Office','Intern','Yard','FM','SFM','Crew'];
 const FIELD=['FM','SFM','Crew'];const groupOf=r=>FIELD.includes(r)?'Field':'HQ';
-const OWNER='Kyle K.',OWNERS=[OWNER,'DON'];const isOwner=n=>OWNERS.includes(n);
+const OWNER='Kyle K.',OWNERS=[OWNER,'Don S.','DON'];const isOwner=n=>OWNERS.includes(n);
 const isEditor=n=>isOwner(n)||!!crew.find(c=>c.name===n&&c.editor)||!!(typeof perms!=='undefined'&&(perms.admins||[]).includes(n));
 const allNames=()=>[...new Set([...crew.map(c=>c.name),...people])].sort((a,b)=>a.localeCompare(b));
 const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.name);if(cur&&!opts.includes(cur))opts.unshift(cur);
