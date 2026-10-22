@@ -52,17 +52,17 @@ function scaleOf(p,pg){return (p.scales||{})[pg]||0}
 function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const[x1,y1]=pts[i],[x2,y2]=pts[(i+1)%pts.length];a+=x1*y2-x2*y1}return Math.abs(a)/2}
 function polyLen(pts){let l=0;for(let i=1;i<pts.length;i++)l+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return l}
 const slopeF=c=>{const r=num(c.slope);return r?Math.sqrt(1+(r/12)**2):1};
-function measQty(p,m){const c=p.conds.find(x=>x.id===m.cid);const s=scaleOf(p,m.page);if(!c)return 0;if(c.type==='count')return m.pts.length;if(!s)return null;return c.type==='area'?polyArea(m.pts)*s*s*slopeF(c):polyLen(m.pts)*s}
+function measQty(p,m){const c=p.conds.find(x=>x.id===m.cid);const s=scaleOf(p,m.page);if(!c)return 0;if(c.type==='count')return m.pts.length;if(!s)return null;const v=c.type==='area'?polyArea(m.pts)*s*s*slopeF(c):polyLen(m.pts)*s;return m.neg?-v:v}
 function condQty(p,c){let t=0,miss=false;(p.meas||[]).filter(m=>m.cid===c.id).forEach(m=>{const q=measQty(p,m);if(q===null)miss=true;else t+=q});return {q:t,miss}}
 const UNIT={area:'SF',linear:'LF',count:'EA'};
 
 /* ================= TAKEOFF ================= */
 const T=mk('tko');const TK={v:null,tool:null,cid:'',draft:[],sel:'',cal:null};
-function tkList(){TK.v=null;cur=null;T.innerHTML=`<div class="mplhead"><h2>Takeoff</h2><span class="muted" style="font-size:12px">Draft · only you</span><span style="flex:1"></span><button class="btn pri" id="tkNewP">+ New project</button></div>
-  <div class="tkpl">${PJ.length?[...PJ].sort((a,b)=>String(b.at).localeCompare(a.at)).map(p=>`<button class="tkpc" data-pj="${p._id}"><b>${esc(p.name)}</b><small>${esc(p.file||'')} · ${(p.conds||[]).length} conditions · ${(p.meas||[]).length} takeoffs</small><small class="muted">${p.at?new Date(p.at).toLocaleDateString():''}</small></button>`).join(''):'<div class="panel muted">No projects yet. Start one with a plan PDF.</div>'}</div>`;
-  T.querySelector('#tkNewP').onclick=newProject;T.querySelectorAll('[data-pj]').forEach(b=>b.onclick=()=>openProject(b.dataset.pj))}
-function newProject(){$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>New takeoff project</h3><div class="fields"><label class="f wide">Project name<input id="npN" placeholder="e.g. #478 Edwards AFB Repair"></label><label class="f wide">Plan PDF<input id="npF" type="file" accept="application/pdf"></label></div><div class="bar"><button class="btn" id="npC">Cancel</button><button class="go" id="npS" style="width:auto">Create</button></div></div></div>`;
-  $('#npC').onclick=closeDlg;$('#npS').onclick=async()=>{const n=$('#npN').value.trim(),f=$('#npF').files[0];if(!n||!f){toast('Name and PDF are required.');return}$('#npS').disabled=true;$('#npS').textContent='Uploading…';
+function tkList(){TK.v=null;cur=null;T.innerHTML=`<div class="mplhead"><h2>Takeoff</h2><span class="muted" style="font-size:12px">Draft · only you</span><span style="flex:1"></span><label class="btn">Import OST (.osp)<input type="file" id="tkOsp" accept=".osp" hidden></label><button class="btn pri" id="tkNewP">+ New project</button></div>
+  <div class="tkpl">${PJ.length?[...PJ].sort((a,b)=>String(b.at).localeCompare(a.at)).map(p=>`<div class="tkpw"><button class="tkpc" data-pj="${p._id}" style="width:100%"><b>${esc(p.name)}</b><small>${esc(p.file||'')}${p.src?' · from '+esc(p.src):''} · ${(p.conds||[]).length} conditions · ${(p.meas||[]).length} takeoffs</small><small class="muted">${p.at?new Date(p.at).toLocaleDateString():''}</small></button><button class="tkpdel" data-pdel="${p._id}" title="Delete project" aria-label="Delete project">×</button></div>`).join(''):'<div class="panel muted">No projects yet. Start one with a plan PDF.</div>'}</div>`;
+  T.querySelector('#tkNewP').onclick=newProject;T.querySelector('#tkOsp').onchange=e=>{const f=e.target.files[0];if(f)importOsp(f)};T.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=e=>{e.stopPropagation();delProject(b.dataset.pdel)});T.querySelectorAll('[data-pj]').forEach(b=>b.onclick=()=>openProject(b.dataset.pj))}
+function newProject(){$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>New takeoff project</h3><div class="fields"><label class="f wide">Project name<input id="npN" placeholder="e.g. #478 Edwards AFB Repair"></label><label class="f wide">Plan PDF<input id="npF" type="file" accept="application/pdf,.osp"></label></div><div class="bar"><button class="btn" id="npC">Cancel</button><button class="go" id="npS" style="width:auto">Create</button></div></div></div>`;
+  $('#npC').onclick=closeDlg;$('#npS').onclick=async()=>{const n=$('#npN').value.trim(),f=$('#npF').files[0];if(f&&/\.osp$/i.test(f.name)){closeDlg();importOsp(f);return}if(!n||!f){toast('Name and PDF are required.');return}$('#npS').disabled=true;$('#npS').textContent='Uploading…';
     try{const id='p'+uid();const path='plans/'+id+'_'+f.name.replace(/[^\w.\-]+/g,'_');const fs=await window.claude.use('files');await fs.save(path,f);BLOB[path]=f;
       const p={name:n,file:f.name,path,conds:[],meas:[],scales:{},bid:{lines:{},extra:[],tax:7.75,oh:10,profit:10},by:curUser,at:new Date().toISOString()};await db.doc('tko/'+id).set(p);closeDlg();openProject(id,{...p,_id:id})}catch(e){toast('Upload failed: '+(e.message||e));$('#npS').disabled=false;$('#npS').textContent='Create'}}}
 const BLOB={};
@@ -138,7 +138,7 @@ function bidRender(){if(!cur){B.innerHTML=`<div class="mplhead"><h2>Bid</h2><spa
   bd.extra.forEach(x=>{oth+=num(x.q)*num(x.p)});
   const tax=mat*num(bd.tax)/100,sub=mat+tax+lab+oth,oh=sub*num(bd.oh)/100,pr=(sub+oh)*num(bd.profit)/100,tot=sub+oh+pr;
   const roofSF=cur.conds.filter(c=>c.type==='area').reduce((a,c)=>a+condQty(cur,c).q,0);
-  B.innerHTML=`<div class="tkbar"><button class="btn small" id="bdBack">‹ Projects</button><b class="tkname">${esc(cur.name)}</b><span style="flex:1"></span><button class="btn small" id="bdTk">Open takeoff</button><button class="btn small" id="bdLib">Assemblies</button><button class="btn small pri" id="bdXls">Export Excel</button></div>
+  B.innerHTML=`<div class="tkbar"><button class="btn small" id="bdBack">‹ Projects</button><b class="tkname">${esc(cur.name)}</b><span style="flex:1"></span><button class="btn small" id="bdTk">Open takeoff</button><label class="btn small">Import Quick Bid (.qbp)<input type="file" id="bdQbp" accept=".qbp" hidden></label><button class="btn small" id="bdLib">Assemblies</button><button class="btn small pri" id="bdXls">Export Excel</button></div>
    <div class="bdgrid"><div>${cur.conds.map(c=>{const{q}=condQty(cur,c);const L=bd.lines[c.id]||[];return `<div class="panel bdc"><div class="bdch"><span class="tksw" style="background:${c.color}"></span><b>${esc(c.name)}</b><span class="muted">${n2(q)} ${UNIT[c.type]}${c.type==='area'?' · '+n2(q/100)+' SQ':''}</span><span style="flex:1"></span><select data-asm="${c.id}"><option value="">+ Add assembly…</option>${Object.keys(libs_()).map(k=>`<option>${esc(k)}</option>`).join('')}</select><button class="btn small" data-al="${c.id}">+ Line</button></div>
       ${L.length?`<table class="bdt"><thead><tr><th>Item</th><th>Unit</th><th class="n">Per ${UNIT[c.type]}</th><th class="n">Waste %</th><th class="n">Qty</th><th class="n">Material $/u</th><th class="n">Labor $/u</th><th class="n">Total</th><th></th></tr></thead><tbody>${L.map((l,i)=>{const qty=q*fac(l)*(1+num(l.w)/100);return `<tr><td><input data-lf="${c.id}|${i}|d" value="${esc(l.d)}"></td><td><input class="sm" data-lf="${c.id}|${i}|u" value="${esc(l.u||UNIT[c.type])}"></td><td><input class="sm n" data-lf="${c.id}|${i}|f" value="${esc(l.f??1)}"></td><td><input class="sm n" data-lf="${c.id}|${i}|w" value="${esc(l.w??0)}"></td><td class="n">${n2(qty)}</td><td><input class="sm n" data-lf="${c.id}|${i}|m" value="${esc(l.m??'')}" placeholder="$"></td><td><input class="sm n" data-lf="${c.id}|${i}|l" value="${esc(l.l??'')}" placeholder="$"></td><td class="n">${money(qty*(num(l.m)+num(l.l)))}</td><td><button class="eqdel" data-lx="${c.id}|${i}">×</button></td></tr>`}).join('')}</tbody></table>`:'<p class="muted" style="margin:6px 0 0;font-size:13px">No lines. Add an assembly or a line.</p>'}</div>`}).join('')||'<div class="panel muted">This project has no conditions yet. Do the takeoff first.</div>'}
      <div class="panel bdc"><div class="bdch"><b>Equipment · mobilization · other</b><span style="flex:1"></span><button class="btn small" id="bdAddX">+ Line</button></div><datalist id="bdEq">${(window.__eqpList||[]).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
@@ -147,8 +147,8 @@ function bidRender(){if(!cur){B.innerHTML=`<div class="mplhead"><h2>Bid</h2><spa
      <div class="bdr"><span>Material</span><b>${money(mat)}</b></div><div class="bdr"><span>Sales tax <input class="sm n" id="bdTax" value="${esc(bd.tax)}">%</span><b>${money(tax)}</b></div><div class="bdr"><span>Labor</span><b>${money(lab)}</b></div><div class="bdr"><span>Equipment / other</span><b>${money(oth)}</b></div>
      <div class="bdr tot"><span>Subtotal</span><b>${money(sub)}</b></div><div class="bdr"><span>Overhead <input class="sm n" id="bdOh" value="${esc(bd.oh)}">%</span><b>${money(oh)}</b></div><div class="bdr"><span>Profit <input class="sm n" id="bdPr" value="${esc(bd.profit)}">%</span><b>${money(pr)}</b></div>
      <div class="bdr big"><span>Bid total</span><b>${money(tot)}</b></div>${roofSF?`<div class="bdr"><span>Per SF of roof</span><b>${money(tot/roofSF)}</b></div><div class="bdr"><span>Per square</span><b>${money(tot/roofSF*100)}</b></div>`:''}
-     <p class="muted" style="font-size:12px">Quantities update live from the takeoff. Prices are yours to fill — nothing is pre-filled.</p></aside></div>`;
-  const re=()=>{save();bidRender()};B.querySelector('#bdBack').onclick=()=>{cur=null;bidRender()};B.querySelector('#bdTk').onclick=()=>{AME.open('tko');openProject(cur._id,cur)};B.querySelector('#bdXls').onclick=bidXls;B.querySelector('#bdLib').onclick=libDlg;
+     ${bd.qbTotal?`<div class="bdr"><span class="muted">Quick Bid total (reference)</span><b class="muted">${money(bd.qbTotal)}</b></div>`:''}<p class="muted" style="font-size:12px">Quantities update live from the takeoff. Prices are yours to fill — nothing is pre-filled.</p></aside></div>`;
+  const re=()=>{save();bidRender()};B.querySelector('#bdBack').onclick=()=>{cur=null;bidRender()};B.querySelector('#bdTk').onclick=()=>{AME.open('tko');openProject(cur._id,cur)};B.querySelector('#bdXls').onclick=bidXls;B.querySelector('#bdLib').onclick=libDlg;B.querySelector('#bdQbp').onchange=e=>{const f=e.target.files[0];if(f)importQbp(f)};
   B.querySelectorAll('[data-asm]').forEach(s=>s.onchange=()=>{const k=s.value;if(!k)return;const L=bd.lines[s.dataset.asm]=bd.lines[s.dataset.asm]||[];libs_()[k].forEach(([d,u,f,w])=>L.push({d,u,f,w,m:'',l:''}));re()});
   B.querySelectorAll('[data-al]').forEach(b=>b.onclick=()=>{(bd.lines[b.dataset.al]=bd.lines[b.dataset.al]||[]).push({d:'',f:1,w:0,m:'',l:''});re()});
   B.querySelectorAll('[data-lf]').forEach(i=>i.onchange=()=>{const[c,k,f]=i.dataset.lf.split('|');bd.lines[c][+k][f]=i.value;re()});B.querySelectorAll('[data-lx]').forEach(b=>b.onclick=()=>{const[c,k]=b.dataset.lx.split('|');bd.lines[c].splice(+k,1);re()});
@@ -213,7 +213,65 @@ async function mkSave(){if(!MK.file){toast('Open a PDF first.');return}await pdf
       else if(m.t==='text')pg.drawText(m.s,{x:P[0][0],y:Y(P[0][1]),size:14,font,color:c})})});
   const out=await doc.save();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'application/pdf'}));a.download=MK.name.replace(/\.pdf$/i,'')+'_markup.pdf';document.body.appendChild(a);a.click();a.remove();toast('Saved with markups')}
 
+/* ---------------- import: OST (.osp) and Quick Bid (.qbp) ---------------- */
+async function pakoL(){if(!window.pako)await ld('https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js')}
+async function utifL(){await pakoL();if(!window.UTIF)await ld('https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js')}
+/* Microsoft Cabinet (MSZIP) reader → [{name, data:Uint8Array}] */
+async function readCab(buf){await pakoL();const d=new Uint8Array(buf),dv=new DataView(buf);if(String.fromCharCode(...d.slice(0,4))!=='MSCF')throw new Error('Not an OST/Quick Bid package');
+  const coffFiles=dv.getUint32(16,true),cFolders=dv.getUint16(26,true),cFiles=dv.getUint16(28,true),flags=dv.getUint16(30,true);let off=36,cbF=0,cbD=0;
+  if(flags&4){const h=dv.getUint16(off,true);cbF=d[off+2];cbD=d[off+3];off+=4+h}const skipz=()=>{while(d[off])off++;off++};if(flags&1){skipz();skipz()}if(flags&2){skipz();skipz()}
+  const folders=[];for(let i=0;i<cFolders;i++){folders.push({coff:dv.getUint32(off,true),n:dv.getUint16(off+4,true),typ:dv.getUint16(off+6,true)});off+=8+cbF}
+  const fd=folders.map(f=>{let p=f.coff;const parts=[];let total=0,prev=null;
+    for(let b=0;b<f.n;b++){const cb=dv.getUint16(p+4,true);p+=8+cbD;const blk=d.subarray(p,p+cb);p+=cb;let out;
+      if((f.typ&15)===0)out=blk;else{const opt={raw:true};if(prev)opt.dictionary=prev;out=pako.inflateRaw(blk.subarray(2),opt)}
+      parts.push(out);total+=out.length;const tail=new Uint8Array(Math.min(32768,total));let k=tail.length,j=parts.length-1;while(k>0&&j>=0){const a=parts[j];const n=Math.min(k,a.length);tail.set(a.subarray(a.length-n),k-n);k-=n;j--}prev=tail}
+    const all=new Uint8Array(total);let o=0;parts.forEach(a=>{all.set(a,o);o+=a.length});return all});
+  const files=[];off=coffFiles;const td=new TextDecoder('latin1');for(let i=0;i<cFiles;i++){const cb=dv.getUint32(off,true),uo=dv.getUint32(off+4,true),fi=dv.getUint16(off+8,true);off+=16;let e=off;while(d[e])e++;const name=td.decode(d.subarray(off,e)).replace(/\\/g,'/');off=e+1;files.push({name,data:fd[fi].subarray(uo,uo+cb)})}
+  return files}
+const xmlDoc=bytes=>new DOMParser().parseFromString(new TextDecoder('utf-8').decode(bytes),'text/xml');
+const A=(el,k)=>el.getAttribute(k);const bgr=n=>{n=+n||0;return '#'+[n&255,n>>8&255,n>>16&255].map(x=>x.toString(16).padStart(2,'0')).join('')};
+function progDlg(t){$('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" style="max-width:420px"><h3>Importing</h3><p id="impMsg">${esc(t)}</p><div class="impbar"><span id="impBar"></span></div></div></div>`}
+const prog=(t,f)=>{const m=document.getElementById('impMsg');if(m)m.textContent=t;const b=document.getElementById('impBar');if(b&&f!=null)b.style.width=Math.round(f*100)+'%'};
+async function tifToJpeg(bytes,maxW){await utifL();const ifds=UTIF.decode(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));const ifd=ifds[0];UTIF.decodeImage(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),ifd);
+  const rgba=UTIF.toRGBA8(ifd);const W=ifd.width,H=ifd.height;const k=Math.max(1,Math.ceil(W/maxW));const w=Math.floor(W/k),h=Math.floor(H/k);const out=new Uint8ClampedArray(w*h*4);
+  for(let y=0;y<h;y++){for(let x=0;x<w;x++){let r=0,g=0,b=0;for(let dy=0;dy<k;dy++){let i=((y*k+dy)*W+x*k)*4;for(let dx=0;dx<k;dx++,i+=4){r+=rgba[i];g+=rgba[i+1];b+=rgba[i+2]}}const n=k*k,o=(y*w+x)*4;out[o]=r/n;out[o+1]=g/n;out[o+2]=b/n;out[o+3]=255}}
+  const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').putImageData(new ImageData(out,w,h),0,0);const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.8));return new Uint8Array(await blob.arrayBuffer())}
+async function importOsp(file){progDlg('Reading '+file.name+'…');try{
+  const files=await readCab(await file.arrayBuffer());const ostF=files.find(f=>/\.ost$/i.test(f.name));if(!ostF)throw new Error('No .ost file inside');
+  const X=xmlDoc(ostF.data);const bid=X.querySelector('Bid');const name=(A(bid,'JobName')||file.name).trim();
+  const pages=[...X.querySelectorAll('BidPage')].sort((a,b)=>+A(a,'Sequence')-+A(b,'Sequence'));if(!pages.length)throw new Error('No sheets in this takeoff');
+  await pdflib();const pdf=await PDFLib.PDFDocument.create();const pgIdx={},scales={};
+  for(let i=0;i<pages.length;i++){const p=pages[i];const base=String(A(p,'ImagePath')||'').split('\\').pop().toLowerCase();const img=files.find(f=>f.name.toLowerCase().endsWith('/'+base)||f.name.toLowerCase()===base);
+    const Wi=+A(p,'Width')||48,Hi=+A(p,'Height')||36;const pg=pdf.addPage([Wi*72,Hi*72]);pgIdx[A(p,'UID')]=i+1;
+    const s1=+A(p,'ScaleFactor1'),s2=+A(p,'ScaleFactor2');if(s1>0&&s2>0)scales[i+1]=(s2/s1)/12/72;
+    prog(`Sheet ${i+1} of ${pages.length}: ${A(p,'Name')}`,i/pages.length);await new Promise(r=>setTimeout(r,30));
+    if(img){try{const jpg=await tifToJpeg(img.data,3600);const e=await pdf.embedJpg(jpg);pg.drawImage(e,{x:0,y:0,width:Wi*72,height:Hi*72})}catch(err){console.warn(err)}}
+    pg.drawText(String(A(p,'Name')||'').replace(/\.pdf$/i,'').replace(/[^\x20-\x7e]/g,''),{x:20,y:20,size:1})}
+  prog('Saving plan…',.95);const bytes=await pdf.save();const pdfBlob=new Blob([bytes],{type:'application/pdf'});
+  const conds=[...X.querySelectorAll('BidCondition')].map(c=>{const t=A(c,'Type');const type=t==='1'?'area':t==='2'?'count':'linear';const rise=+A(c,'Rise'),run=+A(c,'Run');const col=+A(c,'ColorFill')||+A(c,'ColorLine');
+    return {id:'o'+A(c,'UID'),name:A(c,'Name'),type,color:col?bgr(col):COLORS[0],slope:type==='area'&&rise>0&&run>0?String(+(rise*12/run).toFixed(3)):'',ost:{height:+A(c,'Height')||0}}});
+  const meas=[];[...X.querySelectorAll('BidTakeoff')].forEach(t=>{const pg=pgIdx[A(t,'BidPageUID')];if(!pg)return;const v=String(A(t,'Position')||'').split(/[;\s]+/).map(Number).filter(n=>!isNaN(n));const pts=[];for(let i=0;i+1<v.length;i+=2)pts.push([+(v[i]*.72).toFixed(2),+(v[i+1]*.72).toFixed(2)]);if(!pts.length)return;
+    meas.push({id:'m'+A(t,'UID'),cid:'o'+A(t,'BidConditionUID'),page:pg,pts,...(A(t,'IsNegativeQuantity')==='1'?{neg:true}:{})})});
+  const used=new Set(meas.map(m=>m.cid));const C=conds.filter(c=>used.has(c.id));
+  prog('Uploading plan to SharePoint…',.97);const id='p'+uid();const path='plans/'+id+'_'+name.replace(/[^\w.\-]+/g,'_').slice(0,60)+'.pdf';const fs=await window.claude.use('files');await fs.save(path,pdfBlob);BLOB[path]=pdfBlob;
+  const p={name,file:file.name,path,src:'OST',conds:C,meas,scales,bid:{lines:{},extra:[],tax:7.75,oh:10,profit:10},by:curUser,at:new Date().toISOString()};await db.doc('tko/'+id).set(p);
+  closeDlg();toast(`Imported ${pages.length} sheets · ${C.length} conditions · ${meas.length} takeoffs`);openProject(id,{...p,_id:id})}catch(e){closeDlg();toast('Import failed: '+(e.message||e))}}
+async function importQbp(file){if(!cur){toast('Open a project first.');return}progDlg('Reading '+file.name+'…');try{
+  const files=await readCab(await file.arrayBuffer());const x=files.find(f=>/BidPackage\.xml$/i.test(f.name));if(!x)throw new Error('No BidPackage.xml inside');const X=xmlDoc(x.data);
+  const sec=n=>[...(X.querySelector(n)?.children||[])];const items={},sizes={};sec('BidItems').forEach(i=>items[A(i,'UID')]=i);sec('BidItemSizes').forEach(s=>sizes[A(s,'UID')]=s);
+  const qc={};sec('BidConditions').forEach(c=>qc[A(c,'UID')]={ext:A(c,'ExternalID'),name:A(c,'Name')});
+  const bd=cur.bid=cur.bid||{lines:{},extra:[],tax:7.75,oh:10,profit:10};bd.lines=bd.lines||{};let n=0,miss=new Set();
+  sec('BidDetails').forEach(dt=>{const c=qc[A(dt,'BidConditionUID')];if(!c)return;let cid='o'+c.ext;if(!cur.conds.find(k=>k.id===cid)){const byName=cur.conds.find(k=>k.name===c.name);if(byName)cid=byName.id;else{miss.add(c.name);return}}
+    const it=items[A(dt,'BidItemUID')];if(!it)return;const sz=sizes[A(dt,'BidItemSizeUID')];const q=+A(dt,'Quantity')||0,cq=+A(dt,'CdnQty')||0;const price=+(sz&&A(sz,'MatPrice'))||+A(it,'MatPrice')||0;
+    const desc=[A(it,'Description'),sz&&A(sz,'Name')!=='Style Name'?A(sz,'Name'):''].filter(Boolean).join(' · ');
+    (bd.lines[cid]=bd.lines[cid]||[]).push({d:desc,u:'',f:cq?+(q/cq).toFixed(4):1,w:+A(it,'Waste')||+(sz&&A(sz,'Waste'))||0,m:price||'',l:'',qb:true});n++});
+  const mk=sec('BidMarkups').find(m=>+A(m,'MatTaxPct')>0);if(mk)bd.tax=+A(mk,'MatTaxPct');const b=X.querySelector('Bid');bd.qbTotal=+A(b,'BidTotal')||0;bd.qbName=A(b,'JobName');
+  save();closeDlg();toast(`Quick Bid: ${n} lines added${miss.size?' · '+miss.size+' conditions not in takeoff':''}`);bidRender()}catch(e){closeDlg();toast('Import failed: '+(e.message||e))}}
+async function delProject(id){const p=PJ.find(x=>x._id===id)||cur;if(!p)return;if(!confirm(`Delete project "${p.name}"? Takeoffs and bid for it are removed.`))return;
+  try{await db.doc('tko/'+id).delete();if(cur&&cur._id===id)cur=null;toast('Project deleted');tkList()}catch(e){toast('Could not delete: '+(e.message||e))}}
+
 document.head.insertAdjacentHTML('beforeend',`<style>
+.impbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.impbar span{display:block;height:100%;width:0;background:var(--hi);transition:width .3s}.tkpw{position:relative}.tkpdel{position:absolute;top:8px;right:8px;border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px}.tkpdel:hover{color:#e8594a;background:rgba(232,89,74,.12)}
 #tab-tko,#tab-bid,#tab-mkp{max-width:none}
 .tkpl{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}.tkpc{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:inherit;font:inherit;cursor:pointer}.tkpc:hover{border-color:var(--hi)}.tkpc small{font-size:12px}
 .tkbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.tkname{font-size:16px;margin:0 6px}.tkpg,.tkz{display:inline-flex;gap:3px;align-items:center}.tkscale{font-size:12px}.tkwarn{color:#e8594a;font-weight:800}
