@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.51',APP_DATE='2026-10-21';
+const APP_VERSION='5.52',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1989,25 +1989,28 @@ window.addEventListener('beforeunload',e=>{if(document.getElementById('syncTxt')
   const es=()=>{try{return localStorage.getItem('ameLang')==='es'}catch(e){return false}};
   const T=(en,sp)=>es()?sp:en;
   function steps(){if(deferred)return '';
-    if(ios)return T('<li>Tap the <b>Share</b> button <span style="opacity:.7">(square with an arrow)</span></li><li>Choose <b>“Add to Home Screen”</b></li><li>Open AME from the new icon</li>','<li>Toque el botón <b>Compartir</b> <span style="opacity:.7">(cuadro con flecha)</span></li><li>Elija <b>“Agregar a inicio”</b></li><li>Abra AME desde el nuevo ícono</li>');
-    if(android)return T('<li>Tap the <b>⋮</b> menu at the top right</li><li>Choose <b>“Install app”</b> or <b>“Add to Home screen”</b></li><li>Open AME from the new icon</li>','<li>Toque el menú <b>⋮</b> arriba a la derecha</li><li>Elija <b>“Instalar app”</b> o <b>“Agregar a pantalla de inicio”</b></li><li>Abra AME desde el nuevo ícono</li>');
-    return edge?T('<li>Click <b>…</b> at the top right</li><li><b>Apps</b> → <b>“Install this site as an app”</b></li>','<li>Haga clic en <b>…</b> arriba a la derecha</li><li><b>Aplicaciones</b> → <b>“Instalar este sitio como aplicación”</b></li>'):T('<li>Click the <b>install icon</b> at the right end of the address bar</li><li>or <b>⋮</b> → <b>Cast, save and share</b> → <b>“Install page as app”</b></li>','<li>Haga clic en el <b>ícono de instalar</b> al final de la barra de dirección</li><li>o <b>⋮</b> → <b>Transmitir, guardar y compartir</b> → <b>“Instalar página como app”</b></li>')}
+    if(ios)return T('Tap <b>Share</b> (square with arrow) → <b>Add to Home Screen</b>','Toque <b>Compartir</b> → <b>Agregar a inicio</b>');
+    if(android)return T('Tap <b>⋮</b> (top right) → <b>Install app</b>','Toque <b>⋮</b> (arriba) → <b>Instalar app</b>');
+    return edge?T('Click <b>…</b> (top right) → <b>Apps</b> → <b>Install this site as an app</b>','Clic en <b>…</b> → <b>Aplicaciones</b> → <b>Instalar este sitio</b>'):T('Click the <b>install icon</b> at the right end of the address bar','Clic en el <b>ícono de instalar</b> al final de la barra de dirección')}
   function show(){if(dismissed&&!oldApp||document.getElementById('instBar'))return;const b=document.createElement('div');b.id='instBar';
     b.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;background:#3a3430;color:#f3ede6;border:2px solid #f47b20;border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.55);font:15px system-ui;max-width:520px;margin:0 auto;line-height:1.4';
     const head=oldApp?T('Update your AME app','Actualice su app AME'):T('Install the AME app','Instale la app AME');
     const sub=oldApp?T('This icon is the <b>old</b> AME app. Add the new one, then delete this old icon.','Este ícono es la app AME <b>antigua</b>. Agregue la nueva y luego borre este ícono.'):T('New address: <b>app.amebuilders.net</b> — opens like a normal app.','Nueva dirección: <b>app.amebuilders.net</b> — se abre como una app normal.');
-    const old=T('Have an <b>old AME icon</b>? Press and hold it → <b>Remove</b>. It still works, but the new one is cleaner.','¿Tiene un <b>ícono AME antiguo</b>? Manténgalo presionado → <b>Eliminar</b>.');
+    const old=T('Old AME icon? Hold it → <b>Remove</b>.','¿Ícono AME antiguo? Manténgalo presionado → <b>Eliminar</b>.');
     b.innerHTML='<div style="display:flex;gap:12px;align-items:center"><img src="ame-192.png" alt="" style="width:42px;height:42px;border-radius:10px;background:#fff"><div style="flex:1"><b style="font-size:17px">'+head+'</b><br><small style="opacity:.85">'+sub+'</small></div><button id="instX" aria-label="Close" style="background:none;border:0;color:#f3ede6;font-size:24px;padding:4px 8px;align-self:flex-start">×</button></div>'
       +(oldApp&&!ios&&!android?'<p style="margin:10px 0 0;font-size:14px">'+T('Open <b>app.amebuilders.net</b> in Chrome or Edge, then:','Abra <b>app.amebuilders.net</b> en Chrome o Edge y luego:')+'</p>':'')
-      +(steps()?'<ol style="margin:10px 0 0;padding-left:22px;font-size:14px">'+steps()+'</ol>':'')
+      +(steps()?'<p style="margin:10px 0 0;font-size:14px">'+steps()+'</p>':'')
       +(!oldApp?'<p style="margin:10px 0 0;font-size:13px;opacity:.8">'+old+'</p>':'')
       +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">'+(oldApp?'<button id="instOK" style="background:none;color:#f3ede6;border:1px solid #6b625c;border-radius:10px;padding:9px 12px;font:600 13px system-ui">'+T('This is the new app','Esta es la app nueva')+'</button>':'')+(deferred?'<button id="instGo" style="background:#f47b20;color:#fff;border:0;border-radius:10px;padding:10px 16px;font:700 15px system-ui">'+T('Install','Instalar')+'</button>':'')+'</div>';
     document.body.appendChild(b);document.getElementById('instX').onclick=()=>{b.remove();try{localStorage.setItem('ameInstallHide',new Date().toDateString())}catch(e){}};
     const ok=document.getElementById('instOK');if(ok)ok.onclick=()=>{b.remove();try{localStorage.setItem('ameNewAppOK','1')}catch(e){}};
     const g=document.getElementById('instGo');if(g)g.onclick=async()=>{b.remove();deferred.prompt();try{await deferred.userChoice}catch(e){}deferred=null}}
-  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;document.getElementById('instBar')?.remove();setTimeout(show,1500)});
-  window.addEventListener('appinstalled',()=>document.getElementById('instBar')?.remove());
-  setTimeout(show,oldApp?1500:3500);
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;try{localStorage.removeItem('ameInstalled')}catch(_){}document.getElementById('instBar')?.remove();setTimeout(show,1200)});
+  window.addEventListener('appinstalled',()=>{document.getElementById('instBar')?.remove();try{localStorage.setItem('ameInstalled','1')}catch(e){}});
+  (async()=>{let inst=false;try{inst=localStorage.getItem('ameInstalled')==='1'}catch(e){}
+    try{if(!inst&&navigator.getInstalledRelatedApps){const r=await navigator.getInstalledRelatedApps();inst=r&&r.length>0}}catch(e){}
+    if(inst&&!oldApp)return;
+    setTimeout(()=>{if(!deferred)show()},oldApp?1500:(ios?3000:6000))})();
   window.ameInstall=()=>{try{localStorage.removeItem('ameInstallHide')}catch(e){}dismissed=false;document.getElementById('instBar')?.remove();show()};
 })();
 
