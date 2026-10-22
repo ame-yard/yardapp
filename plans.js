@@ -291,5 +291,5 @@ const IC_M='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 AME.register({id:'tko',devOnly:true,name:'Takeoff',desc:'Plans · scale · area, linear & count takeoff (draft)',allow:dev,tabs:['tko'],section:'tab-tko',icon:IC_T,open:()=>{showTab('tko');if(cur&&TK.v)return;tkList()},onShow:()=>{if(!TK.v)tkList()}});
 AME.register({id:'bid',devOnly:true,name:'Bid',desc:'Takeoff quantities × assemblies → bid total (draft)',allow:dev,tabs:['bid'],section:'tab-bid',icon:IC_B,open:()=>{showTab('bid');bidRender()},onShow:bidRender});
 AME.register({id:'mkp',devOnly:true,name:'Markup',desc:'Open a PDF · pen, cloud, arrow, text · save PDF (draft)',allow:dev,tabs:['mkp'],section:'tab-mkp',icon:IC_M,open:()=>{showTab('mkp');mkRender()},onShow:()=>{if(!M.innerHTML)mkRender()}});
-window.__tko={feet,polyArea,polyLen,cloudPath};
+window.__tko={feet,polyArea,polyLen,cloudPath,readCab};
 })();
