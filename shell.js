@@ -110,7 +110,7 @@ const okey=n=>'ameOrder:'+n+':'+(typeof curUser!=='undefined'?curUser:'');
 let SHO={};const own=()=>{try{return typeof isOwner==='function'&&isOwner(curUser)}catch(e){return false}};
 const getL=n=>{try{return JSON.parse(localStorage.getItem(okey(n))||'[]')}catch(e){return[]}};
 const get=n=>{const sh=SHO[n]||[];if(own())return sh.length?sh:getL(n);const l=getL(n);return l.length?l:sh};
-(function w(){if(typeof db!=='undefined'&&db&&db.doc){db.doc('config/uiorder').onSnapshot(x=>{SHO=(x.data&&x.data())||{};SP.forEach(sp=>{const b=boxOf(sp);if(b){b.__ordAp=0;apply(sp)}})},()=>{})}else setTimeout(w,500)})();
+setTimeout(function w(){if(typeof db!=='undefined'&&db&&db.doc){db.doc('config/uiorder').onSnapshot(x=>{SHO=(x.data&&x.data())||{};SP.forEach(sp=>{const b=boxOf(sp);if(b){b.__ordAp=0;apply(sp)}})},()=>{})}else setTimeout(w,500)},0);
 const put=(n,a)=>{try{localStorage.setItem(okey(n),JSON.stringify(a))}catch(e){}if(own()&&typeof db!=='undefined'&&db){SHO={...SHO,[n]:a};db.doc('config/uiorder').set({...SHO,by:curUser,at:new Date().toISOString()}).catch(()=>{})}};window.ameOrderPut=put;window.ameOrderGet=get;
 const SP=[{name:'home',root:'#tab-home',box:'.apps',item:'.apptile[data-app]',key:e=>e.dataset.app},{name:'admin',root:'#tab-admin',box:null,item:'.panel[id]',key:e=>e.id}];
 function boxOf(sp){const r=document.querySelector(sp.root);return r?(sp.box?r.querySelector(sp.box):r):null}
