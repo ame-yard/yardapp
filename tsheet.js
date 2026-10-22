@@ -128,5 +128,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 </style>`);
 const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/><path d="M15 17l2 2 3-3"/></svg>';
 window.__tsLoad=f=>load(f);
-AME.register({id:'tsm',devOnly:true,name:'Accounting',desc:'Timesheet Mailer · split the weekly timesheet PDF · email each person (more accounting tools coming)',allow:own,tabs:['tsm'],section:'tab-tsm',icon:ICON,open:()=>{showTab('tsm');render()},onShow:render});
+AME.register({id:'tsm',devOnly:true,name:'Timesheet Mailer',desc:'Split the weekly timesheet PDF · email each person',allow:own,tabs:['tsm'],section:'tab-tsm',icon:ICON,open:()=>{showTab('tsm');render()},onShow:render});
 })();
