@@ -66,7 +66,7 @@ function res(m,pg){const s=scaleAt(pg,m.p&&m.p[0]);const o={};if(!s&&m.t!=='coun
   else if(m.t==='count')o.count=m.p.length;
   return o}
 const fmt=(k,v)=>k==='count'?v+' EA':k==='area'?Math.round(v).toLocaleString()+' SF':k==='vol'?n2(v)+' CY':k==='wall'?Math.round(v).toLocaleString()+' SF':ftIn(v);
-const measTxt=(m,pg)=>{const r=res(m,pg);const keys=m.cap&&m.cap.length?m.cap:(m.t==='count'?['count']:m.t==='area'||m.t==='rarea'?['area']:m.t==='perim'?['perim']:['len']);return keys.filter(k=>r[k]!=null).map(k=>fmt(k,r[k])).join(' · ')||(m.t==='count'?'':'Scale Not Set')};
+const MEAS=new Set(['len','plen','area','rarea','perim','count','dim']);const measTxt=(m,pg)=>{if(!MEAS.has(m.t))return '';const r=res(m,pg);const keys=m.cap&&m.cap.length?m.cap:(m.t==='count'?['count']:m.t==='area'||m.t==='rarea'?['area']:m.t==='perim'?['perim']:['len']);return keys.filter(k=>r[k]!=null).map(k=>fmt(k,r[k])).join(' · ')||(m.t==='count'?'':'Scale Not Set')};
 
 /* ---------- document list ---------- */
 function list(){K.doc=null;K.v=null;K.file=null;const L=[...RDOCS].sort((a,b)=>String(b.at).localeCompare(a.at));const PLV=getPLV();
@@ -110,7 +110,7 @@ function render(){if(!K.doc){list();return}const d=K.doc;
   side();setTool(K.tool)}
 function menu(t,items){return `<span class="rvmenuw"><button class="rvmi" data-menu="${t}">${t} ▾</button><div class="rvdd">${items.map(([k,l])=>k==='-'?'<hr>':`<button type="button" data-act="${k}">${l}</button>`).join('')}</div></span>`}
 async function go(n){if(!K.v)return;await K.v.go(n);const i=M.querySelector('#pgNum');if(i)i.value=K.v.page;stat();if(K.panel==='thumbs'||K.panel==='list')side()}
-window.__revuFit=()=>K.v&&K.v.fit();
+window.__revuFit=()=>K.v&&K.v.fit();window.__revu={K,marks,res,act,setTool,build};
 function setTool(t){if(t!=='sel'&&t!=='pan'&&t!=='del')K.lastTool=t;K.tool=t;K.draft=null;M.querySelectorAll('[data-mt]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.mt===t));if(K.v)draw();stat();
   if(['text','callout','cloudp','pen','hl','line','arrow','dim','poly','rect','ell','pgon','cloud','stamp','len','plen','area','rarea','perim','count'].includes(t)){K.recent=[t,...K.recent.filter(x=>x!==t)].slice(0,8)}}
 
@@ -163,7 +163,7 @@ const dash=m=>m.ls==='dash'?`stroke-dasharray="${(m.w||2)*4} ${(m.w||2)*3}"`:m.l
 function stampTxt(s){const d=new Date();return String(s||'').replace(/&\[Date\]/gi,d.toLocaleDateString()).replace(/&\[Time\]/gi,d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})).replace(/&\[User\]/gi,me())}
 function stampBox(m){const fs=m.fs||16,t=stampTxt(m.s);const w=t.length*fs*.62+20,h=fs+16;return {x:m.p[0][0]-w/2,y:m.p[0][1]-h/2,w,h,fs,t}}
 function arrowHead(a,b,m,c){const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),h=10+(m.w||2)*2;return `<polygon points="${b[0]},${b[1]} ${b[0]-h*Math.cos(ang-.4)},${b[1]-h*Math.sin(ang-.4)} ${b[0]-h*Math.cos(ang+.4)},${b[1]-h*Math.sin(ang+.4)}" fill="${c}"/>`}
-function svgOf(m,pg,live){const c=m.c||'#e8594a',sw=m.w||2,op=m.op??1,Pt=m.p,fc=m.fc||'none',fo=m.fc?(m.fo??.2):0;const id=live?'':` data-id="${m.id}"`;const sel=K.sel.includes(m.id);const dimmed=!live&&K.filt.dim&&!passFilter(m,pg)?' opacity=".18"':'';const z=K.v?K.v.z:1;
+function svgOf(m,pg,live){const c=m.c||'#e8594a',sw=m.w||2,op=m.op??1,Pt=m.p||[],fc=m.fc||'none',fo=m.fc?(m.fo??.2):0;const id=live?'':` data-id="${m.id}"`;const sel=K.sel.includes(m.id);const dimmed=!live&&K.filt.dim&&!passFilter(m,pg)?' opacity=".18"':'';const z=K.v?K.v.z:1;
   const lbl=(x,y,t,size)=>t?`<text x="${x}" y="${y}" class="rvlbl" style="fill:${c};font-size:${(size||12)/Math.max(.4,Math.min(1,z))}px">${esc(t)}</text>`:'';let g='';const pts=Pt.map(p=>p.join(',')).join(' ');const[a,b]=[Pt[0],Pt[1]||Pt[0]];
   const cloudy=m.ls==='cloud';const stroke=`stroke="${c}" stroke-width="${sw}" stroke-opacity="${op}" ${dash(m)}`;
   const capTxt=()=>{const parts=[];const r=res(m,pg);const keys=m.cap&&m.cap.length?m.cap:(m.t==='count'?[]:m.t==='area'||m.t==='rarea'?['area']:m.t==='perim'?['perim']:['len']);keys.forEach(k=>{if(k==='lab'){if(m.lab)parts.push(m.lab)}else if(r[k]!=null)parts.push(fmt(k,r[k]))});if(!parts.length&&m.t!=='count'&&!scaleAt(pg,Pt[0]))parts.push('Scale Not Set');return parts.join(' · ')};
@@ -340,11 +340,10 @@ async function act(a,arg){const pg=K.v?K.v.page:1;
   if(a==='sumcsv')return sumCsv();if(a==='sumpdf')return sumPdf();
   if(a==='flat')return flatDlg();if(a==='print')return printPdf();
   if(a==='rotl'||a==='rotr'){const r=(D().rot=D().rot||{});r[pg]=((r[pg]||0)+(a==='rotl'?-90:90)+360)%360;save();toast('Page rotation saved — applied when you download / print');return}
-  if(a==='delpg'){if(!confirm('Delete page '+pg+' and its markups?'))return;const ord=order();ord.splice(pg-1,1);D().ord=ord;const mk=D().marks||{};const nm={};ord.forEach((src,i)=>{if(mk[src])nm[i+1]=mk[src]});D().marks=remapAll(ord);save();await applyOrder();render();return}
+  if(a==='delpg'){if(K.v.pdf.numPages<2){toast('Cannot delete the only page');return}if(!confirm('Delete page '+pg+' and its markups?'))return;const ord=order();ord.splice(pg-1,1);D().ord=ord;['marks','vps','sc','rot'].forEach(k=>{const o=D()[k]||{};const n={};Object.keys(o).forEach(x=>{const q=+x;if(q<pg)n[q]=o[x];else if(q>pg)n[q-1]=o[x]});D()[k]=n});K.sel=[];save();await applyOrder();render();return}
   if(a==='extract'){await pdflib();const src=await PDFLib.PDFDocument.load(await K.file.arrayBuffer());const out=await PDFLib.PDFDocument.create();const[p]=await out.copyPages(src,[order()[pg-1]-1]);out.addPage(p);dl(await out.save(),D().name.replace(/\.pdf$/i,'')+'_p'+pg+'.pdf');return}
   if(a==='addpg'){const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf';inp.onchange=async()=>{const f=inp.files[0];if(!f)return;toast('Inserting pages…');await pdflib();const base=await PDFLib.PDFDocument.load(await K.file.arrayBuffer());const add=await PDFLib.PDFDocument.load(await f.arrayBuffer());const ps=await base.copyPages(add,add.getPageIndices());ps.forEach(p=>base.addPage(p));const bytes=await base.save();const blob=new Blob([bytes],{type:'application/pdf'});const fs=await window.claude.use('files');await fs.save(D().path,blob);BLOB[D().path]=blob;try{const c=await caches.open('ame-plans-v1');await c.delete('/__plans/'+encodeURIComponent(D().path))}catch(e){}K.file=blob;D().ord=null;save();render();toast('Added '+ps.length+' pages')};inp.click();return}}
 function order(){const n=K.v.pdf.numPages;const o=D().ord&&D().ord.length?D().ord.slice():Array.from({length:n},(_,i)=>i+1);return o}
-function remapAll(ord){/* marks keyed by *display* page; after reorder, rebuild from source mapping kept in D().srcMarks */return D().marks}
 async function reorderPage(from,to){const mk=D().marks||{};const vps=D().vps||{};const sc=D().sc||{};const n=K.v.pdf.numPages;const idx=Array.from({length:n},(_,i)=>i+1);const [mv]=idx.splice(from-1,1);idx.splice(to-1,0,mv);
   const nm={},nv={},ns={};idx.forEach((src,i)=>{if(mk[src])nm[i+1]=mk[src];if(vps[src])nv[i+1]=vps[src];if(sc[src])ns[i+1]=sc[src]});D().marks=nm;D().vps=nv;D().sc=ns;const base=order();D().ord=idx.map(i=>base[i-1]);save();await applyOrder();render()}
 async function applyOrder(){/* rebuild the working PDF in the saved order so page numbers match what the user sees */const ord=D().ord;if(!ord||!ord.length)return;try{await pdflib();const src=await PDFLib.PDFDocument.load(await (BLOB[D().path]||K.file).arrayBuffer());if(ord.length===src.getPageCount()&&ord.every((v,i)=>v===i+1))return;const out=await PDFLib.PDFDocument.create();const ps=await out.copyPages(src,ord.map(i=>i-1));ps.forEach(p=>out.addPage(p));const blob=new Blob([await out.save()],{type:'application/pdf'});K.file=blob;if(K.v)await K.v.load(blob)}catch(e){console.warn(e)}}
