@@ -25,7 +25,7 @@ function Viewer(host,opts){const V={pdf:null,page:1,z:1,size:[612,792],opts};
   let rt=null,seq=0;
   V.load=async blob=>{await libs();V.pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;V.page=1;await V.fit()};
   V.render=async()=>{if(!V.pdf)return;const my=++seq;const pg=await V.pdf.getPage(V.page);const vp1=pg.getViewport({scale:1});V.size=[vp1.width,vp1.height];
-    const dpr=Math.min(2,window.devicePixelRatio||1);const vp=pg.getViewport({scale:V.z*dpr});cv.width=vp.width;cv.height=vp.height;cv.style.width=(vp1.width*V.z)+'px';cv.style.height=(vp1.height*V.z)+'px';
+    const dpr=Math.min(1.5,window.devicePixelRatio||1,4096/Math.max(1,vp1.width*V.z),4096/Math.max(1,vp1.height*V.z));const vp=pg.getViewport({scale:V.z*dpr});cv.width=vp.width;cv.height=vp.height;cv.style.width=(vp1.width*V.z)+'px';cv.style.height=(vp1.height*V.z)+'px';
     stage.style.width=cv.style.width;stage.style.height=cv.style.height;svg.setAttribute('viewBox',`0 0 ${vp1.width} ${vp1.height}`);svg.style.width=cv.style.width;svg.style.height=cv.style.height;
     if(rt)try{rt.cancel()}catch(e){}rt=pg.render({canvasContext:cv.getContext('2d'),viewport:vp});try{await rt.promise}catch(e){}if(my===seq&&V.opts.onRender)V.opts.onRender()};
   V.fit=async()=>{if(!V.pdf)return;const pg=await V.pdf.getPage(V.page);const vp=pg.getViewport({scale:1});V.z=Math.max(.1,(wrap.clientWidth-20)/vp.width);await V.render()};
@@ -66,7 +66,9 @@ function newProject(){$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div cla
     try{const id='p'+uid();const path='plans/'+id+'_'+f.name.replace(/[^\w.\-]+/g,'_');const fs=await window.claude.use('files');await fs.save(path,f);BLOB[path]=f;
       const p={name:n,file:f.name,path,conds:[],meas:[],scales:{},bid:{lines:{},extra:[],tax:7.75,oh:10,profit:10},by:curUser,at:new Date().toISOString()};await db.doc('tko/'+id).set(p);closeDlg();openProject(id,{...p,_id:id})}catch(e){toast('Upload failed: '+(e.message||e));$('#npS').disabled=false;$('#npS').textContent='Create'}}}
 const BLOB={};
-async function getPlan(p){if(BLOB[p.path])return BLOB[p.path];const fs=await window.claude.use('files');const b=await fs.read(p.path);BLOB[p.path]=b;return b}
+async function getPlan(p){if(BLOB[p.path])return BLOB[p.path];const key='/__plans/'+encodeURIComponent(p.path);let c=null;try{c=await caches.open('ame-plans-v1');const hit=await c.match(key);if(hit){const b=await hit.blob();BLOB[p.path]=b;return b}}catch(e){}
+  const v=TK.v&&TK.v.wrap;if(v)v.insertAdjacentHTML('afterbegin','<div class="muted" id="tkDl" style="position:absolute;z-index:3;padding:12px">Downloading plan (first time only)…</div>');
+  const fs=await window.claude.use('files');const b=await fs.read(p.path);BLOB[p.path]=b;try{if(c)await c.put(key,new Response(b,{headers:{'content-type':'application/pdf'}}))}catch(e){}document.getElementById('tkDl')?.remove();return b}
 async function openProject(id,pre){cur=pre||PJ.find(p=>p._id===id);if(!cur)return;cur.conds=cur.conds||[];cur.meas=cur.meas||[];cur.scales=cur.scales||{};
   if(cur.src==='OST'&&!cur.fix1){cur.meas.forEach(m=>{while(m.pts.length>1&&m.pts[m.pts.length-1][0]===0&&m.pts[m.pts.length-1][1]===0)m.pts.pop()});cur.fix1=true;save()}
   if(cur.src==='OST'&&!cur.fix2){const k=.75/.72;cur.meas.forEach(m=>{m.pts=m.pts.map(p=>[+(p[0]*k).toFixed(2),+(p[1]*k).toFixed(2)])});cur.fix2=true;save()}TK.cid=(cur.conds[0]||{}).id||'';TK.tool=null;TK.draft=[];TK.sel='';
