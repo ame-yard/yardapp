@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.47',APP_DATE='2026-10-21';
+const APP_VERSION='5.48',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1795,7 +1795,8 @@ function renderIfDirty(t){renderCartBar();if(!__dirty[t])return;__dirty[t]=0;({y
 renderPeople();render();
 let ownerPinH='';async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ame-yard:'+t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 let curUser='',accountAdmin=false,officePin='',officePinH='',pinFails=0,pinLockUntil=0,lastAct=Date.now();
-try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3)curUser=u.n}catch(e){}
+function isOwnerName(n){return ['Don S.','DON'].includes(n)}
+try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3&&!(isOwnerName(u.n)&&u.n!==OWNER))curUser=u.n}catch(e){}
 try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p===OWNER)curUser=p;else if(p&&p!==OWNER)localStorage.removeItem('ameOwnerStay')}catch(e){}
 
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
@@ -1806,7 +1807,7 @@ function setUser(n){if(viewAs==='__login'&&n){toast('Preview only — tap the ba
 function logout(){curUser='';selWho='';cart=[];try{sessionStorage.removeItem('ameUser');localStorage.removeItem('ameOwnerStay')}catch(e){}$('#userChip').hidden=true;isAdmin=false;applyRole();closeDlg();showLogin()}
 $('#userChip').onclick=()=>{if(viewAs){endViewAs();return}if(isOwner(curUser)){viewAsDlg();return}if(myName()===curUser){toast('Signed in with your Microsoft account ('+msEmail+')');return}logout()};
 function viewAsDlg(){$('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>View the app as…</h3><p class="muted" style="margin-top:0">See exactly what this person sees. No sign-in is recorded for them, but anything you change is saved under their name. Tap the orange banner to come back.</p>
-   <div class="names">${[...crew].filter(c=>!isOwner(c.name)).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<button data-va="${esc(c.name)}" class="lname">${esc(c.name)}<small style="display:block;opacity:.6;font-size:11px">${esc(c.role)}</small></button>`).join('')}</div>
+   <div class="names">${[...crew].filter(c=>c.name!==curUser&&c.name!==vaOwner).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<button data-va="${esc(c.name)}" class="lname">${esc(c.name)}<small style="display:block;opacity:.6;font-size:11px">${esc(c.role)}</small></button>`).join('')}</div>
    <div class="bar"><button class="btn" id="vaShared">Shared-device sign-in screen</button><button class="btn" id="vaX">Close</button></div></div></div>`;
   $('#vaX').onclick=closeDlg;$('#vaShared').onclick=()=>{closeDlg();vaOwner=vaOwner||curUser;viewAs='__login';curUser='';$('#userChip').hidden=true;isAdmin=false;applyRole();showLoginPicker();vaBanner()};
   $$('[data-va]').forEach(b=>b.onclick=()=>{closeDlg();startViewAs(b.dataset.va)})}
