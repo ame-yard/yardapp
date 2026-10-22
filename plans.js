@@ -1,0 +1,237 @@
+/* AME Plans — first drafts (Kyle only): Takeoff (On-Screen Takeoff style), Bid (Quick Bid style), Markup (Bluebeam style).
+   Plans are PDFs stored in SharePoint (plans/). Measurements, conditions and bids are saved in the 'tko' collection. */
+(function(){
+const dev=()=>typeof isDev==='function'&&typeof curUser!=='undefined'&&isDev(curUser);
+const mk=id=>{let s=document.getElementById('tab-'+id);if(!s){s=document.createElement('section');s.id='tab-'+id;s.hidden=true;(document.querySelector('main')||document.body).appendChild(s)}return s};
+const ld=src=>new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+async function libs(){if(!window.pdfjsLib){await ld('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}}
+async function pdflib(){if(!window.PDFLib)await ld('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js')}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const n2=v=>(Math.round(v*100)/100).toLocaleString('en-US');
+const money=v=>'$'+(Math.round((+v||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num=v=>{const n=parseFloat(String(v??'').replace(/[$,]/g,''));return isFinite(n)?n:0};
+/* feet parser: 10' 6"  |  10.5  |  10'-6"  |  126" */
+function feet(t){t=String(t||'').trim();let m=t.match(/^(\d+(?:\.\d+)?)\s*'\s*-?\s*(\d+(?:\.\d+)?)?\s*"?$/);if(m)return +m[1]+(m[2]?+m[2]/12:0);m=t.match(/^(\d+(?:\.\d+)?)\s*"$/);if(m)return +m[1]/12;const n=parseFloat(t);return isFinite(n)?n:null}
+const ICO={
+ area:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 6l7-3 9 5-3 11-11 1z"/></svg>',
+ linear:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 18l6-8 5 4 7-9"/></svg>',
+ count:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><circle cx="12" cy="17" r="2.5"/></svg>'};
+const COLORS=['#f47b20','#2f81f7','#3fb950','#d2a8ff','#e8594a','#f2cc60','#39c5cf','#ff7eb6'];
+
+/* ---------------- shared PDF viewer ---------------- */
+function Viewer(host,opts){const V={pdf:null,page:1,z:1,size:[612,792],opts};
+  host.innerHTML=`<div class="pvwrap"><div class="pvstage"><canvas></canvas><svg class="pvsvg"></svg></div></div>`;
+  const wrap=host.querySelector('.pvwrap'),stage=host.querySelector('.pvstage'),cv=host.querySelector('canvas'),svg=host.querySelector('svg');V.svg=svg;V.wrap=wrap;
+  let rt=null,seq=0;
+  V.load=async blob=>{await libs();V.pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;V.page=1;await V.fit()};
+  V.render=async()=>{if(!V.pdf)return;const my=++seq;const pg=await V.pdf.getPage(V.page);const vp1=pg.getViewport({scale:1});V.size=[vp1.width,vp1.height];
+    const dpr=Math.min(2,window.devicePixelRatio||1);const vp=pg.getViewport({scale:V.z*dpr});cv.width=vp.width;cv.height=vp.height;cv.style.width=(vp1.width*V.z)+'px';cv.style.height=(vp1.height*V.z)+'px';
+    stage.style.width=cv.style.width;stage.style.height=cv.style.height;svg.setAttribute('viewBox',`0 0 ${vp1.width} ${vp1.height}`);svg.style.width=cv.style.width;svg.style.height=cv.style.height;
+    if(rt)try{rt.cancel()}catch(e){}rt=pg.render({canvasContext:cv.getContext('2d'),viewport:vp});try{await rt.promise}catch(e){}if(my===seq&&V.opts.onRender)V.opts.onRender()};
+  V.fit=async()=>{if(!V.pdf)return;const pg=await V.pdf.getPage(V.page);const vp=pg.getViewport({scale:1});V.z=Math.max(.1,(wrap.clientWidth-20)/vp.width);await V.render()};
+  V.zoom=async f=>{const cx=wrap.scrollLeft+wrap.clientWidth/2,cy=wrap.scrollTop+wrap.clientHeight/2;const old=V.z;V.z=Math.min(8,Math.max(.1,V.z*f));await V.render();wrap.scrollLeft=cx*V.z/old-wrap.clientWidth/2;wrap.scrollTop=cy*V.z/old-wrap.clientHeight/2};
+  V.go=async n=>{if(!V.pdf)return;V.page=Math.min(V.pdf.numPages,Math.max(1,n));await V.render()};
+  V.pt=e=>{const r=svg.getBoundingClientRect();return [(e.clientX-r.left)/V.z,(e.clientY-r.top)/V.z]};
+  wrap.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();V.zoom(e.deltaY<0?1.15:1/1.15)}},{passive:false});
+  /* drag to pan with middle / right mouse or space */
+  let pan=null,space=false;window.addEventListener('keydown',e=>{if(e.code==='Space'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')space=true});window.addEventListener('keyup',e=>{if(e.code==='Space')space=false});
+  wrap.addEventListener('pointerdown',e=>{if(e.button===1||e.button===2||space){pan={x:e.clientX,y:e.clientY,l:wrap.scrollLeft,t:wrap.scrollTop};e.preventDefault()}});
+  window.addEventListener('pointermove',e=>{if(pan){wrap.scrollLeft=pan.l-(e.clientX-pan.x);wrap.scrollTop=pan.t-(e.clientY-pan.y)}});window.addEventListener('pointerup',()=>pan=null);
+  wrap.addEventListener('contextmenu',e=>e.preventDefault());
+  /* pinch zoom on touch */
+  let pinch=null;wrap.addEventListener('touchstart',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinch={d}}},{passive:true});
+  wrap.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(Math.abs(d/pinch.d-1)>.12){V.zoom(d/pinch.d);pinch.d=d}}},{passive:true});wrap.addEventListener('touchend',()=>pinch=null);
+  return V}
+
+/* ---------------- projects (shared by Takeoff + Bid) ---------------- */
+let PJ=[],cur=null,saveT=0;
+(function w(){if(typeof db!=='undefined'&&db&&db.collection){db.collection('tko').onSnapshot(s=>{PJ=s.docs.map(d=>({...d.data(),_id:d.id}));if(cur){const f=PJ.find(p=>p._id===cur._id);if(f&&f.at!==cur.at&&f.by!==curUser)cur=f}if(AME.cur==='tko'&&!TK.v)tkList();if(AME.cur==='bid'&&!(document.activeElement&&B.contains(document.activeElement)&&/INPUT|SELECT/.test(document.activeElement.tagName)))bidRender()},()=>{})}else setTimeout(w,400)})();
+function save(){if(!cur)return;const P=cur;clearTimeout(saveT);saveT=setTimeout(async()=>{P.at=new Date().toISOString();P.by=curUser;const{_id,...d}=P;try{await db.doc('tko/'+_id).set(d)}catch(e){toast('Could not save: '+(e.message||e))}},600)}
+const PRESETS=[['Roof area','area'],['Cricket / tapered','area'],['Parapet wall','linear'],['Roof edge / perimeter','linear'],['Coping','linear'],['Drains','count'],['Scuppers','count'],['Penetrations','count'],['Curbs / RTU','count']];
+function scaleOf(p,pg){return (p.scales||{})[pg]||0}
+function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const[x1,y1]=pts[i],[x2,y2]=pts[(i+1)%pts.length];a+=x1*y2-x2*y1}return Math.abs(a)/2}
+function polyLen(pts){let l=0;for(let i=1;i<pts.length;i++)l+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return l}
+const slopeF=c=>{const r=num(c.slope);return r?Math.sqrt(1+(r/12)**2):1};
+function measQty(p,m){const c=p.conds.find(x=>x.id===m.cid);const s=scaleOf(p,m.page);if(!c)return 0;if(c.type==='count')return m.pts.length;if(!s)return null;return c.type==='area'?polyArea(m.pts)*s*s*slopeF(c):polyLen(m.pts)*s}
+function condQty(p,c){let t=0,miss=false;(p.meas||[]).filter(m=>m.cid===c.id).forEach(m=>{const q=measQty(p,m);if(q===null)miss=true;else t+=q});return {q:t,miss}}
+const UNIT={area:'SF',linear:'LF',count:'EA'};
+
+/* ================= TAKEOFF ================= */
+const T=mk('tko');const TK={v:null,tool:null,cid:'',draft:[],sel:'',cal:null};
+function tkList(){TK.v=null;cur=null;T.innerHTML=`<div class="mplhead"><h2>Takeoff</h2><span class="muted" style="font-size:12px">Draft · only you</span><span style="flex:1"></span><button class="btn pri" id="tkNewP">+ New project</button></div>
+  <div class="tkpl">${PJ.length?[...PJ].sort((a,b)=>String(b.at).localeCompare(a.at)).map(p=>`<button class="tkpc" data-pj="${p._id}"><b>${esc(p.name)}</b><small>${esc(p.file||'')} · ${(p.conds||[]).length} conditions · ${(p.meas||[]).length} takeoffs</small><small class="muted">${p.at?new Date(p.at).toLocaleDateString():''}</small></button>`).join(''):'<div class="panel muted">No projects yet. Start one with a plan PDF.</div>'}</div>`;
+  T.querySelector('#tkNewP').onclick=newProject;T.querySelectorAll('[data-pj]').forEach(b=>b.onclick=()=>openProject(b.dataset.pj))}
+function newProject(){$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>New takeoff project</h3><div class="fields"><label class="f wide">Project name<input id="npN" placeholder="e.g. #478 Edwards AFB Repair"></label><label class="f wide">Plan PDF<input id="npF" type="file" accept="application/pdf"></label></div><div class="bar"><button class="btn" id="npC">Cancel</button><button class="go" id="npS" style="width:auto">Create</button></div></div></div>`;
+  $('#npC').onclick=closeDlg;$('#npS').onclick=async()=>{const n=$('#npN').value.trim(),f=$('#npF').files[0];if(!n||!f){toast('Name and PDF are required.');return}$('#npS').disabled=true;$('#npS').textContent='Uploading…';
+    try{const id='p'+uid();const path='plans/'+id+'_'+f.name.replace(/[^\w.\-]+/g,'_');const fs=await window.claude.use('files');await fs.save(path,f);BLOB[path]=f;
+      const p={name:n,file:f.name,path,conds:[],meas:[],scales:{},bid:{lines:{},extra:[],tax:7.75,oh:10,profit:10},by:curUser,at:new Date().toISOString()};await db.doc('tko/'+id).set(p);closeDlg();openProject(id,{...p,_id:id})}catch(e){toast('Upload failed: '+(e.message||e));$('#npS').disabled=false;$('#npS').textContent='Create'}}}
+const BLOB={};
+async function getPlan(p){if(BLOB[p.path])return BLOB[p.path];const fs=await window.claude.use('files');const b=await fs.read(p.path);BLOB[p.path]=b;return b}
+async function openProject(id,pre){cur=pre||PJ.find(p=>p._id===id);if(!cur)return;cur.conds=cur.conds||[];cur.meas=cur.meas||[];cur.scales=cur.scales||{};TK.cid=(cur.conds[0]||{}).id||'';TK.tool=null;TK.draft=[];TK.sel='';
+  T.innerHTML=`<div class="tkbar"><button class="btn small" id="tkBack">‹ Projects</button><b class="tkname">${esc(cur.name)}</b><span class="tkpg"><button class="btn small" id="tkPrev">‹</button><span id="tkPgN"></span><button class="btn small" id="tkNext">›</button></span>
+    <span class="tkz"><button class="btn small" id="tkZo">−</button><button class="btn small" id="tkFit">Fit</button><button class="btn small" id="tkZi">+</button></span><span id="tkScale" class="tkscale"></span><button class="btn small" id="tkCal">Set scale</button><span style="flex:1"></span><button class="btn small" id="tkXls">Export</button><button class="btn small pri" id="tkBid">Open in Bid</button></div>
+   <div class="tkmain"><aside class="tkside"><div class="tkhd"><b>Conditions</b><button class="btn small" id="tkAddC">+ Add</button></div><div id="tkConds"></div><p class="muted tkhelp" id="tkHelp"></p></aside><div class="tkview" id="tkView"><div class="muted" style="padding:20px">Loading plan…</div></div></div>`;
+  T.querySelector('#tkBack').onclick=tkList;T.querySelector('#tkAddC').onclick=()=>condDlg();T.querySelector('#tkBid').onclick=()=>AME.open('bid');T.querySelector('#tkXls').onclick=exportQty;
+  const V=TK.v=Viewer(T.querySelector('#tkView'),{onRender:draw});
+  T.querySelector('#tkPrev').onclick=()=>V.go(V.page-1).then(tkInfo);T.querySelector('#tkNext').onclick=()=>V.go(V.page+1).then(tkInfo);T.querySelector('#tkZo').onclick=()=>V.zoom(1/1.25);T.querySelector('#tkZi').onclick=()=>V.zoom(1.25);T.querySelector('#tkFit').onclick=()=>V.fit();
+  T.querySelector('#tkCal').onclick=calDlg;
+  V.svg.addEventListener('click',svgClick);V.svg.addEventListener('dblclick',e=>{e.preventDefault();finish()});V.svg.addEventListener('mousemove',e=>{TK.mouse=V.pt(e);if(TK.draft.length||TK.cal)draw()});
+  try{await V.load(await getPlan(cur))}catch(e){T.querySelector('#tkView').innerHTML='<div class="panel">Could not open the plan: '+esc(e.message||e)+'</div>'}
+  conds();tkInfo()}
+function tkInfo(){const V=TK.v;if(!V||!V.pdf)return;T.querySelector('#tkPgN').textContent=` ${V.page} / ${V.pdf.numPages} `;const s=scaleOf(cur,V.page);T.querySelector('#tkScale').innerHTML=s?`Scale: <b>1 in on sheet = ${n2(s*72)} ft</b>`:'<span class="tkwarn">No scale on this page</span>';
+  const c=cur.conds.find(x=>x.id===TK.cid);T.querySelector('#tkHelp').innerHTML=TK.cal?'Click two points on a known dimension.':!c?'Add a condition, then click on the plan.':c.type==='count'?'Click each item to count it. Esc to stop.':c.type==='area'?'Click the corners. Double-click (or Enter) to close the area.':'Click along the line. Double-click (or Enter) to finish.';draw()}
+function conds(){const box=T.querySelector('#tkConds');if(!box)return;box.innerHTML=cur.conds.map(c=>{const{q,miss}=condQty(cur,c);return `<div class="tkc${c.id===TK.cid?' on':''}" data-cid="${c.id}"><span class="tksw" style="background:${c.color}"></span><span class="tkci">${ICO[c.type]}</span><span class="tkcn">${esc(c.name)}${c.slope?` <small class="muted">${esc(c.slope)}/12</small>`:''}</span><span class="tkcq">${miss?'<span class="tkwarn" title="Some pages have no scale">!</span> ':''}${n2(q)} ${UNIT[c.type]}${c.type==='area'&&q?`<small>${n2(q/100)} SQ</small>`:''}</span><button class="tkce" data-ce="${c.id}" title="Edit">⋯</button></div>`}).join('')||'<p class="muted" style="font-size:13px">No conditions yet.</p>';
+  box.querySelectorAll('[data-cid]').forEach(r=>r.onclick=e=>{if(e.target.closest('[data-ce]'))return;TK.cid=r.dataset.cid;TK.draft=[];TK.cal=null;conds();tkInfo()});box.querySelectorAll('[data-ce]').forEach(b=>b.onclick=()=>condDlg(b.dataset.ce))}
+function condDlg(id){const c=id?cur.conds.find(x=>x.id===id):{id:'c'+uid(),name:'',type:'area',color:COLORS[cur.conds.length%COLORS.length],slope:''};
+  $('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>${id?'Edit':'New'} condition</h3>${id?'':`<div class="tpseg" style="margin-bottom:10px">${PRESETS.map(([n,t])=>`<button type="button" data-pre="${esc(n)}|${t}">${ICO[t]} ${esc(n)}</button>`).join('')}</div>`}
+   <div class="fields"><label class="f wide">Name<input id="cdN" value="${esc(c.name)}"></label><label class="f">Type<select id="cdT">${['area','linear','count'].map(t=>`<option value="${t}" ${c.type===t?'selected':''}>${t==='area'?'Area (SF)':t==='linear'?'Linear (LF)':'Count (EA)'}</option>`).join('')}</select></label>
+   <label class="f">Slope (x in 12, area only)<input id="cdS" value="${esc(c.slope||'')}" placeholder="e.g. 0.25"></label><label class="f">Color<input id="cdC" type="color" value="${c.color}"></label></div>
+   <div class="bar">${id?'<button class="btn dng" id="cdD">Delete</button>':''}<span style="flex:1"></span><button class="btn" id="cdX">Cancel</button><button class="go" id="cdOk" style="width:auto">Save</button></div></div></div>`;
+  $$('[data-pre]').forEach(b=>b.onclick=()=>{const[n,t]=b.dataset.pre.split('|');$('#cdN').value=n;$('#cdT').value=t});$('#cdX').onclick=closeDlg;
+  const d=$('#cdD');if(d)d.onclick=()=>{const k=cur.meas.filter(m=>m.cid===id).length;if(!confirm(`Delete "${c.name}"${k?` and its ${k} takeoffs`:''}?`))return;cur.conds=cur.conds.filter(x=>x.id!==id);cur.meas=cur.meas.filter(m=>m.cid!==id);if(TK.cid===id)TK.cid=(cur.conds[0]||{}).id||'';save();closeDlg();conds();tkInfo()};
+  $('#cdOk').onclick=()=>{const n=$('#cdN').value.trim();if(!n){toast('Name it.');return}Object.assign(c,{name:n,type:$('#cdT').value,slope:$('#cdS').value.trim(),color:$('#cdC').value});if(!id){cur.conds.push(c);TK.cid=c.id}save();closeDlg();conds();tkInfo()}}
+function calDlg(){$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>Set scale · page ${TK.v.page}</h3><p class="muted" style="margin-top:0">Best: measure a known dimension on the plan. Or pick the scale printed on the sheet (works when the PDF is at its true sheet size).</p>
+   <button class="go" id="caM" style="width:100%">Measure a known dimension</button>
+   <div class="qlabel" style="margin-top:14px">Printed scale</div><div class="tpseg">${[['1/32"',32],['1/16"',16],['3/32"',32/3],['1/8"',8],['3/16"',16/3],['1/4"',4],['1/2"',2],['1"',1]].map(([l,v])=>`<button type="button" data-ps="${v}">${l} = 1'-0"</button>`).join('')}</div>
+   <label class="chk" style="margin-top:12px;display:block"><input type="checkbox" id="caAll" checked> Use for all pages without a scale</label><div class="bar"><button class="btn" id="caX">Cancel</button></div></div></div>`;
+  $('#caX').onclick=closeDlg;$('#caM').onclick=()=>{TK.calAll=$('#caAll').checked;closeDlg();TK.cal=[];TK.draft=[];tkInfo()};
+  $$('[data-ps]').forEach(b=>b.onclick=()=>{const inPerFt=72/ +b.dataset.ps;setScale(1/inPerFt,$('#caAll').checked);closeDlg()})}
+function setScale(ftPerPt,all){const pg=TK.v.page;cur.scales[pg]=ftPerPt;if(all)for(let i=1;i<=TK.v.pdf.numPages;i++)if(!cur.scales[i])cur.scales[i]=ftPerPt;save();conds();tkInfo();toast('Scale set')}
+function svgClick(e){if(e.button!==0)return;const p=TK.v.pt(e);
+  if(TK.cal){TK.cal.push(p);if(TK.cal.length===2){const d=Math.hypot(TK.cal[1][0]-TK.cal[0][0],TK.cal[1][1]-TK.cal[0][1]);const v=prompt('Real length of that line (e.g. 25\' 6" or 25.5):');const ft=feet(v);TK.cal=null;if(ft&&d>0)setScale(ft/d,TK.calAll);else tkInfo()}draw();return}
+  const hit=e.target.closest('[data-m]');if(hit&&!TK.draft.length){TK.sel=TK.sel===hit.dataset.m?'':hit.dataset.m;draw();return}
+  const c=cur.conds.find(x=>x.id===TK.cid);if(!c){toast('Add or pick a condition first.');return}TK.sel='';
+  if(c.type==='count'){let m=cur.meas.find(x=>x.cid===c.id&&x.page===TK.v.page&&x.live);if(!m){m={id:'m'+uid(),cid:c.id,page:TK.v.page,pts:[],live:true};cur.meas.push(m)}m.pts.push(p);save();conds();draw();return}
+  TK.draft.push(p);draw()}
+function finish(){const c=cur.conds.find(x=>x.id===TK.cid);if(!c||c.type==='count'){cur.meas.forEach(m=>delete m.live);return}
+  const pts=TK.draft.filter((p,i,a)=>!i||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>.5);if((c.type==='area'&&pts.length>=3)||(c.type==='linear'&&pts.length>=2)){cur.meas.push({id:'m'+uid(),cid:c.id,page:TK.v.page,pts});save()}TK.draft=[];conds();draw()}
+window.addEventListener('keydown',e=>{if(AME.cur!=='tko'||!TK.v||document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA')return;
+  if(e.key==='Enter')finish();else if(e.key==='Escape'){TK.draft=[];TK.cal=null;cur&&cur.meas.forEach(m=>delete m.live);TK.sel='';draw()}
+  else if((e.key==='Delete'||e.key==='Backspace')&&TK.sel){cur.meas=cur.meas.filter(m=>m.id!==TK.sel);TK.sel='';save();conds();draw()}
+  else if((e.key==='z'||e.key==='Z')&&(e.ctrlKey||e.metaKey)){if(TK.draft.length)TK.draft.pop();else{const l=[...cur.meas].reverse().find(m=>m.page===TK.v.page);if(l){if(l.pts.length>1&&cur.conds.find(c=>c.id===l.cid)?.type==='count')l.pts.pop();else cur.meas=cur.meas.filter(m=>m!==l);save();conds()}}draw()}});
+function draw(){const V=TK.v;if(!V||!cur)return;const sw=2/V.z;const s=scaleOf(cur,V.page);let h='';
+  cur.meas.filter(m=>m.page===V.page).forEach(m=>{const c=cur.conds.find(x=>x.id===m.cid);if(!c)return;const sel=TK.sel===m.id;const P=m.pts.map(p=>p.join(',')).join(' ');
+    if(c.type==='area'){h+=`<polygon data-m="${m.id}" points="${P}" fill="${c.color}" fill-opacity="${sel?.45:.25}" stroke="${c.color}" stroke-width="${sel?sw*2:sw}"/>`;const q=measQty(cur,m);if(q!==null){const cx=m.pts.reduce((a,p)=>a+p[0],0)/m.pts.length,cy=m.pts.reduce((a,p)=>a+p[1],0)/m.pts.length;h+=`<text x="${cx}" y="${cy}" class="tkl" style="font-size:${12/V.z}px">${n2(q)} SF</text>`}}
+    else if(c.type==='linear'){h+=`<polyline data-m="${m.id}" points="${P}" fill="none" stroke="${c.color}" stroke-width="${(sel?6:4)/V.z}" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`;const q=measQty(cur,m);if(q!==null){const p=m.pts[Math.floor(m.pts.length/2)];h+=`<text x="${p[0]}" y="${p[1]-6/V.z}" class="tkl" style="font-size:${12/V.z}px">${n2(q)} LF</text>`}}
+    else m.pts.forEach((p,i)=>{h+=`<g data-m="${m.id}"><circle cx="${p[0]}" cy="${p[1]}" r="${7/V.z}" fill="${c.color}" stroke="#fff" stroke-width="${1.5/V.z}"/><text x="${p[0]}" y="${p[1]+3.5/V.z}" text-anchor="middle" style="font:700 ${9/V.z}px system-ui;fill:#fff">${i+1}</text></g>`})});
+  const c=cur.conds.find(x=>x.id===TK.cid);const D=[...TK.draft,...(TK.mouse&&TK.draft.length?[TK.mouse]:[])];
+  if(D.length&&c){h+=`<polyline points="${D.map(p=>p.join(',')).join(' ')}${c.type==='area'&&D.length>2?' '+D[0].join(','):''}" fill="${c.type==='area'?c.color:'none'}" fill-opacity=".15" stroke="${c.color}" stroke-width="${sw}" stroke-dasharray="${6/V.z}"/>`;
+    if(s){const q=c.type==='area'?polyArea(D)*s*s*slopeF(c):polyLen(D)*s;const p=D[D.length-1];h+=`<text x="${p[0]+8/V.z}" y="${p[1]-8/V.z}" class="tkl" style="font-size:${13/V.z}px">${n2(q)} ${UNIT[c.type]}</text>`}}
+  if(TK.cal){const C=[...TK.cal,...(TK.mouse?[TK.mouse]:[])];if(C.length)h+=`<polyline points="${C.map(p=>p.join(',')).join(' ')}" stroke="#e8594a" stroke-width="${sw*1.5}" fill="none"/>`+C.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${4/V.z}" fill="#e8594a"/>`).join('')}
+  V.svg.innerHTML=h;V.svg.style.cursor=TK.cal||c?'crosshair':'default'}
+async function exportQty(){if(!window.XLSX){toast('Excel library not loaded yet');return}const rows=[['Condition','Type','Slope (in/12)','Quantity','Unit','Squares']];cur.conds.forEach(c=>{const{q}=condQty(cur,c);rows.push([c.name,c.type,c.slope||'',Math.round(q*100)/100,UNIT[c.type],c.type==='area'?Math.round(q)/100:''])});
+  const det=[['Condition','Page','Quantity','Unit']];cur.meas.forEach(m=>{const c=cur.conds.find(x=>x.id===m.cid);if(c)det.push([c.name,m.page,Math.round((measQty(cur,m)||0)*100)/100,UNIT[c.type]])});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Quantities');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(det),'Detail');XLSX.writeFile(wb,`Takeoff_${cur.name.replace(/[^\w]+/g,'_')}.xlsx`)}
+
+/* ================= BID ================= */
+const B=mk('bid');
+const LIB_DEF={'TPO 60 mil · mechanically attached':[['TPO membrane 60 mil','SF',1,10],['Polyiso insulation','SF',1,5],['Cover board','SF',1,5],['Plates & fasteners','SF',1,0],['Seam plates / batten','LF',0,0]],
+ 'Modified bitumen · 2-ply':[['Base sheet','SF',1,10],['Cap sheet','SF',1,10],['Primer / adhesive','SF',1,5]],
+ 'Roof coating':[['Prep & cleaning','SF',1,0],['Primer','SF',1,5],['Base coat','SF',1,5],['Top coat','SF',1,5]],
+ 'Edge & flashing':[['Edge metal','LF',1,5],['Coping','LF',1,5],['Wall flashing','LF',1,10]],
+ 'Drains & penetrations':[['Drain retrofit','EA',1,0],['Pipe boot / penetration flashing','EA',1,0],['Curb flashing','EA',1,0]]};
+let bidCond='';const fac=l=>(l.f===''||l.f==null)?1:num(l.f);
+function bidRender(){if(!cur){B.innerHTML=`<div class="mplhead"><h2>Bid</h2><span class="muted" style="font-size:12px">Draft · only you</span></div><div class="tkpl">${PJ.length?[...PJ].sort((a,b)=>String(b.at).localeCompare(a.at)).map(p=>`<button class="tkpc" data-bp="${p._id}"><b>${esc(p.name)}</b><small>${(p.conds||[]).length} conditions</small></button>`).join(''):'<div class="panel muted">Make a takeoff project first.</div>'}</div>`;B.querySelectorAll('[data-bp]').forEach(b=>b.onclick=()=>{cur=PJ.find(p=>p._id===b.dataset.bp);bidRender()});return}
+  const bd=cur.bid=cur.bid||{lines:{},extra:[],tax:7.75,oh:10,profit:10};bd.lines=bd.lines||{};bd.extra=bd.extra||[];
+  let mat=0,lab=0,oth=0;const lineRows=[];
+  cur.conds.forEach(c=>{const{q}=condQty(cur,c);(bd.lines[c.id]||[]).forEach((l,i)=>{const qty=q*fac(l)*(1+num(l.w)/100);const m=qty*num(l.m),lb=qty*num(l.l);mat+=m;lab+=lb;lineRows.push({c,l,i,qty,m,lb})})});
+  bd.extra.forEach(x=>{oth+=num(x.q)*num(x.p)});
+  const tax=mat*num(bd.tax)/100,sub=mat+tax+lab+oth,oh=sub*num(bd.oh)/100,pr=(sub+oh)*num(bd.profit)/100,tot=sub+oh+pr;
+  const roofSF=cur.conds.filter(c=>c.type==='area').reduce((a,c)=>a+condQty(cur,c).q,0);
+  B.innerHTML=`<div class="tkbar"><button class="btn small" id="bdBack">‹ Projects</button><b class="tkname">${esc(cur.name)}</b><span style="flex:1"></span><button class="btn small" id="bdTk">Open takeoff</button><button class="btn small" id="bdLib">Assemblies</button><button class="btn small pri" id="bdXls">Export Excel</button></div>
+   <div class="bdgrid"><div>${cur.conds.map(c=>{const{q}=condQty(cur,c);const L=bd.lines[c.id]||[];return `<div class="panel bdc"><div class="bdch"><span class="tksw" style="background:${c.color}"></span><b>${esc(c.name)}</b><span class="muted">${n2(q)} ${UNIT[c.type]}${c.type==='area'?' · '+n2(q/100)+' SQ':''}</span><span style="flex:1"></span><select data-asm="${c.id}"><option value="">+ Add assembly…</option>${Object.keys(libs_()).map(k=>`<option>${esc(k)}</option>`).join('')}</select><button class="btn small" data-al="${c.id}">+ Line</button></div>
+      ${L.length?`<table class="bdt"><thead><tr><th>Item</th><th>Unit</th><th class="n">Per ${UNIT[c.type]}</th><th class="n">Waste %</th><th class="n">Qty</th><th class="n">Material $/u</th><th class="n">Labor $/u</th><th class="n">Total</th><th></th></tr></thead><tbody>${L.map((l,i)=>{const qty=q*fac(l)*(1+num(l.w)/100);return `<tr><td><input data-lf="${c.id}|${i}|d" value="${esc(l.d)}"></td><td><input class="sm" data-lf="${c.id}|${i}|u" value="${esc(l.u||UNIT[c.type])}"></td><td><input class="sm n" data-lf="${c.id}|${i}|f" value="${esc(l.f??1)}"></td><td><input class="sm n" data-lf="${c.id}|${i}|w" value="${esc(l.w??0)}"></td><td class="n">${n2(qty)}</td><td><input class="sm n" data-lf="${c.id}|${i}|m" value="${esc(l.m??'')}" placeholder="$"></td><td><input class="sm n" data-lf="${c.id}|${i}|l" value="${esc(l.l??'')}" placeholder="$"></td><td class="n">${money(qty*(num(l.m)+num(l.l)))}</td><td><button class="eqdel" data-lx="${c.id}|${i}">×</button></td></tr>`}).join('')}</tbody></table>`:'<p class="muted" style="margin:6px 0 0;font-size:13px">No lines. Add an assembly or a line.</p>'}</div>`}).join('')||'<div class="panel muted">This project has no conditions yet. Do the takeoff first.</div>'}
+     <div class="panel bdc"><div class="bdch"><b>Equipment · mobilization · other</b><span style="flex:1"></span><button class="btn small" id="bdAddX">+ Line</button></div><datalist id="bdEq">${(window.__eqpList||[]).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+      ${bd.extra.length?`<table class="bdt"><thead><tr><th>Item</th><th class="n">Qty</th><th>Unit</th><th class="n">Price</th><th class="n">Total</th><th></th></tr></thead><tbody>${bd.extra.map((x,i)=>`<tr><td><input list="bdEq" data-xf="${i}|d" value="${esc(x.d)}"></td><td><input class="sm n" data-xf="${i}|q" value="${esc(x.q??1)}"></td><td><input class="sm" data-xf="${i}|u" value="${esc(x.u||'EA')}"></td><td><input class="sm n" data-xf="${i}|p" value="${esc(x.p??'')}" placeholder="$"></td><td class="n">${money(num(x.q)*num(x.p))}</td><td><button class="eqdel" data-xx="${i}">×</button></td></tr>`).join('')}</tbody></table>`:''}</div></div>
+    <aside class="panel bdsum"><h3 style="margin-top:0">Summary</h3>
+     <div class="bdr"><span>Material</span><b>${money(mat)}</b></div><div class="bdr"><span>Sales tax <input class="sm n" id="bdTax" value="${esc(bd.tax)}">%</span><b>${money(tax)}</b></div><div class="bdr"><span>Labor</span><b>${money(lab)}</b></div><div class="bdr"><span>Equipment / other</span><b>${money(oth)}</b></div>
+     <div class="bdr tot"><span>Subtotal</span><b>${money(sub)}</b></div><div class="bdr"><span>Overhead <input class="sm n" id="bdOh" value="${esc(bd.oh)}">%</span><b>${money(oh)}</b></div><div class="bdr"><span>Profit <input class="sm n" id="bdPr" value="${esc(bd.profit)}">%</span><b>${money(pr)}</b></div>
+     <div class="bdr big"><span>Bid total</span><b>${money(tot)}</b></div>${roofSF?`<div class="bdr"><span>Per SF of roof</span><b>${money(tot/roofSF)}</b></div><div class="bdr"><span>Per square</span><b>${money(tot/roofSF*100)}</b></div>`:''}
+     <p class="muted" style="font-size:12px">Quantities update live from the takeoff. Prices are yours to fill — nothing is pre-filled.</p></aside></div>`;
+  const re=()=>{save();bidRender()};B.querySelector('#bdBack').onclick=()=>{cur=null;bidRender()};B.querySelector('#bdTk').onclick=()=>{AME.open('tko');openProject(cur._id,cur)};B.querySelector('#bdXls').onclick=bidXls;B.querySelector('#bdLib').onclick=libDlg;
+  B.querySelectorAll('[data-asm]').forEach(s=>s.onchange=()=>{const k=s.value;if(!k)return;const L=bd.lines[s.dataset.asm]=bd.lines[s.dataset.asm]||[];libs_()[k].forEach(([d,u,f,w])=>L.push({d,u,f,w,m:'',l:''}));re()});
+  B.querySelectorAll('[data-al]').forEach(b=>b.onclick=()=>{(bd.lines[b.dataset.al]=bd.lines[b.dataset.al]||[]).push({d:'',f:1,w:0,m:'',l:''});re()});
+  B.querySelectorAll('[data-lf]').forEach(i=>i.onchange=()=>{const[c,k,f]=i.dataset.lf.split('|');bd.lines[c][+k][f]=i.value;re()});B.querySelectorAll('[data-lx]').forEach(b=>b.onclick=()=>{const[c,k]=b.dataset.lx.split('|');bd.lines[c].splice(+k,1);re()});
+  B.querySelector('#bdAddX').onclick=()=>{bd.extra.push({d:'',q:1,u:'EA',p:''});re()};B.querySelectorAll('[data-xf]').forEach(i=>i.onchange=()=>{const[k,f]=i.dataset.xf.split('|');bd.extra[+k][f]=i.value;if(f==='d'){const m=(window.__eqpMap||{})[i.value];if(m&&!bd.extra[+k].p){bd.extra[+k].p=m.p;bd.extra[+k].u=m.u}}re()});B.querySelectorAll('[data-xx]').forEach(b=>b.onclick=()=>{bd.extra.splice(+b.dataset.xx,1);re()});
+  [['#bdTax','tax'],['#bdOh','oh'],['#bdPr','profit']].forEach(([q,k])=>B.querySelector(q).onchange=e=>{bd[k]=e.target.value;re()})}
+let LIBC=null;(function w(){if(typeof db!=='undefined'&&db&&db.doc){db.doc('config/bidlib').onSnapshot(s=>{LIBC=(s.data()||{}).lib||null},()=>{});
+  db.collection('eqp').onSnapshot(s=>{const m={};s.docs.forEach(d=>{const q=d.data();const k=[q.cat,q.size?q.size+"'":'',q.lbs?q.lbs+'K':'',q.vendor].filter(Boolean).join(' · ');const p=q.day!=null?{p:q.day,u:'Day'}:q.week!=null?{p:q.week,u:'Week'}:null;if(p)m[k]=p});window.__eqpMap=m;window.__eqpList=Object.keys(m).sort()},()=>{})}else setTimeout(w,500)})();
+const libs_=()=>LIBC||LIB_DEF;
+function libDlg(){let L=JSON.parse(JSON.stringify(libs_()));let k=Object.keys(L)[0]||'';
+  const draw=()=>{$('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" style="max-width:720px"><h3>Assemblies</h3><p class="muted" style="margin-top:0">Reusable sets of lines. "Per" = how much of this item per unit of the condition (e.g. 1 SF of membrane per SF of roof). Prices are entered on each bid.</p>
+   <div class="tpseg">${Object.keys(L).map(x=>`<button type="button" data-lk="${esc(x)}" aria-pressed="${x===k}">${esc(x)}</button>`).join('')}<button type="button" id="lbNew">+ New</button></div>
+   ${k?`<div class="fields" style="margin-top:10px"><label class="f wide">Name<input id="lbN" value="${esc(k)}"></label></div><table class="bdt"><thead><tr><th>Item</th><th>Unit</th><th class="n">Per</th><th class="n">Waste %</th><th></th></tr></thead><tbody>${L[k].map((r,i)=>`<tr><td><input data-lb="${i}|0" value="${esc(r[0])}"></td><td><input class="sm" data-lb="${i}|1" value="${esc(r[1])}"></td><td><input class="sm n" data-lb="${i}|2" value="${esc(r[2])}"></td><td><input class="sm n" data-lb="${i}|3" value="${esc(r[3])}"></td><td><button class="eqdel" data-lbx="${i}">×</button></td></tr>`).join('')}</tbody></table><button class="btn small" id="lbAdd">+ Line</button> <button class="btn small dng" id="lbDel">Delete assembly</button>`:''}
+   <div class="bar"><button class="btn" id="lbC">Cancel</button><button class="go" id="lbS" style="width:auto">Save</button></div></div></div>`;
+   const rd=()=>{if(!k)return;$$('[data-lb]').forEach(i=>{const[r,c]=i.dataset.lb.split('|');L[k][+r][+c]=+c>=2?num(i.value):i.value});const nn=$('#lbN').value.trim();if(nn&&nn!==k){L[nn]=L[k];delete L[k];k=nn}};
+   $$('[data-lk]').forEach(b=>b.onclick=()=>{rd();k=b.dataset.lk;draw()});$('#lbNew').onclick=()=>{rd();k='New assembly '+(Object.keys(L).length+1);L[k]=[['','SF',1,0]];draw()};
+   const a=$('#lbAdd');if(a)a.onclick=()=>{rd();L[k].push(['','SF',1,0]);draw()};const dd=$('#lbDel');if(dd)dd.onclick=()=>{delete L[k];k=Object.keys(L)[0]||'';draw()};$$('[data-lbx]').forEach(b=>b.onclick=()=>{rd();L[k].splice(+b.dataset.lbx,1);draw()});
+   $('#lbC').onclick=closeDlg;$('#lbS').onclick=async()=>{rd();try{await db.doc('config/bidlib').set({lib:L});LIBC=L;closeDlg();bidRender();toast('Assemblies saved')}catch(e){toast('Could not save')}}};draw()}
+function bidXls(){if(!window.XLSX){toast('Excel library not loaded yet');return}const bd=cur.bid;const R=[['AME Builders — Bid',cur.name],[],['Condition','Item','Unit','Qty','Material $/u','Labor $/u','Material','Labor','Total']];let mat=0,lab=0,oth=0;
+  cur.conds.forEach(c=>{const{q}=condQty(cur,c);(bd.lines[c.id]||[]).forEach(l=>{const qty=q*fac(l)*(1+num(l.w)/100);const m=qty*num(l.m),lb=qty*num(l.l);mat+=m;lab+=lb;R.push([c.name,l.d,l.u||UNIT[c.type],+qty.toFixed(2),num(l.m),num(l.l),+m.toFixed(2),+lb.toFixed(2),+(m+lb).toFixed(2)])})});
+  R.push([]);R.push(['Equipment / other','','Qty','Unit','Price','','','','Total']);bd.extra.forEach(x=>{const t=num(x.q)*num(x.p);oth+=t;R.push(['',x.d,num(x.q),x.u,num(x.p),'','','',+t.toFixed(2)])});
+  const tax=mat*num(bd.tax)/100,sub=mat+tax+lab+oth,oh=sub*num(bd.oh)/100,pr=(sub+oh)*num(bd.profit)/100;R.push([]);[['Material',mat],['Sales tax '+bd.tax+'%',tax],['Labor',lab],['Equipment / other',oth],['Subtotal',sub],['Overhead '+bd.oh+'%',oh],['Profit '+bd.profit+'%',pr],['Bid total',sub+oh+pr]].forEach(([a,b])=>R.push(['','','','','','','',a,+b.toFixed(2)]));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(R),'Bid');XLSX.writeFile(wb,`Bid_${cur.name.replace(/[^\w]+/g,'_')}.xlsx`)}
+
+/* ================= MARKUP ================= */
+const M=mk('mkp');const MK={v:null,tool:'pen',color:'#e8594a',w:3,marks:{},cur:null,file:null,name:'',hist:[]};
+function mkRender(){M.innerHTML=`<div class="tkbar"><b class="tkname">Markup</b><span class="muted" style="font-size:12px">Draft · only you</span><label class="btn small pri">Open PDF<input type="file" id="mkF" accept="application/pdf" hidden></label><span class="tkpg"><button class="btn small" id="mkPrev">‹</button><span id="mkPg"></span><button class="btn small" id="mkNext">›</button></span><span class="tkz"><button class="btn small" id="mkZo">−</button><button class="btn small" id="mkFit">Fit</button><button class="btn small" id="mkZi">+</button></span>
+   <span class="mktools">${[['pen','Pen'],['hl','Highlight'],['line','Line'],['arrow','Arrow'],['rect','Box'],['cloud','Cloud'],['text','Text'],['del','Erase']].map(([k,l])=>`<button type="button" data-mt="${k}" aria-pressed="${MK.tool===k}">${l}</button>`).join('')}</span>
+   <span class="mkcol">${['#e8594a','#f47b20','#2f81f7','#3fb950','#111111'].map(c=>`<button type="button" data-mc="${c}" style="background:${c}" aria-pressed="${MK.color===c}"></button>`).join('')}</span><button class="btn small" id="mkUndo">Undo</button><span style="flex:1"></span><button class="btn small pri" id="mkSave">Save PDF</button></div>
+   <div class="tkview mkview" id="mkView"><div class="muted" style="padding:30px;text-align:center">Open a PDF to mark it up. Drag with the right mouse button (or hold Space) to move around; Ctrl + scroll to zoom.</div></div>`;
+  M.querySelector('#mkF').onchange=async e=>{const f=e.target.files[0];if(!f)return;MK.file=f;MK.name=f.name;MK.marks={};MK.hist=[];MK.v=Viewer(M.querySelector('#mkView'),{onRender:mkDraw});bindMk();await MK.v.load(f);mkInfo()};
+  M.querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>{MK.tool=b.dataset.mt;M.querySelectorAll('[data-mt]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  M.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{MK.color=b.dataset.mc;M.querySelectorAll('[data-mc]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  M.querySelector('#mkPrev').onclick=()=>MK.v&&MK.v.go(MK.v.page-1).then(mkInfo);M.querySelector('#mkNext').onclick=()=>MK.v&&MK.v.go(MK.v.page+1).then(mkInfo);M.querySelector('#mkZo').onclick=()=>MK.v&&MK.v.zoom(1/1.25);M.querySelector('#mkZi').onclick=()=>MK.v&&MK.v.zoom(1.25);M.querySelector('#mkFit').onclick=()=>MK.v&&MK.v.fit();
+  M.querySelector('#mkUndo').onclick=()=>{const l=MK.hist.pop();if(l){const a=MK.marks[l.pg]||[];const i=a.indexOf(l.m);if(i>=0)a.splice(i,1);mkDraw()}};M.querySelector('#mkSave').onclick=mkSave;
+  if(MK.file){MK.v=Viewer(M.querySelector('#mkView'),{onRender:mkDraw});bindMk();MK.v.load(MK.file).then(mkInfo)}}
+function mkInfo(){if(MK.v&&MK.v.pdf)M.querySelector('#mkPg').textContent=` ${MK.v.page} / ${MK.v.pdf.numPages} `}
+function bindMk(){const s=MK.v.svg;let d=null;
+  s.addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=MK.v.pt(e);const pg=MK.v.page;
+    if(MK.tool==='del'){const t=e.target.closest('[data-k]');if(t){const a=MK.marks[pg]||[];a.splice(+t.dataset.k,1);mkDraw()}return}
+    if(MK.tool==='text'){const t=prompt('Text:');if(t){const m={t:'text',c:MK.color,p:[p],s:t};(MK.marks[pg]=MK.marks[pg]||[]).push(m);MK.hist.push({pg,m});mkDraw()}return}
+    d={t:MK.tool,c:MK.color,p:[p]};s.setPointerCapture(e.pointerId)});
+  s.addEventListener('pointermove',e=>{if(!d)return;const p=MK.v.pt(e);if(d.t==='pen'||d.t==='hl')d.p.push(p);else d.p[1]=p;mkDraw(d)});
+  s.addEventListener('pointerup',()=>{if(!d)return;if(d.p.length>1){const pg=MK.v.page;(MK.marks[pg]=MK.marks[pg]||[]).push(d);MK.hist.push({pg,m:d})}d=null;mkDraw()})}
+function cloudPath(x1,y1,x2,y2,r){const L=Math.min(x1,x2),R=Math.max(x1,x2),T=Math.min(y1,y2),Bt=Math.max(y1,y2);let p=`M${L},${T}`;const arc=(x,y)=>p+=` A${r},${r} 0 0,1 ${x},${y}`;
+  for(let x=L+r*2;x<=R;x+=r*2)arc(x,T);for(let y=T+r*2;y<=Bt;y+=r*2)arc(R,y);for(let x=R-r*2;x>=L;x-=r*2)arc(x,Bt);for(let y=Bt-r*2;y>=T;y-=r*2)arc(L,y);return p}
+function markSvg(m,k){const sw=(m.t==='hl'?14:3);const P=m.p;
+  if(m.t==='pen'||m.t==='hl')return `<polyline data-k="${k}" points="${P.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${m.t==='hl'?'#f2cc60':m.c}" stroke-opacity="${m.t==='hl'?.4:1}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const[a,b]=[P[0],P[1]||P[0]];
+  if(m.t==='line'||m.t==='arrow'){const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),h=12;return `<g data-k="${k}"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${m.c}" stroke-width="3"/>${m.t==='arrow'?`<polygon points="${b[0]},${b[1]} ${b[0]-h*Math.cos(ang-.4)},${b[1]-h*Math.sin(ang-.4)} ${b[0]-h*Math.cos(ang+.4)},${b[1]-h*Math.sin(ang+.4)}" fill="${m.c}"/>`:''}</g>`}
+  if(m.t==='rect')return `<rect data-k="${k}" x="${Math.min(a[0],b[0])}" y="${Math.min(a[1],b[1])}" width="${Math.abs(b[0]-a[0])}" height="${Math.abs(b[1]-a[1])}" fill="none" stroke="${m.c}" stroke-width="3"/>`;
+  if(m.t==='cloud')return `<path data-k="${k}" d="${cloudPath(a[0],a[1],b[0],b[1],8)}" fill="none" stroke="${m.c}" stroke-width="2.5"/>`;
+  if(m.t==='text')return `<text data-k="${k}" x="${a[0]}" y="${a[1]}" style="font:700 14px system-ui;fill:${m.c}">${esc(m.s)}</text>`;return ''}
+function mkDraw(live){if(!MK.v)return;const a=MK.marks[MK.v.page]||[];MK.v.svg.innerHTML=a.map(markSvg).join('')+(live?markSvg(live,-1):'');MK.v.svg.style.cursor=MK.tool==='del'?'not-allowed':'crosshair'}
+async function mkSave(){if(!MK.file){toast('Open a PDF first.');return}await pdflib();const{PDFDocument,rgb,StandardFonts}=PDFLib;const doc=await PDFDocument.load(await MK.file.arrayBuffer());const font=await doc.embedFont(StandardFonts.HelveticaBold);
+  const col=h=>{const n=parseInt(h.slice(1),16);return rgb((n>>16&255)/255,(n>>8&255)/255,(n&255)/255)};
+  doc.getPages().forEach((pg,i)=>{const A=MK.marks[i+1]||[];if(!A.length)return;const H=pg.getHeight();const Y=y=>H-y;
+    A.forEach(m=>{const c=col(m.t==='hl'?'#f2cc60':m.c);const P=m.p;
+      if(m.t==='pen'||m.t==='hl'){for(let k=1;k<P.length;k++)pg.drawLine({start:{x:P[k-1][0],y:Y(P[k-1][1])},end:{x:P[k][0],y:Y(P[k][1])},thickness:m.t==='hl'?14:3,color:c,opacity:m.t==='hl'?.4:1})}
+      else if(m.t==='line'||m.t==='arrow'){const[a,b]=P;pg.drawLine({start:{x:a[0],y:Y(a[1])},end:{x:b[0],y:Y(b[1])},thickness:3,color:c});if(m.t==='arrow'){const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),h=12;[ang-.4,ang+.4].forEach(t=>pg.drawLine({start:{x:b[0],y:Y(b[1])},end:{x:b[0]-h*Math.cos(t),y:Y(b[1]-h*Math.sin(t))},thickness:3,color:c}))}}
+      else if(m.t==='rect'){const[a,b]=P;pg.drawRectangle({x:Math.min(a[0],b[0]),y:Y(Math.max(a[1],b[1])),width:Math.abs(b[0]-a[0]),height:Math.abs(b[1]-a[1]),borderColor:c,borderWidth:3})}
+      else if(m.t==='cloud'){const[a,b]=P;pg.drawSvgPath(cloudPath(a[0],a[1],b[0],b[1],8),{x:0,y:H,borderColor:c,borderWidth:2.5})}
+      else if(m.t==='text')pg.drawText(m.s,{x:P[0][0],y:Y(P[0][1]),size:14,font,color:c})})});
+  const out=await doc.save();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'application/pdf'}));a.download=MK.name.replace(/\.pdf$/i,'')+'_markup.pdf';document.body.appendChild(a);a.click();a.remove();toast('Saved with markups')}
+
+document.head.insertAdjacentHTML('beforeend',`<style>
+#tab-tko,#tab-bid,#tab-mkp{max-width:none}
+.tkpl{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}.tkpc{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:inherit;font:inherit;cursor:pointer}.tkpc:hover{border-color:var(--hi)}.tkpc small{font-size:12px}
+.tkbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.tkname{font-size:16px;margin:0 6px}.tkpg,.tkz{display:inline-flex;gap:3px;align-items:center}.tkscale{font-size:12px}.tkwarn{color:#e8594a;font-weight:800}
+.tkmain{display:grid;grid-template-columns:270px 1fr;gap:10px;height:calc(100vh - 190px);min-height:480px}.tkside{border:1px solid var(--line);border-radius:12px;padding:10px;overflow:auto;background:var(--panel)}.tkhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tkc{display:grid;grid-template-columns:10px 18px 1fr auto 22px;gap:6px;align-items:center;padding:7px 6px;border-radius:8px;cursor:pointer;font-size:13px;border:1px solid transparent}.tkc.on{border-color:var(--hi);background:rgba(244,123,32,.1)}.tksw{width:10px;height:10px;border-radius:3px;display:inline-block}.tkcq{text-align:right;font-weight:700;white-space:nowrap}.tkcq small{display:block;font-weight:500;opacity:.7}.tkce{border:0;background:none;color:inherit;cursor:pointer;font-weight:800}
+.tkhelp{font-size:12px;margin-top:10px}.tkview{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#555;position:relative}.mkview{height:calc(100vh - 190px);min-height:480px}
+.pvwrap{position:absolute;inset:0;overflow:auto}.pvstage{position:relative;margin:10px}.pvstage canvas{display:block;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.4)}.pvsvg{position:absolute;left:0;top:0;touch-action:none}.tkl{font-weight:800;fill:#111;paint-order:stroke;stroke:#fff;stroke-width:3px;text-anchor:middle}
+.bdgrid{display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start}.bdc{margin-bottom:10px}.bdch{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}.bdch select{padding:6px;font:inherit;font-size:13px}
+.bdt{width:100%;border-collapse:collapse;font-size:13px}.bdt th{font-size:11px;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px}.bdt td{padding:3px 4px;border-top:1px solid var(--line);vertical-align:middle}.bdt .n{text-align:right}.bdt input{width:100%;box-sizing:border-box;padding:5px 6px;font:inherit;font-size:13px;min-width:0}.bdt input.sm{width:72px}.bdt input.n{text-align:right}
+.bdsum{position:sticky;top:90px}.bdr{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;font-size:14px}.bdr input.sm{width:52px;padding:3px 5px;font:inherit;text-align:right}.bdr.tot{border-top:1px solid var(--line);margin-top:4px;padding-top:8px}.bdr.big{border-top:2px solid var(--hi);margin-top:6px;padding-top:10px;font-size:18px}.bdr.big b{color:var(--hi)}
+.mktools,.mkcol{display:inline-flex;gap:3px;flex-wrap:wrap}.mktools button{border:1px solid var(--line);background:none;color:inherit;font:inherit;font-size:12px;font-weight:700;border-radius:8px;padding:6px 9px;cursor:pointer}.mktools button[aria-pressed=true]{background:var(--hi);border-color:var(--hi);color:#fff}.mkcol button{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer}.mkcol button[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px var(--hi)}
+@media(max-width:900px){.tkmain{grid-template-columns:1fr;grid-template-rows:auto 1fr}.tkside{max-height:180px}.bdgrid{grid-template-columns:1fr}.bdsum{position:static}}
+</style>`);
+const IC_T='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/><path d="M3 8h4M17 8h4"/></svg>';
+const IC_B='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4M15 15h1M15 18h1"/></svg>';
+const IC_M='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/><path d="M8 17l3-1 5-5-2-2-5 5z"/></svg>';
+AME.register({id:'tko',devOnly:true,name:'Takeoff',desc:'Plans · scale · area, linear & count takeoff (draft)',allow:dev,tabs:['tko'],section:'tab-tko',icon:IC_T,open:()=>{showTab('tko');if(cur&&TK.v)return;tkList()},onShow:()=>{if(!TK.v)tkList()}});
+AME.register({id:'bid',devOnly:true,name:'Bid',desc:'Takeoff quantities × assemblies → bid total (draft)',allow:dev,tabs:['bid'],section:'tab-bid',icon:IC_B,open:()=>{showTab('bid');bidRender()},onShow:bidRender});
+AME.register({id:'mkp',devOnly:true,name:'Markup',desc:'Open a PDF · pen, cloud, arrow, text · save PDF (draft)',allow:dev,tabs:['mkp'],section:'tab-mkp',icon:IC_M,open:()=>{showTab('mkp');mkRender()},onShow:()=>{if(!M.innerHTML)mkRender()}});
+window.__tko={feet,polyArea,polyLen,cloudPath};
+})();
