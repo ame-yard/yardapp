@@ -150,7 +150,7 @@ function collRef(c){
     get:async()=>{const s=await ensure(c);return{docs:Object.keys(s.docs).map(id=>({id,data:()=>s.docs[id]}))}}
   };
 }
-const NOTRASH=['presence','trash','logins'];const NOPART=['config/security','config/devbind','config/perms','config/spectrum'];
+const NOTRASH=['presence','trash','logins','dsplive'];const NOPART=['config/security','config/devbind','config/perms','config/spectrum'];
 const idOf=o=>o&&typeof o==='object'?(o._id||o.id||o.key||o.no||o.code||o.path||o.url||(o.name!=null?o.name+'|'+(o.size||o.role||o.date||''):'')||JSON.stringify(o)):JSON.stringify(o);
 function lostParts(a,b,path,out,depth){if(depth>4||!a||typeof a!=='object')return;
   if(Array.isArray(a)){if(!Array.isArray(b)){if(a.some(x=>x&&typeof x==='object'))out.push({p:path,items:a.filter(x=>x&&typeof x==='object')});return}
@@ -163,6 +163,8 @@ function partTrash(c,id,prev,next){if(NOTRASH.includes(c)||NOPART.includes(c+'/'
 function toTrash(c,removed){if(NOTRASH.includes(c)||!removed.length)return;let by='';try{by=typeof curUser!=='undefined'?curUser:''}catch(e){}const at=new Date().toISOString();
   write('trash',t=>{removed.forEach(([id,d],k)=>{t['t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+k]={coll:c,id,data:d,at,by}})}).catch(()=>{})}
 const db={idle:async()=>{for(const c of Object.keys(queue)){try{await queue[c]}catch(e){}}return pending===0},collection:collRef,doc:docRef,deleteMany:(c,ids)=>{let rm=[];return write(c,docs=>{rm=[];ids.forEach(id=>{if(docs[id]!==undefined)rm.push([id,docs[id]]);delete docs[id]})}).then(r=>{toTrash(c,rm);return r})},setMany:(c,map)=>write(c,docs=>{Object.assign(docs,map)}),
+  /* poll one collection fast (e.g. live presence on a shared screen); returns stop() */
+  watchFast:(c,ms)=>{let et=null,busy=false;const t=setInterval(async()=>{if(busy||document.hidden)return;busy=true;try{const r=await gfetch(pathUrl('data/'+c+'.json')+'?$select=eTag');if(r.ok){const e=(await r.json()).eTag;if(et&&e!==et&&store[c]){const s0=store[c];const s1=await readColl(c);if(s1!==s0)emit(c)}et=e;knownEtags[c]=e}}catch(e){}busy=false},ms||3000);return()=>clearInterval(t)},
   refresh:async()=>{for(const c of Object.keys(store)){try{await readColl(c);emit(c)}catch(e){console.warn(e)}}try{knownEtags=await listEtags()}catch(e){}}};
 
 /* first run: create data files from seed.json */
