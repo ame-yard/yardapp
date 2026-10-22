@@ -161,7 +161,8 @@ function partTrash(c,id,prev,next){if(NOTRASH.includes(c)||NOPART.includes(c+'/'
   let by='';try{by=typeof curUser!=='undefined'?curUser:''}catch(e){}const at=new Date().toISOString();
   write('trash',t=>{t['p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)]={coll:c,id,kind:'part',parts:out,parent:{name:prev.name||prev.job||prev.no||prev.code||'',type:prev.type||''},at,by}}).catch(()=>{})}
 function toTrash(c,removed){if(NOTRASH.includes(c)||!removed.length)return;let by='';try{by=typeof curUser!=='undefined'?curUser:''}catch(e){}const at=new Date().toISOString();
-  write('trash',t=>{removed.forEach(([id,d],k)=>{t['t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+k]={coll:c,id,data:d,at,by}})}).catch(()=>{})}
+  /* several records deleted together are kept as ONE bundle (restore puts them all back) */
+  write('trash',t=>{const k0='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);if(removed.length>1)t[k0]={coll:c,kind:'bundle',items:removed.map(([id,d])=>({id,data:d})),n:removed.length,at,by};else removed.forEach(([id,d],k)=>{t[k0+k]={coll:c,id,data:d,at,by}})}).catch(()=>{})}
 const db={idle:async()=>{for(const c of Object.keys(queue)){try{await queue[c]}catch(e){}}return pending===0},collection:collRef,doc:docRef,deleteMany:(c,ids)=>{let rm=[];return write(c,docs=>{rm=[];ids.forEach(id=>{if(docs[id]!==undefined)rm.push([id,docs[id]]);delete docs[id]})}).then(r=>{toTrash(c,rm);return r})},setMany:(c,map)=>write(c,docs=>{Object.assign(docs,map)}),
   /* poll one collection fast (e.g. live presence on a shared screen); returns stop() */
   watchFast:(c,ms)=>{let et=null,busy=false;const t=setInterval(async()=>{if(busy||document.hidden)return;busy=true;try{const r=await gfetch(pathUrl('data/'+c+'.json')+'?$select=eTag');if(r.ok){const e=(await r.json()).eTag;if(et&&e!==et&&store[c]){const s0=store[c];const s1=await readColl(c);if(s1!==s0)emit(c)}et=e;knownEtags[c]=e}}catch(e){}busy=false},ms||3000);return()=>clearInterval(t)},
@@ -217,13 +218,13 @@ const files={read:async path=>{const r=await gfetch(pathUrl(path)+':/content');i
 const BK={keep:3};
 async function bkList(){const r=await gfetch(pathUrl('backups')+':/children?$select=name,folder&$top=500');if(r.status===404)return[];if(!r.ok)throw new Error('List backups failed ('+r.status+')');return (await r.json()).value.filter(f=>f.folder&&/^\d{4}-\d{2}-\d{2}/.test(f.name)).map(f=>f.name).sort().reverse()}
 async function bkRun(force,tag){const day=new Date().toLocaleDateString('en-CA');const name=tag?day+'-'+tag:day;
-  const have=await bkList();if(!force&&have.includes(day)){const al=[...have].sort().reverse();for(const d of al.slice(BK.keep)){try{await gfetch(pathUrl('backups/'+d),{method:'DELETE'})}catch(e){}}return {skipped:true,name:day}}
+  const have=await bkList();if(!force&&have.includes(day)){return {skipped:true,name:day}}
   const r=await gfetch(pathUrl('data')+':/children?$select=name&$top=500');if(!r.ok)throw new Error('List data failed ('+r.status+')');
   const names=(await r.json()).value.map(f=>f.name).filter(n=>n.endsWith('.json'));let n=0;
   for(const f of names){const g=await gfetch(pathUrl('data/'+f)+':/content');if(!g.ok)continue;const b=await g.arrayBuffer();
     const p=await gfetch(pathUrl('backups/'+name+'/'+f)+':/content',{method:'PUT',headers:{'Content-Type':'application/json'},body:b});if(p.ok)n++}
   const all=[...new Set([...have,name])].sort().reverse();
-  for(const d of all.slice(BK.keep)){try{await gfetch(pathUrl('backups/'+d),{method:'DELETE'})}catch(e){}}
+  /* every backup stays in SharePoint (backups/<date>); the app only lists the latest few */
   try{localStorage.setItem('ameBkDay',day)}catch(e){}return {name,files:n}}
 async function bkFiles(name){const r=await gfetch(pathUrl('backups/'+name)+':/children?$select=name,size&$top=500');if(!r.ok)return[];return (await r.json()).value.map(f=>({name:f.name.replace(/\.json$/,''),size:f.size}))}
 async function bkRestore(name,coll){await bkRun(true,'before-restore');const g=await gfetch(pathUrl('backups/'+name+'/'+coll+'.json')+':/content');if(!g.ok)throw new Error('Backup file not found');const docs=await g.json();
