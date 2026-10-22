@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.36',APP_DATE='2026-10-22';
+const APP_VERSION='6.37',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1682,7 +1682,7 @@ function renderOutJobs(){
 $('#lsearch').oninput=renderLog;
 function rankOf(n){if(!n)return -1;try{if(isOwner(n))return 100;if(((perms&&perms.admins)||[]).includes(n))return 90;return LVI(effLevel(n))}catch(e){return 0}}
 /* hide what people above you did (they see yours; you don't see theirs) */
-function canSeeLog(g){if(!g||!g.by||g.by===curUser)return true;if(isDev(curUser))return true;return rankOf(g.by)<=rankOf(curUser)}
+function canSeeLog(g){if(!g||!g.by||g.by===curUser||g.action==='TRUCK')return true;if(isDev(curUser))return true;return rankOf(g.by)<=rankOf(curUser)}
 function isOther(g){return (g.dev?g.dev!==devId:g.by!==curUser)&&canSeeLog(g)}
 function seenTs(){try{return localStorage.getItem('ameSeenDev')||''}catch(e){return ''}}
 function markSeen(){try{localStorage.setItem('ameSeenDev',new Date().toISOString())}catch(e){}updBell()}
