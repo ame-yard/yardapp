@@ -52,6 +52,33 @@ async function renderBk(){if(admBusy(renderBk))return;const P=document.getElemen
 /* don't re-render admin panels while a dropdown is open — a re-render closes it and jumps the page */
 let _selT=0;const _selMark=e=>{try{if(e.target.closest&&e.target.closest('#tab-admin select'))_selT=Date.now()}catch(x){}};document.addEventListener('mousedown',_selMark,true);document.addEventListener('touchstart',_selMark,{capture:true,passive:true});
 function admBusy(fn){const ae=document.activeElement;const busy=(ae&&ae.tagName==='SELECT'&&ae.closest&&ae.closest('#tab-admin'))||(Date.now()-_selT<2500);if(busy&&fn){clearTimeout(fn._bt);fn._bt=setTimeout(fn,1200)}return busy}window.admBusy=admBusy;window.admSelDone=()=>{_selT=0};document.addEventListener('change',e=>{try{const t=e.target;if(t.tagName==='SELECT'&&t.closest('#tab-admin')){_selT=0;setTimeout(()=>t.blur(),0)}}catch(x){}});
+
+/* Admin password gate — Kyle and Don each set their own; stored only as a salted PBKDF2 hash (config/adminpw). Unlock lasts 30 min on this tab. */
+const APW_WHO=n=>n==='Kyle K.'||n==='Don S.'||n==='DON';
+let APW={};(function w(){if(typeof db!=='undefined'&&db&&db.doc){db.doc('config/adminpw').onSnapshot(x=>{APW=(x.data&&x.data())||{}},()=>{})}else setTimeout(w,400)})();
+const apwKey=n=>n==='DON'?'Don S.':n;
+async function apwHash(pw,salt,it){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);const b=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:new TextEncoder().encode(salt),iterations:it},k,256);return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+const apwOk=()=>{try{const u=JSON.parse(sessionStorage.getItem('ameAdmU')||'null');return u&&u.n===curUser&&u.t>Date.now()}catch(e){return false}};
+const apwSet=()=>{try{sessionStorage.setItem('ameAdmU',JSON.stringify({n:curUser,t:Date.now()+30*60000}))}catch(e){}};
+window.ameAdminLock=()=>{try{sessionStorage.removeItem('ameAdmU')}catch(e){}if(AME.cur==='admin')AME.home()};
+function apwDlg(then,mode){const me=apwKey(curUser);const rec=APW[me];const setting=mode==='set'||!rec;
+  if(!APW_WHO(curUser)){document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" style="max-width:400px"><h3>Admin is locked</h3><p class="muted">Only Kyle and Don can open Admin.</p><div class="bar"><button class="go" id="apwX" style="width:auto">OK</button></div></div></div>`;document.getElementById('apwX').onclick=()=>closeDlg();return}
+  document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" style="max-width:400px"><h3 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${setting?(rec?'Change your Admin password':'Set your Admin password'):'Admin password'}</h3><p class="muted" style="margin-top:0">${setting?'Only you will know it. At least 8 characters. It is saved as a one-way code — nobody (including Claude or Kyle) can read it back.':'Enter your Admin password to open Admin.'}</p>
+    ${setting&&rec?'<input id="apwO" type="password" class="search" placeholder="Current password" autocomplete="current-password" style="margin-bottom:8px">':''}<input id="apw1" type="password" class="search" placeholder="${setting?'New password':'Password'}" autocomplete="${setting?'new-password':'current-password'}">${setting?'<input id="apw2" type="password" class="search" placeholder="Type it again" autocomplete="new-password" style="margin-top:8px">':''}
+    <p id="apwE" style="color:#e2513a;min-height:1.2em;margin:8px 0 0;font-size:13px"></p>
+    <div class="bar">${!setting?'<button class="btn" id="apwC" style="width:auto">Change password</button>':''}<button class="btn" id="apwX" style="width:auto">Cancel</button><button class="go" id="apwG" style="width:auto">${setting?'Save':'Open Admin'}</button></div></div></div>`;
+  const $i=id=>document.getElementById(id),err=t=>{$i('apwE').textContent=t};setTimeout(()=>($i('apwO')||$i('apw1')).focus(),50);
+  $i('apwX').onclick=()=>closeDlg();if($i('apwC'))$i('apwC').onclick=()=>apwDlg(then,'set');
+  const check=async(pw)=>{const r=APW[me];return r&&(await apwHash(pw,r.salt,r.it))===r.hash};
+  const go=async()=>{const lk=+(sessionStorage.getItem('ameAdmLk')||0);if(Date.now()<lk){err('Too many tries. Wait a few minutes.');return}
+    const fail=()=>{const f=+(sessionStorage.getItem('ameAdmF')||0)+1;sessionStorage.setItem('ameAdmF',f);if(f>=5){sessionStorage.setItem('ameAdmLk',Date.now()+5*60000);sessionStorage.setItem('ameAdmF',0);try{db.collection('logs').add({ts:new Date().toISOString(),action:'ADMINPW',name:curUser,note:'5 wrong Admin passwords'})}catch(e){}}};
+    if(setting){if(rec&&!(await check($i('apwO').value))){fail();err('Current password is wrong.');return}const a=$i('apw1').value,b=$i('apw2').value;if(a.length<8){err('Use at least 8 characters.');return}if(a!==b){err('The two passwords do not match.');return}
+      const salt=crypto.getRandomValues(new Uint8Array(16)).reduce((s,x)=>s+x.toString(16).padStart(2,'0'),''),it=210000;const hash=await apwHash(a,salt,it);
+      try{await db.doc('config/adminpw').set({...APW,[me]:{salt,it,hash,at:new Date().toISOString()}});APW={...APW,[me]:{salt,it,hash}}}catch(e){err('Could not save: '+(e.message||e));return}
+      sessionStorage.setItem('ameAdmF',0);apwSet();closeDlg();toast('Admin password saved');then&&then();return}
+    if(await check($i('apw1').value)){sessionStorage.setItem('ameAdmF',0);apwSet();closeDlg();then&&then()}else{fail();err('Wrong password.');$i('apw1').value='';$i('apw1').focus()}};
+  $i('apwG').onclick=go;document.querySelectorAll('#dlgRoot input').forEach(x=>x.onkeydown=e=>{if(e.key==='Enter')go()})}
+window.ameAdminPw=()=>apwDlg(null,'set');
 function renderMaint(){const on=document.getElementById('mtOn'),off=document.getElementById('mtOff');if(!on)return;on.onclick=async()=>{await db.doc('config/app').update({maint:{on:true,msg:document.getElementById('mtMsg').value.trim(),by:curUser,at:new Date().toISOString()}});toast('Maintenance notice is on')};off.onclick=async()=>{await db.doc('config/app').update({maint:{on:false}});toast('Maintenance notice is off')}}
 function renderTrash(){if(admBusy(renderTrash))return;const P=document.getElementById('admTrash');if(!P)return;P.hidden=!isOwner(curUser);if(P.hidden)return;
   const q=trq.toLowerCase();const rows=[...TR].sort((a,b)=>String(b.at).localeCompare(String(a.at))).filter(r=>!q||[trLabel(r),r.coll,r.by,CN[r.coll]].join(' ').toLowerCase().includes(q));
@@ -182,11 +209,11 @@ document.head.insertAdjacentHTML('beforeend','<style>.admnav{position:sticky;top
 
 AME.register({id:'admin',name:'Admin',desc:'Crew list · PINs · permissions · who’s using',tabs:['admin'],section:'tab-admin',allow:isAdm,
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
-  open:()=>showTab('admin'),onShow:()=>{if(!isAdm()){AME.home();return}renderAccess();try{renderBk();renderMaint()}catch(e){}try{renderCrew();renderPerms();renderOnline()}catch(e){}setTimeout(admTidy,60)}});
+  open:()=>{if(apwOk())showTab('admin');else apwDlg(()=>showTab('admin'))},onShow:()=>{if(!isAdm()){AME.home();return}if(!apwOk()){AME.home();apwDlg(()=>AME.open('admin'));return}renderAccess();try{renderBk();renderMaint()}catch(e){}try{renderCrew();renderPerms();renderOnline()}catch(e){}setTimeout(admTidy,60)}});
 const _ar=window.applyRole;window.applyRole=function(){_ar();const ok=isAdm();document.body.classList.toggle('ameadm',ok);const b=document.querySelector('nav.tabs [data-tab="admin"]');if(b)b.hidden=!ok;if(AME.cur==='admin'&&!ok)AME.home();if(AME.cur==='admin')renderAccess()};
 
 /* Admin lives in the top bar (gear), not on the home tiles */
 (function admGear(){const chip=document.getElementById('userChip');if(!chip){setTimeout(admGear,400);return}
   let g=document.getElementById('admGear');if(!g){g=document.createElement('button');g.type='button';g.id='admGear';g.className='bell';g.title='Admin';g.hidden=true;g.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';chip.parentNode.insertBefore(g,chip);g.onclick=e=>{e.stopPropagation();AME.open('admin')}}
-  const upd=()=>{const ok=!!curUser&&isAdm();g.hidden=!ok;g.classList.toggle('on',AME.cur==='admin')};upd();setInterval(upd,1500)})();
+  const upd=()=>{const ok=!!curUser&&isAdm()&&APW_WHO(curUser);g.hidden=!ok;g.classList.toggle('on',AME.cur==='admin')};upd();setInterval(upd,1500)})();
 })();
