@@ -2009,7 +2009,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=465"></script>
+<script src="shell.js?v=6.64"></script>
 <script src="polish.js?v=462"></script>
 <script src="mpl.js?v=399"></script>
 <script src="eqp.js?v=484"></script>
@@ -2017,9 +2017,9 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=474"></script>
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
-<script src="dispatch.js?v=1526"></script>
+<script src="dispatch.js?v=6.64"></script>
 <script src="hr.js?v=1"></script>
-<script src="notice.js?v=2"></script>
+<script src="notice.js?v=6.64"></script>
 <script src="admin.js?v=493"></script>
 <script src="lab.js?v=414"></script>
 <script src="lunch.js?v=5"></script>
