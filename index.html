@@ -556,7 +556,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <button role="tab" data-tab="log" aria-selected="false">Activity</button>
     <button role="tab" data-tab="sheet" aria-selected="false">Sheet</button>
     <button role="tab" data-tab="mpl" aria-selected="false" hidden>MPL</button>
-    <button role="tab" data-tab="eqp" aria-selected="false" hidden>Prices</button><button role="tab" data-tab="field" aria-selected="false" hidden>Reports</button><button role="tab" data-tab="dsp" aria-selected="false" hidden>Dispatch</button><button role="tab" data-tab="trucks" aria-selected="false" hidden>Trucks</button><button role="tab" data-tab="safety" aria-selected="false" hidden>Safety</button><button role="tab" data-tab="deliv" aria-selected="false" hidden>Deliveries</button><button role="tab" data-tab="admin" aria-selected="false" hidden>Editor</button>
+    <button role="tab" data-tab="eqp" aria-selected="false" hidden>Prices</button><button role="tab" data-tab="field" aria-selected="false" hidden>Reports</button><button role="tab" data-tab="dsp" aria-selected="false" hidden>Dispatch</button><button role="tab" data-tab="trucks" aria-selected="false" hidden>Trucks</button><button role="tab" data-tab="safety" aria-selected="false" hidden>Safety</button><button role="tab" data-tab="deliv" aria-selected="false" hidden>Deliveries</button><button role="tab" data-tab="admin" aria-selected="false" hidden>Admin</button>
   </nav>
 </div></header>
 
@@ -624,7 +624,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <div class="tblwrap" style="margin-bottom:18px"><table><thead><tr><th>Job #</th><th>Job name / Site</th><th>PM</th><th>FM</th><th>SFM</th><th>Status</th><th>Items out</th></tr></thead><tbody id="jbody"></tbody></table></div>
     <div class="panel" style="margin-bottom:18px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Crew List</h3><span class="muted" style="font-size:13px">Names here show as buttons in the yard and as choices for PM / FM / SFM.</span></div>
-      <div class="filters admin-only" style="margin-top:10px"><input id="cName" placeholder="Name"><select id="cRole"><option>President</option><option>PM</option><option>Office</option><option>Intern</option><option>Yard</option><option>FM</option><option>SFM</option><option>Crew</option></select><button class="btn pri" id="cAdd">+ Add to crew</button></div>
+      <div class="filters admin-only" style="margin-top:10px"><input id="cName" placeholder="Name"><select id="cRole"><option value="President">Admin</option><option>PM</option><option>Office</option><option>Intern</option><option>Yard</option><option>FM</option><option>SFM</option><option>Crew</option></select><button class="btn pri" id="cAdd">+ Add to crew</button></div>
       <div id="crewList"></div>
       <div class="filters admin-only" style="margin-top:12px"><span class="muted" id="pinState"></span><input id="newPin" inputmode="numeric" maxlength="4" placeholder="New 4-digit editor PIN" style="width:200px"><input id="ownPin" inputmode="numeric" maxlength="4" type="password" placeholder="My personal 4-digit PIN" style="width:200px"><button class="btn" id="saveOwnPin">Set my PIN</button><button class="btn" id="savePin">Set editor PIN</button></div>
     </div>
@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.50',APP_DATE='2026-10-21';
+const APP_VERSION='5.51',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -887,6 +887,7 @@ function thumb(i){return i&&i.photo?`<img class="thumb" src="${esc(i.photo)}" al
 function pfStyle(f){if(!f)return "";const z=+f.z||1,x=f.x==null?50:+f.x,y=f.y==null?50:+f.y;return `object-fit:${f.fit==="contain"?"contain":"cover"};object-position:${x}% ${y}%;${z!==1?`transform:scale(${z});transform-origin:${x}% ${y}%;`:""}${f.fit==="contain"?"background:#fff;":""}`}
 function pic(i){if(i.photo)return `<img src="${esc(i.photo)}" alt="" loading="lazy" style="${pfStyle(i.pf)}">`;const g=grp(i),gl=GROUPS.find(x=>x[0]===g);
   return `<span class="ph" style="--h:${HUE[g]??90}"><span class="ptop"><span>${esc(sub(i)||gl?.[1]||'')}</span>${IC[gl?.[2]||'box']}</span><span><span class="pbig">${esc(bigTxt(i))}</span><span class="pbrand">${esc(i.mfgr||i.cat||'')}</span></span></span>`}
+const RL=r=>r==='President'?'Admin':r;
 let crew=[];const ROLES=['President','PM','Office','Intern','Yard','FM','SFM','Crew'];
 const FIELD=['FM','SFM','Crew'];const groupOf=r=>FIELD.includes(r)?'Field':'HQ';
 const OWNER='Kyle K.',OWNERS=[OWNER,'Don S.','DON'];const isOwner=n=>OWNERS.includes(n);const isDev=n=>n===OWNER;
@@ -896,7 +897,7 @@ const crewSel=(id,role,cur)=>{const opts=crew.filter(c=>c.role===role).map(c=>c.
   return `<select id="${id}"><option value="">— select ${role} —</option>${opts.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}</select>`};
 async function saveCrew(list){if(!list.some(c=>isOwner(c.name))){const o=crew.find(c=>isOwner(c.name));if(o)list=[...list,{...o,editor:true}]}list=list.map(c=>isOwner(c.name)?{...c,editor:true}:c);try{await db.doc('config/crew').set({members:list})}catch(e){toast('Could not save crew: '+(e.message||e.code))}}
 function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const roles=ROLES.concat('Guest');
-  T.innerHTML=`<thead><tr><th>Role</th>${FEATS.map(([k,l])=>`<th title="${l}">${k==='EDIT'?'Office tools':l}</th>`).join('')}</tr></thead><tbody>${roles.map(r=>`<tr><td><b>${r}</b> <small class="muted">${groupOf(r)==='Field'||r==='Guest'?'Field':'HQ'}</small></td>${FEATS.map(([k])=>{const v=perms.roles?.[r]&&k in perms.roles[r]?perms.roles[r][k]:(DEF_ON.includes(k)||(k==='AUDIT'&&r==='Intern')||(['MPL','EQP'].includes(k)&&['President','PM','Office'].includes(r)));return `<td class="c"><input type="checkbox" data-pr="${r}" data-pf="${k}" ${v?'checked':''} aria-label="${r} ${k}"></td>`}).join('')}</tr>`).join('')}</tbody>`;
+  T.innerHTML=`<thead><tr><th>Role</th>${FEATS.map(([k,l])=>`<th title="${l}">${k==='EDIT'?'Office tools':l}</th>`).join('')}</tr></thead><tbody>${roles.map(r=>`<tr><td><b>${RL(r)}</b> <small class="muted">${groupOf(r)==='Field'||r==='Guest'?'Field':'HQ'}</small></td>${FEATS.map(([k])=>{const v=perms.roles?.[r]&&k in perms.roles[r]?perms.roles[r][k]:(DEF_ON.includes(k)||(k==='AUDIT'&&r==='Intern')||(['MPL','EQP'].includes(k)&&['President','PM','Office'].includes(r)));return `<td class="c"><input type="checkbox" data-pr="${r}" data-pf="${k}" ${v?'checked':''} aria-label="${r} ${k}"></td>`}).join('')}</tr>`).join('')}</tbody>`;
   $$('#permRoles input').forEach(x=>x.onchange=async()=>{const p=JSON.parse(JSON.stringify(perms));p.roles=p.roles||{};p.roles[x.dataset.pr]={...(p.roles[x.dataset.pr]||{}),[x.dataset.pf]:x.checked};await savePerms(p)});
   const names=crew.map(c=>c.name).filter(n=>!isEditor(n));const cur=$('#gName').value;
   $('#gName').innerHTML=names.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
@@ -907,7 +908,7 @@ function renderPerms(){const T=$('#permRoles');if(!T||!isAdmin)return;const role
   $$('#gList [data-gr]').forEach(b=>b.onclick=()=>savePerms({...perms,grants:(perms.grants||[]).filter(g=>g.id!==b.dataset.gr)}))}
 async function savePerms(p){try{await db.doc('config/perms').set(p);toast('Permissions saved')}catch(e){toast('Could not save: '+(e.message||e.code))}}
 function renderCrew(){const el=$('#crewList');if(!el)return;{const pr=$('#savePin')?.parentNode;if(pr)pr.style.display=isOwner(curUser)?'':'none'}if($('#pinState'))$('#pinState').textContent=[ownerPinH?'Your personal PIN is set.':'Your personal PIN is not set (you use the editor PIN).',officePin?'Editor PIN is set.':'No editor PIN yet.'].join(' ');
-  el.innerHTML=crew.length?['HQ','Field'].filter(g=>crew.some(c=>groupOf(c.role)===g)).map(g=>`<div class="crewgrp"><b>${g}</b><div class="crewchips">${crew.map((c,k)=>({...c,k})).filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<span class="crewchip" data-ce="${c.k}">${esc(c.name)}<small>${esc(c.role)}</small>${isOwner(c.name)?'<span class="edtag">Owner</span>':c.editor?'<span class="edtag">Editor</span>':''}${isOwner(c.name)?'':`<button class="admin-only" data-ed="${c.k}" title="${c.editor?'Remove editor access':'Make editor'}">${c.editor?'−Ed':'+Ed'}</button><button class="admin-only" data-ck="${c.k}" aria-label="Remove ${esc(c.name)}" title="Remove">✕</button>`}</span>`).join('')}</div></div>`).join('')
+  el.innerHTML=crew.length?['HQ','Field'].filter(g=>crew.some(c=>groupOf(c.role)===g)).map(g=>`<div class="crewgrp"><b>${g}</b><div class="crewchips">${crew.map((c,k)=>({...c,k})).filter(c=>groupOf(c.role)===g).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<span class="crewchip" data-ce="${c.k}">${esc(c.name)}<small>${esc(RL(c.role))}</small>${isOwner(c.name)?'<span class="edtag">Admin</span>':c.editor?'<span class="edtag">Editor</span>':''}${isOwner(c.name)?'':`<button class="admin-only" data-ed="${c.k}" title="${c.editor?'Remove editor access':'Make editor'}">${c.editor?'−Ed':'+Ed'}</button><button class="admin-only" data-ck="${c.k}" aria-label="Remove ${esc(c.name)}" title="Remove">✕</button>`}</span>`).join('')}</div></div>`).join('')
    :'<div class="muted" style="padding:8px 0">No crew yet. Add PMs, FMs and SFMs above.</div>';
   if(isAdmin)$$('#crewList [data-ce]').forEach(ch=>{ch.title='Press and hold to edit';lp(ch,()=>editCrew(Number(ch.dataset.ce)))});
   $$('#crewList [data-ed]').forEach(b=>b.onclick=()=>{const k=Number(b.dataset.ed);const c=crew[k];if(c.editor&&crew.filter(x=>x.editor).length===1){toast('Keep at least one editor.');return}saveCrew(crew.map((x,i)=>i===k?{...x,editor:!x.editor}:x))});
@@ -1108,7 +1109,7 @@ function editLog(lid){if(!isAdmin){toast('Only editors can change records.');ret
     $('#l_del2').onclick=async()=>{try{await db.doc('logs/'+lid).delete();toast('Record deleted');closeDlg()}catch(e){toast('Could not delete: '+(e.message||e.code))}}}}
 function editCrew(k){if(!isAdmin)return;const c=crew[k];if(!c)return;if(isOwner(c.name)&&!isOwner(curUser)){toast('The owner account can only be changed by Kyle.');return}
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>Edit person</h3><div class="fields">
-   <label class="f">Name<input id="p_n" value="${esc(c.name)}"></label><label class="f">Role<select id="p_r">${ROLES.map(r=>`<option ${r===c.role?'selected':''}>${r}</option>`).join('')}</select></label>
+   <label class="f">Name<input id="p_n" value="${esc(c.name)}"></label><label class="f">Role<select id="p_r">${ROLES.map(r=>`<option value="${r}" ${r===c.role?'selected':''}>${RL(r)}</option>`).join('')}</select></label>
    <label class="f wide" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="p_e" ${c.editor?'checked':''}> Editor (office tools)</label>
    <label class="f wide">Microsoft account email <small class="muted">— signs this person in automatically. Leave empty for crew who use the shared yard iPad.</small><input id="p_m" type="email" value="${esc(c.email||'')}" placeholder="name@amebuilders.net"></label></div>
    <div class="bar"><button class="btn" id="p_c">Cancel</button><button class="btn pri" id="p_s">Save</button></div></div></div>`;
@@ -1664,7 +1665,7 @@ async function beat(){if(document.hidden||!db)return;const t=$$('nav.tabs button
     await db.doc('presence/'+pid).set({name:curUser||'',acct:msAcct,device:devName(),tab:TABN[t]||t,mode:t==='yard'?(ACTNAME[act]||act):'',ts:new Date().toISOString()})}catch(e){}}
 function startPresence(){beat();setInterval(beat,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()})}
 function ago(ts){const s=Math.round((Date.now()-new Date(ts))/1000);return s<60?'just now':s<3600?Math.round(s/60)+' min ago':Math.round(s/3600)+' h ago'}
-function appLabel(t){try{const m=AME.mod&&AME.mod(t);if(m&&m.name)return m.name}catch(e){}return ({yard:'Yard Inventory',home:'Home',admin:'Editor',dsp:'Dispatch',eqp:'Equipment Prices',deliv:'Deliveries',trucks:'Truck Reservations',field:'Field Reports',safety:'Safety',mpl:'Mobilization Prep List',labels:'Labels',vlog:'Version log',ytest:'Inventory (Test)'})[t]||t}
+function appLabel(t){try{const m=AME.mod&&AME.mod(t);if(m&&m.name)return m.name}catch(e){}return ({yard:'Yard Inventory',home:'Home',admin:'Admin',dsp:'Dispatch',eqp:'Equipment Prices',deliv:'Deliveries',trucks:'Truck Reservations',field:'Field Reports',safety:'Safety',mpl:'Mobilization Prep List',labels:'Labels',vlog:'Version log',ytest:'Inventory (Test)'})[t]||t}
 function renderOnline(){const el=$('#onlineList');if(!el)return;const now=Date.now();
   const on=presence.filter(p=>now-new Date(p.ts)<150000).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
   const rec=presence.filter(p=>{const d=now-new Date(p.ts);return d>=150000&&d<86400000}).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
@@ -1802,12 +1803,12 @@ try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p===OWNER)curUser=
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
 function setUserRaw(n){window.__raw=1;try{setUser(n)}finally{window.__raw=0}}
 function setUser(n){if(viewAs==='__login'&&n){toast('Preview only — tap the banner to return');return}if(n&&n!==curUser&&!window.__raw){if(!canUseName(n)){logLogin(n,true);toast('“'+n+'” is registered to another device. Ask Kyle to allow this device.');return}logLogin(n,false);bindName(n)}setTimeout(()=>{try{beat()}catch(e){}},300);if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{if(!viewAs)sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}));if(viewAs){}else if(isOwner(n))localStorage.setItem('ameOwnerStay',n);else localStorage.removeItem('ameOwnerStay')}catch(e){}lastAct=Date.now();
-  $('#loginRoot').innerHTML='';const r=curRole();$('#userChip').hidden=!n;$('#ucName').textContent=n;$('#ucRole').textContent=isOwner(n)?'Admin':r;{const w=document.querySelector('#userChip .ucsw');if(w){const pers=n&&myName()===n;w.textContent=viewAs?'Return':isDev(n)?'View as':pers?'':'Switch';w.style.display=w.textContent?'':'none'}}
+  $('#loginRoot').innerHTML='';const r=curRole();$('#userChip').hidden=!n;$('#ucName').textContent=n;$('#ucRole').textContent=isOwner(n)?'Admin':RL(r);{const w=document.querySelector('#userChip .ucsw');if(w){const pers=n&&myName()===n;w.textContent=viewAs?'Return':isDev(n)?'View as':pers?'':'Switch';w.style.display=w.textContent?'':'none'}}
   isAdmin=accountAdmin&&(isEditor(n)||can('EDIT'));applyRole();renderPerms()}
 function logout(){curUser='';selWho='';cart=[];try{sessionStorage.removeItem('ameUser');localStorage.removeItem('ameOwnerStay')}catch(e){}$('#userChip').hidden=true;isAdmin=false;applyRole();closeDlg();showLogin()}
 $('#userChip').onclick=()=>{if(viewAs){endViewAs();return}if(isDev(curUser)){viewAsDlg();return}if(myName()===curUser){toast('Signed in with your Microsoft account ('+msEmail+')');return}logout()};
 function viewAsDlg(){$('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>View the app as…</h3><p class="muted" style="margin-top:0">See exactly what this person sees. No sign-in is recorded for them, but anything you change is saved under their name. Tap the orange banner to come back.</p>
-   <div class="names">${[...crew].filter(c=>c.name!==curUser&&c.name!==vaOwner).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<button data-va="${esc(c.name)}" class="lname">${esc(c.name)}<small style="display:block;opacity:.6;font-size:11px">${esc(c.role)}</small></button>`).join('')}</div>
+   <div class="names">${[...crew].filter(c=>c.name!==curUser&&c.name!==vaOwner).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<button data-va="${esc(c.name)}" class="lname">${esc(c.name)}<small style="display:block;opacity:.6;font-size:11px">${esc(RL(c.role))}</small></button>`).join('')}</div>
    <div class="bar"><button class="btn" id="vaShared">Shared-device sign-in screen</button><button class="btn" id="vaX">Close</button></div></div></div>`;
   $('#vaX').onclick=closeDlg;$('#vaShared').onclick=()=>{closeDlg();vaOwner=vaOwner||curUser;viewAs='__login';curUser='';$('#userChip').hidden=true;isAdmin=false;applyRole();showLoginPicker();vaBanner()};
   $$('[data-va]').forEach(b=>b.onclick=()=>{closeDlg();startViewAs(b.dataset.va)})}
@@ -1945,7 +1946,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
 <script src="dispatch.js?v=510"></script>
-<script src="admin.js?v=468"></script>
+<script src="admin.js?v=469"></script>
 <script src="lab.js?v=414"></script>
 <script src="lunch.js?v=5"></script>
 <script src="tsheet.js?v=11"></script>
