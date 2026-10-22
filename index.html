@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.10',APP_DATE='2026-10-22';
+const APP_VERSION='6.11',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1864,6 +1864,7 @@ let STAFFX=[];
 function myName(){if(!msEmail)return'';const lo=x=>String(x||'').toLowerCase().trim();const has=n=>crew.some(c=>c.name===n);
   const c=crew.find(c=>lo(c.email)===msEmail);if(c)return c.name;
   const st=STAFFX.find(p=>lo(p.email)===msEmail||lo(p.wemail)===msEmail);if(st){for(const n of [st.short,st.name])if(n&&has(n))return n;const f=String(st.name||'').trim().split(/\s+/);if(f.length>1){const sh=f[0]+' '+f[f.length-1][0]+'.';if(has(sh))return sh}}
+  {const m=msEmail.match(/^([a-z]+)\.([a-z]+)@amebuilders\.net$/);if(m){const hit=crew.filter(c=>!c.email&&!isOwner(c.name)&&(()=>{const w=lo(c.name).replace(/[^a-z ]/g,'').split(/\s+/);return w[0]===m[1]&&w.length>1&&w[w.length-1][0]===m[2][0]})());if(hit.length===1)return hit[0].name}}
   const ns=Object.keys(DEVB).filter(k=>!k.startsWith('__')&&has(k)&&(DEVB[k]||[]).some(x=>String(x.key).split('|')[0]===msEmail));
   const cnt=n=>(DEVB[n]||[]).filter(x=>String(x.key).split('|')[0]===msEmail).length;const own=ns.filter(n=>isOwner(n)).sort((a,b)=>cnt(b)-cnt(a)||(a===OWNER?-1:1));if(own.length)return own[0];
   return ns.length===1&&!crew.some(c=>c.email&&c.name===ns[0]&&lo(c.email)!==msEmail)?ns[0]:''}
