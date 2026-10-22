@@ -50,20 +50,21 @@ window.ameMail=async(to,subject,html,att)=>{const sc={scopes:['Mail.Send'],accou
   if(!r.ok)throw new Error('Mail '+r.status);return true};
 async function gfetch(url,opt={}){
   const t=await token();
-  const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+t,...(opt.headers||{})}});
+  let r;for(let i=0;i<5;i++){r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+t,...(opt.headers||{})}});
+    if(r.status!==429&&r.status!==503&&r.status!==504)break;const ra=+(r.headers.get('Retry-After')||0);await new Promise(z=>setTimeout(z,(ra?ra*1000:800*2**i)+Math.random()*500))}
   if(r.status===403||r.status===401){const e=new Error('No access to the AME App data folder in SharePoint. Ask Kyle to share it with you.');e.code=r.status;throw e}
   return r;
 }
 
 /* ---------- storage: one JSON file per collection in data/ ---------- */
-const store={};       // coll -> {etag, docs:{id:obj}}
+const store={},lastTxt={};       // coll -> {etag, docs:{id:obj}}
 const subs=[];        // {coll, id?, cb}
 let pending=0;
 async function readColl(c){
   const r=await gfetch(pathUrl('data/'+c+'.json')+':/content');
   if(r.status===404){store[c]={etag:null,docs:{}};return store[c]}
   if(!r.ok)throw new Error('Read '+c+' failed ('+r.status+')');
-  const t=await r.text();store[c]={etag:null,docs:JSON.parse(t)};
+  const t=await r.text();if(store[c]&&lastTxt[c]===t){return store[c]}lastTxt[c]=t;store[c]={etag:null,docs:JSON.parse(t),chg:true};
   try{if(t.length<1500000)localStorage.setItem('amec:'+c,t);else localStorage.removeItem('amec:'+c)}catch(e){}
   return store[c];
 }
@@ -93,14 +94,16 @@ async function ensure(c){
 /* write with optimistic concurrency (If-Match on file eTag) */
 const queue={};
 function write(c,fn){if(window.__ameSandbox){const docs=JSON.parse(JSON.stringify((store[c]||{docs:{}}).docs||{}));fn(docs);store[c]={etag:null,docs};setTimeout(()=>emit(c),0);return Promise.resolve()}
-  queue[c]=(queue[c]||Promise.resolve()).then(()=>doWrite(c,fn));
-  return queue[c];
+  const b=batch[c]||(batch[c]={fns:[],p:null});b.fns.push(fn);
+  if(!b.p)b.p=(queue[c]||Promise.resolve()).catch(()=>{}).then(()=>{const fns=b.fns;delete batch[c];return doWrite(c,docs=>fns.forEach(f=>f(docs)))});
+  queue[c]=b.p;return b.p;
 }
+const batch={};
 const sv=st=>{try{window.dispatchEvent(new CustomEvent('ame-save',{detail:st}))}catch(e){}};
 async function doWrite(c,fn){
   pending++;sv('saving');let ok=false;
   try{
-    for(let attempt=0;attempt<6;attempt++){
+    for(let attempt=0;attempt<14;attempt++){
       // fetch latest content + etag
       const meta=await gfetch(pathUrl('data/'+c+'.json')+'?$select=eTag');
       let etag=null,docs={};
@@ -110,11 +113,11 @@ async function doWrite(c,fn){
       fn(docs);
       const put=await gfetch(pathUrl('data/'+c+'.json')+':/content',{method:'PUT',
         headers:{'Content-Type':'application/json',...(etag?{'If-Match':etag}:{})},body:JSON.stringify(docs)});
-      if(put.status===412||put.status===409){await new Promise(r=>setTimeout(r,300+Math.random()*700));continue}
+      if(put.status===412||put.status===409||put.status===423){await new Promise(r=>setTimeout(r,Math.min(6000,250*2**attempt)*(0.5+Math.random())));continue}
       if(!put.ok)throw new Error('Save failed ('+put.status+')');
-      const j=await put.json();store[c]={etag:j.eTag,docs};knownEtags[c]=j.eTag;emit(c);ok=true;return;
+      const j=await put.json();store[c]={etag:j.eTag,docs};lastTxt[c]=JSON.stringify(docs);knownEtags[c]=j.eTag;emit(c);ok=true;return;
     }
-    throw new Error('Too many people saving at once — try again.');
+    throw new Error('SharePoint is busy — your change was not saved. Try again in a few seconds.');
   }finally{pending--;sv(ok?(pending?'saving':'saved'):'error')}
 }
 let knownEtags={};
@@ -123,7 +126,7 @@ async function poll(){
   try{
     const m=await listEtags();
     for(const c of Object.keys(m)){
-      if(knownEtags[c]&&knownEtags[c]!==m[c]&&store[c]){await readColl(c);emit(c)}
+      if(knownEtags[c]&&knownEtags[c]!==m[c]&&store[c]){const s0=store[c];const s1=await readColl(c);if(s1!==s0)emit(c)}
       knownEtags[c]=m[c];
     }
   }catch(e){console.warn('poll',e)}
@@ -232,7 +235,7 @@ readyP=(async()=>{
   const sd=seedIfEmpty().then(()=>{try{localStorage.setItem('ameWarm','1')}catch(e){}});
   if(warm)sd.catch(e=>{console.warn('seed',e);if(e&&(e.code===401||e.code===403))gate(e.message,false)});
   else try{await sd}catch(e){gate(e.message||String(e),false);throw e}
-  setInterval(poll,CFG.pollMs);
+  (function tick(){setTimeout(()=>{poll().finally(tick)},CFG.pollMs*(0.8+Math.random()*0.5))})();
   setTimeout(()=>{let d='';try{d=localStorage.getItem('ameBkDay')}catch(e){}if(d!==new Date().toLocaleDateString('en-CA'))bkRun(false).catch(e=>console.warn('backup',e))},20000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
 })();
