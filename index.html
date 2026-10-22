@@ -692,7 +692,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.62',APP_DATE='2026-10-21';
+const APP_VERSION='5.63',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1846,12 +1846,21 @@ function endViewAs(){const o=vaOwner;viewAs='';vaOwner='';document.getElementByI
 function vaBanner(){document.getElementById('vaBan')?.remove();const b=document.createElement('button');b.id='vaBan';b.textContent=(viewAs==='__login'?'Previewing the sign-in screen':'Viewing as '+viewAs)+' · tap to return to '+vaOwner;b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;background:#e8a33d;color:#1d1a17;border:0;border-radius:999px;padding:10px 18px;font:inherit;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer;max-width:calc(100vw - 24px)';b.onclick=endViewAs;document.body.appendChild(b)}
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{lastAct=Date.now();if(curUser)try{sessionStorage.setItem('ameUser',JSON.stringify({n:curUser,t:lastAct}))}catch(e){}},true));
 setInterval(()=>{if(curUser&&!isOwner(curUser)&&!viewAs&&!myName()&&Date.now()-lastAct>10*60e3){logout();toast('Signed out after 10 minutes idle')}},30e3);
-function myName(){if(!msEmail)return'';const c=crew.find(c=>(c.email||'').toLowerCase()===msEmail);if(c)return c.name;
-  if((DEVB.__owners||[]).includes(msEmail)){const o=crew.find(c=>c.name===OWNER)||crew.find(c=>isOwner(c.name));if(o)return o.name}
-  const ns=Object.keys(DEVB).filter(k=>!k.startsWith('__')&&(DEVB[k]||[]).some(x=>String(x.key).split('|')[0]===msEmail));
-  return ns.length===1&&!crew.some(c=>c.email&&c.name===ns[0]&&c.email.toLowerCase()!==msEmail)?ns[0]:''}
+/* who is this? decided by the Microsoft account email: crew email → staff directory email → the name this account has always used */
+let STAFFX=[];
+function myName(){if(!msEmail)return'';const lo=x=>String(x||'').toLowerCase().trim();const has=n=>crew.some(c=>c.name===n);
+  const c=crew.find(c=>lo(c.email)===msEmail);if(c)return c.name;
+  const st=STAFFX.find(p=>lo(p.email)===msEmail||lo(p.wemail)===msEmail);if(st){for(const n of [st.short,st.name])if(n&&has(n))return n;const f=String(st.name||'').trim().split(/\s+/);if(f.length>1){const sh=f[0]+' '+f[f.length-1][0]+'.';if(has(sh))return sh}}
+  const ns=Object.keys(DEVB).filter(k=>!k.startsWith('__')&&has(k)&&(DEVB[k]||[]).some(x=>String(x.key).split('|')[0]===msEmail));
+  const cnt=n=>(DEVB[n]||[]).filter(x=>String(x.key).split('|')[0]===msEmail).length;const own=ns.filter(n=>isOwner(n)).sort((a,b)=>cnt(b)-cnt(a)||(a===OWNER?-1:1));if(own.length)return own[0];
+  return ns.length===1&&!crew.some(c=>c.email&&c.name===ns[0]&&lo(c.email)!==msEmail)?ns[0]:''}
 let viewAs='';
-function showLogin(){if(curUser)return;{const me=myName();if(me&&crew.some(c=>c.name===me)){setUser(me);return}}showLoginPicker()}
+function showLogin(){if(curUser)return;{const me=myName();if(me&&crew.some(c=>c.name===me)){setUser(me);return}}if(!msEmail){showLoginPicker();return}showNotLinked()}
+function showNotLinked(){try{logLogin('',true)}catch(e){}
+  $('#loginRoot').innerHTML=`<div class="login"><div class="loginbox"><img src="${$('#logoImg').src}" alt="AME Builders" class="loginlogo"><h2>Almost there</h2>
+   <p>You are signed in as <b>${esc(msEmail)}</b>, but this account is not linked to anyone in the AME app yet.</p><p class="muted">Ask Kyle to add this email to your name. Then tap <b>Try again</b>.</p>
+   <div class="bar" style="justify-content:center"><button class="btn" id="nlOut">Use another account</button><button class="go" id="nlTry" style="width:auto">Try again</button></div></div></div>`;
+  $('#nlTry').onclick=()=>location.reload();$('#nlOut').onclick=()=>{try{window.msSignOut()}catch(e){location.reload()}}}
 function showLoginPicker(){
   const names=[...crew];
   $('#loginRoot').innerHTML=`<div class="login"><div class="loginbox"><img src="${$('#logoImg').src}" alt="AME Builders" class="loginlogo"><h2>Who's using the app?</h2><p class="muted">Tap your name.</p>
@@ -1916,6 +1925,7 @@ matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#
   db.doc('config/catorder').onSnapshot(s=>{const d=s.data()||{};applyCatOrder(d.order);try{render()}catch(e){}},()=>{});
 db.doc('config/yardmap').onSnapshot(s=>{const d=s.data()||{};if(mapEdit)return;applyMapCfg(d);renderMap()},()=>{});
 db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()},()=>{});
+  db.doc('config/staff').onSnapshot(s=>{STAFFX=(s.data()||{}).list||[];if(!curUser&&devbOk&&crew.length)showLogin()},()=>{});
   db.doc('config/perms').onSnapshot(s=>{perms=s.data()||{roles:{},grants:[]};if(curUser)setUser(curUser);renderPerms()},()=>{});
   setInterval(()=>{if(curUser)setUser(curUser)},60e3);
   db.doc('config/security').onSnapshot(async s=>{const d=s.data()||{};officePinH=d.officePinH||'';officePin=officePinH||d.officePin||'';ownerPinH=d.ownerPinH||'';ownPins=d.ownerPins||{};if(d.officePin&&isOwner(curUser)){try{await db.doc('config/security').update({officePinH:officePinH||await sha(d.officePin),officePin:null})}catch(e){}}renderCrew()},()=>{});
