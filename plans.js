@@ -423,17 +423,17 @@ async function importOsp(file){progDlg('Reading '+file.name+'…');try{
   const files=await readCab(await file.arrayBuffer());const ostF=files.find(f=>/\.ost$/i.test(f.name));if(!ostF)throw new Error('No .ost file inside');
   const X=xmlDoc(ostF.data);const bid=X.querySelector('Bid');const name=(A(bid,'JobName')||file.name).trim();
   const pages=[...X.querySelectorAll('BidPage')].sort((a,b)=>+A(a,'Sequence')-+A(b,'Sequence'));if(!pages.length)throw new Error('No sheets in this takeoff');
-  await pdflib();const pdf=await PDFLib.PDFDocument.create();const pgIdx={},scales={};
+  await pdflib();const pdf=await PDFLib.PDFDocument.create();const pgIdx={},scales={},kPg={};
   for(let i=0;i<pages.length;i++){const p=pages[i];const base=String(A(p,'ImagePath')||'').split('\\').pop().toLowerCase();const img=files.find(f=>f.name.toLowerCase().endsWith('/'+base)||f.name.toLowerCase()===base);
     const Wi=+A(p,'Width')||48,Hi=+A(p,'Height')||36;const pg=pdf.addPage([Wi*72,Hi*72]);pgIdx[A(p,'UID')]=i+1;
-    const s1=+A(p,'ScaleFactor1'),s2=+A(p,'ScaleFactor2');if(s1>0&&s2>0)scales[i+1]=(s2/s1)/12/72;
+    const s1=+A(p,'ScaleFactor1'),s2=+A(p,'ScaleFactor2');if(s1>0&&s2>0)scales[i+1]=(s2/s1)/12/72;/* OST stores takeoff points in real-world inches → sheet points = inches × 72 × SF1/SF2 */kPg[i+1]=s1>0&&s2>0?72*s1/s2:.75;
     prog(`Sheet ${i+1} of ${pages.length}: ${A(p,'Name')}`,i/pages.length);await new Promise(r=>setTimeout(r,30));
     if(img){try{const jpg=await tifToJpeg(img.data,3600);const e=await pdf.embedJpg(jpg);pg.drawImage(e,{x:0,y:0,width:Wi*72,height:Hi*72})}catch(err){console.warn(err)}}
     pg.drawText(String(A(p,'Name')||'').replace(/\.pdf$/i,'').replace(/[^\x20-\x7e]/g,''),{x:20,y:20,size:1})}
   prog('Saving plan…',.95);const bytes=await pdf.save();const pdfBlob=new Blob([bytes],{type:'application/pdf'});
   const conds=[...X.querySelectorAll('BidCondition')].map(c=>{const t=A(c,'Type');const type=t==='1'?'area':t==='2'?'count':'linear';const rise=+A(c,'Rise'),run=+A(c,'Run');const col=+A(c,'ColorFill')||+A(c,'ColorLine');
     return {id:'o'+A(c,'UID'),name:A(c,'Name'),type,color:col?bgr(col):COLORS[0],slope:type==='area'&&rise>0&&run>0?String(+(rise*12/run).toFixed(3)):'',ost:{height:+A(c,'Height')||0}}});
-  const meas=[];[...X.querySelectorAll('BidTakeoff')].forEach(t=>{const pg=pgIdx[A(t,'BidPageUID')];if(!pg)return;let v=String(A(t,'Position')||'').split(/[;\s]+/).filter(x=>x!=='').map(Number).filter(n=>!isNaN(n));if(v.length%2===1&&v.length>=3&&v.slice(-3).every(n=>n===0))v=v.slice(0,-3);const pts=[];for(let i=0;i+1<v.length;i+=2)pts.push([+(v[i]*.75).toFixed(2),+(v[i+1]*.75).toFixed(2)]);if(!pts.length)return;
+  const meas=[];[...X.querySelectorAll('BidTakeoff')].forEach(t=>{const pg=pgIdx[A(t,'BidPageUID')];if(!pg)return;let v=String(A(t,'Position')||'').split(/[;\s]+/).filter(x=>x!=='').map(Number).filter(n=>!isNaN(n));if(v.length%2===1&&v.length>=3&&v.slice(-3).every(n=>n===0))v=v.slice(0,-3);const pts=[];const k=kPg[pg]||.75;for(let i=0;i+1<v.length;i+=2)pts.push([+(v[i]*k).toFixed(2),+(v[i+1]*k).toFixed(2)]);if(!pts.length)return;
     meas.push({id:'m'+A(t,'UID'),cid:'o'+A(t,'BidConditionUID'),page:pg,pts,...(A(t,'IsNegativeQuantity')==='1'?{neg:true}:{})})});
   const used=new Set(meas.map(m=>m.cid));const C=conds.filter(c=>used.has(c.id));
   prog('Uploading plan to SharePoint…',.97);const id='p'+uid();const path='plans/'+id+'_'+name.replace(/[^\w.\-]+/g,'_').slice(0,60)+'.pdf';const fs=await window.claude.use('files');await fs.save(path,pdfBlob);BLOB[path]=pdfBlob;
@@ -449,10 +449,10 @@ async function importQbp(file){if(!cur){toast('Open a project first.');return}pr
   Object.keys(bd.lines).forEach(k=>{bd.lines[k]=bd.lines[k].filter(l=>!l.qb);if(!bd.lines[k].length)delete bd.lines[k]});bd.qbRef={};
   const cu={};sec('BidConditions').forEach(c=>cu[A(c,'UID')]=c);
   sec('BidDetails').forEach(dt=>{const c=qc[A(dt,'BidConditionUID')];if(!c)return;let cid='o'+c.ext;if(!cur.conds.find(k=>k.id===cid)){const byName=cur.conds.find(k=>k.name===c.name);if(byName)cid=byName.id;else{miss.add(c.name);return}}
-    const it=items[A(dt,'BidItemUID')];if(!it)return;const sz=sizes[A(dt,'BidItemSizeUID')];const QC=cu[A(dt,'BidConditionUID')];const iu=+A(it,'UOM')||0,cuom=+A(QC,'UOM1')||0;const q=(+A(dt,'Quantity')||0)/(UF[iu]||1),cq=(+A(dt,'CdnQty')||ac[A(QC,'UID')]||0)/(UF[cuom]||1);const price=+(sz&&A(sz,'MatPrice'))||+A(it,'MatPrice')||0;const upc=+(sz&&A(sz,'UnitsPerCtr'))||1;const lp=+A(dt,'LabProd')||0;
+    const it=items[A(dt,'BidItemUID')];if(!it)return;const sz=sizes[A(dt,'BidItemSizeUID')];const QC=cu[A(dt,'BidConditionUID')];const iu=+A(it,'UOM')||0,cuom=+A(QC,'UOM1')||0;const q=(+A(dt,'Quantity')||0)/(UF[iu]||1),cq=(+A(dt,'CdnQty')||ac[A(QC,'UID')]||0)/(UF[cuom]||1);const pby=A(it,'MatPriceBy');const price=pby==='0'?(+A(it,'MatPrice')||0):(+(sz&&A(sz,'MatPrice'))||+A(it,'MatPrice')||0);const upc=+(sz&&A(sz,'UnitsPerCtr'))||1;const lp=+A(dt,'LabProd')||0;
     if(!bd.qbRef[cid])bd.qbRef[cid]={m:+A(QC,'MatTotal')||0,l:+A(QC,'LabTotal')||0,uid:A(QC,'UID')};
     const desc=[A(it,'Description'),sz&&A(sz,'Name')!=='Style Name'?A(sz,'Name'):''].filter(Boolean).join(' · ');
-    (bd.lines[cid]=bd.lines[cid]||[]).push({d:desc,u:UN[iu]||'',...((A(dt,'QtyMethod')==='2'||!cq||q/cq>1000)?{f:1,mt:'direct',dq:+q.toFixed(3)}:{f:+(q/cq).toFixed(6),mt:'std',dq:''}),w:0,m:price||'',per:(()=>{const v=(A(it,'MatPriceBy')==='2'?upc:1)*(+A(it,'MatPricePer')||1);return v!==1?+v.toFixed(4):''})(),l:'',qhRef:A(it,'LabPriceBy')==='3'&&lp?lp:'',qb:2});n++});
+    (bd.lines[cid]=bd.lines[cid]||[]).push({d:desc,u:UN[iu]||'',...((A(dt,'QtyMethod')==='2'||!cq||q/cq>1000)?{f:1,mt:'direct',dq:+q.toFixed(3)}:{f:+(q/cq).toFixed(6),mt:'std',dq:''}),w:0,m:price||'',per:(()=>{const v=pby==='2'?upc:pby==='0'?(+A(it,'MatPricePer')||1):1;return v!==1?+v.toFixed(4):''})(),l:'',qhRef:A(it,'LabPriceBy')==='3'&&lp?lp:'',qb:2});n++});
   const wg=sec('BidWages').find(w=>+A(w,'BaseWage')>0);if(wg)bd.wage=+A(wg,'BaseWage');
   /* Labor: Quick Bid stores the labor total per condition — bring it in as one labor line per condition ($ per takeoff unit), so it follows the takeoff quantity */
   Object.entries(bd.qbRef).forEach(([cid,v])=>{if(!v.l)return;const QC=cu[v.uid];if(!QC)return;const cq=(ac[A(QC,'UID')]||0)/(UF[+A(QC,'UOM1')||0]||1);const c=cur.conds.find(k=>k.id===cid);
