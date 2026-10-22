@@ -60,6 +60,8 @@ const apwKey=n=>n==='DON'?'Don S.':n;
 async function apwHash(pw,salt,it){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);const b=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:new TextEncoder().encode(salt),iterations:it},k,256);return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 const apwOk=()=>{try{const u=JSON.parse(sessionStorage.getItem('ameAdmU')||'null');return u&&u.n===curUser&&u.t>Date.now()}catch(e){return false}};
 const apwSet=()=>{try{sessionStorage.setItem('ameAdmU',JSON.stringify({n:curUser,t:Date.now()+30*60000}))}catch(e){}};
+/* leaving Admin locks it again — every way in (gear, links, buttons) asks for the PIN */
+(function(){let was=false;setInterval(()=>{const on=typeof AME!=='undefined'&&AME.cur==='admin';if(was&&!on){try{sessionStorage.removeItem('ameAdmU')}catch(e){}}was=on},700)})();
 window.ameAdminLock=()=>{try{sessionStorage.removeItem('ameAdmU')}catch(e){}if(AME.cur==='admin')AME.home()};
 function apwDlg(then,mode){const me=apwKey(curUser);const rec=APW[me];const setting=mode==='set'||!rec;
   if(!APW_WHO(curUser)){document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" style="max-width:400px"><h3>Admin is locked</h3><p class="muted">Only Kyle and Don can open Admin.</p><div class="bar"><button class="go" id="apwX" style="width:auto">OK</button></div></div></div>`;document.getElementById('apwX').onclick=()=>closeDlg();return}
