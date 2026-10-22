@@ -691,7 +691,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='5.46',APP_DATE='2026-10-21';
+const APP_VERSION='5.47',APP_DATE='2026-10-21';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1796,7 +1796,7 @@ renderPeople();render();
 let ownerPinH='';async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ame-yard:'+t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 let curUser='',accountAdmin=false,officePin='',officePinH='',pinFails=0,pinLockUntil=0,lastAct=Date.now();
 try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3)curUser=u.n}catch(e){}
-try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p)curUser=p}catch(e){}
+try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p===OWNER)curUser=p;else if(p&&p!==OWNER)localStorage.removeItem('ameOwnerStay')}catch(e){}
 
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
 function setUserRaw(n){window.__raw=1;try{setUser(n)}finally{window.__raw=0}}
@@ -1816,7 +1816,7 @@ function vaBanner(){document.getElementById('vaBan')?.remove();const b=document.
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{lastAct=Date.now();if(curUser)try{sessionStorage.setItem('ameUser',JSON.stringify({n:curUser,t:lastAct}))}catch(e){}},true));
 setInterval(()=>{if(curUser&&!isOwner(curUser)&&!viewAs&&!myName()&&Date.now()-lastAct>10*60e3){logout();toast('Signed out after 10 minutes idle')}},30e3);
 function myName(){if(!msEmail)return'';const c=crew.find(c=>(c.email||'').toLowerCase()===msEmail);if(c)return c.name;
-  if((DEVB.__owners||[]).includes(msEmail)){const o=crew.find(c=>isOwner(c.name));if(o)return o.name}
+  if((DEVB.__owners||[]).includes(msEmail)){const o=crew.find(c=>c.name===OWNER)||crew.find(c=>isOwner(c.name));if(o)return o.name}
   const ns=Object.keys(DEVB).filter(k=>!k.startsWith('__')&&(DEVB[k]||[]).some(x=>String(x.key).split('|')[0]===msEmail));
   return ns.length===1&&!crew.some(c=>c.email&&c.name===ns[0]&&c.email.toLowerCase()!==msEmail)?ns[0]:''}
 let viewAs='';
