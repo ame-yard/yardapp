@@ -223,7 +223,7 @@ async function readCab(buf){await pakoL();const d=new Uint8Array(buf),dv=new Dat
   const folders=[];for(let i=0;i<cFolders;i++){folders.push({coff:dv.getUint32(off,true),n:dv.getUint16(off+4,true),typ:dv.getUint16(off+6,true)});off+=8+cbF}
   const fd=folders.map(f=>{let p=f.coff;const parts=[];let total=0,prev=null;
     for(let b=0;b<f.n;b++){const cb=dv.getUint16(p+4,true);p+=8+cbD;const blk=d.subarray(p,p+cb);p+=cb;let out;
-      if((f.typ&15)===0)out=blk;else{const opt={raw:true};if(prev)opt.dictionary=prev;out=pako.inflateRaw(blk.subarray(2),opt)}
+      if((f.typ&15)===0)out=blk;else{const opt={raw:true};if(prev)opt.dictionary=prev;const inf=new pako.Inflate(opt);const ch=[];inf.onData=c=>ch.push(c);inf.onEnd=()=>{};inf.push(blk.subarray(2),2);if(inf.err&&inf.err!==-5)throw new Error('Unpack failed: '+inf.msg);let n=0;ch.forEach(c=>n+=c.length);out=new Uint8Array(n);let q=0;ch.forEach(c=>{out.set(c,q);q+=c.length})}
       parts.push(out);total+=out.length;const tail=new Uint8Array(Math.min(32768,total));let k=tail.length,j=parts.length-1;while(k>0&&j>=0){const a=parts[j];const n=Math.min(k,a.length);tail.set(a.subarray(a.length-n),k-n);k-=n;j--}prev=tail}
     const all=new Uint8Array(total);let o=0;parts.forEach(a=>{all.set(a,o);o+=a.length});return all});
   const files=[];off=coffFiles;const td=new TextDecoder('latin1');for(let i=0;i<cFiles;i++){const cb=dv.getUint32(off,true),uo=dv.getUint32(off+4,true),fi=dv.getUint16(off+8,true);off+=16;let e=off;while(d[e])e++;const name=td.decode(d.subarray(off,e)).replace(/\\/g,'/');off=e+1;files.push({name,data:fd[fi].subarray(uo,uo+cb)})}
