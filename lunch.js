@@ -118,5 +118,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 @media(max-width:900px){.lgrid{grid-template-columns:1fr}.lhead{grid-template-columns:1fr}.lr{grid-template-columns:1fr auto;grid-auto-rows:auto}.lr.lh{display:none}.lr>span:nth-child(3),.lr>span:nth-child(4){grid-column:1/-1}.lr>span:nth-child(5){grid-column:1}.lcnt span{min-width:0;flex:1}}
 </style>`);
 const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v7a2 2 0 002 2v9M5 3v5M9 3v5"/><path d="M17 21V3c-2 1-3 4-3 8h3"/></svg>';
-AME.register({id:'lunch',name:'Lunch',desc:'Today’s restaurant · who’s eating · one order sheet',allow:own,tabs:['lunch'],section:'tab-lunch',icon:ICON,open:()=>{showTab('lunch');day=today();render()},onShow:render});
+AME.register({id:'lunch',ownerOnly:true,name:'Lunch',desc:'Today’s restaurant · who’s eating · one order sheet',allow:own,tabs:['lunch'],section:'tab-lunch',icon:ICON,open:()=>{showTab('lunch');day=today();render()},onShow:render});
 })();
