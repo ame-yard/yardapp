@@ -1,6 +1,6 @@
 /* Owner-only tools: Inventory (Test) — big-text preview with sample data (never saved) · Version log */
 (function(){
-const own=()=>typeof isOwner==='function'&&typeof curUser!=='undefined'&&isOwner(curUser);
+const own=()=>typeof isOwner==='function'&&typeof curUser!=='undefined'&&isOwner(curUser);const dev=()=>typeof isDev==='function'&&typeof curUser!=='undefined'&&isDev(curUser);
 const mk=id=>{let s=document.getElementById('tab-'+id);if(!s){s=document.createElement('section');s.id='tab-'+id;s.hidden=true;(document.querySelector('main')||document.body).appendChild(s)}return s};
 const I=(p,w=22)=>`<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 
@@ -78,7 +78,7 @@ function asForeman(on){try{if(on){_adm=isAdmin;_can=window.can;const role='Forem
 function prEnter(){if(prOn)return;prOn=true;window.__ameSandbox=true;asForeman(true);try{cart=[];}catch(e){}document.body.classList.add('practice');prApply();prBar()}
 async function prExit(){if(!prOn)return;prOn=false;asForeman(false);document.body.classList.remove('practice','bigui','bigxl');prBar();try{cart=[];}catch(e){}window.__ameSandbox=false;try{const d=await window.claude.use('db');await d.refresh()}catch(e){}try{render()}catch(e){}toast('Practice ended — real data reloaded')}
 {const _o=AME.open.bind(AME),_h=AME.home.bind(AME);AME.open=function(id,...r){if(id!=='ytest'&&prOn)prExit();return _o(id,...r)};AME.home=function(...r){if(prOn)prExit();return _h(...r)}}
-AME.register({id:'ytest',ownerOnly:true,name:'Inventory (Test)',desc:'Practice the real Yard screens in big text · nothing is saved',allow:own,tabs:['yard'],section:null,icon:ICON_T,open:()=>{prEnter();showTab('yard');try{yardStart()}catch(e){}try{document.querySelector('.lvseg [data-lv=card]')?.click()}catch(e){}try{render()}catch(e){}}});
+AME.register({id:'ytest',devOnly:true,name:'Inventory (Test)',desc:'Practice the real Yard screens in big text · nothing is saved',allow:dev,tabs:['yard'],section:null,icon:ICON_T,open:()=>{prEnter();showTab('yard');try{yardStart()}catch(e){}try{document.querySelector('.lvseg [data-lv=card]')?.click()}catch(e){}try{render()}catch(e){}}});
 document.head.insertAdjacentHTML('beforeend',`<style>
 #prBar{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 6px);z-index:99990;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:999px;background:#1d6b3a;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.45);font-size:13px;white-space:nowrap;max-width:calc(100vw - 16px)}
 #prBar b{letter-spacing:.08em}#prBar span{opacity:.85}#prBar .prz{display:flex;gap:2px;background:rgba(0,0,0,.25);border-radius:999px;padding:2px}
@@ -109,5 +109,5 @@ body.bigui #cartbar .cb-in{font-size:calc(15px*var(--pz))}body.bigui #cartbar .c
 body.bigui #saveBtn,body.bigui #syncBtn{white-space:nowrap}body.bigxl #actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}body.bigui #actions .act b,body.bigui #actions .act{overflow-wrap:anywhere}body.bigui .listview .card .cbody{display:flex!important;flex-direction:column;align-items:flex-start!important;text-align:left;min-width:0;padding-right:52px!important;box-sizing:border-box}body.bigui .listview .card .csub{text-align:left!important;align-self:flex-start}body.bigui .listview .card .cname{display:block!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;max-height:none!important;height:auto!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}body.bigui .listview .card .cfoot{grid-column:auto!important;grid-row:auto!important;flex-direction:row!important;align-items:center!important;margin:4px 0 0 0!important;padding-right:0}body.bigui #dlgRoot .dlg{max-width:calc((100vw - 16px) / var(--pz))!important;width:calc((100vw - 16px) / var(--pz))!important;box-sizing:border-box}body.bigui #dlgRoot .dlg .fields{grid-template-columns:1fr!important}body.bigui #dlgRoot .dlg select,body.bigui #dlgRoot .dlg input{max-width:100%;box-sizing:border-box}body.practice #dlgRoot .scrim{padding-top:52px}
 body.bigui #tab-yard,body.bigui #dlgRoot .dlg,body.bigui #camOv,body.bigui .cartpop,body.bigui #elUndoBar{zoom:var(--pz)}
 </style>`);
-AME.register({id:'vlog',ownerOnly:true,name:'Version log',desc:'Every app update, newest first',allow:own,tabs:['vlog'],section:'tab-vlog',icon:ICON_V,open:()=>{showTab('vlog');vRender()},onShow:vRender});
+AME.register({id:'vlog',devOnly:true,name:'Version log',desc:'Every app update, newest first',allow:dev,tabs:['vlog'],section:'tab-vlog',icon:ICON_V,open:()=>{showTab('vlog');vRender()},onShow:vRender});
 })();

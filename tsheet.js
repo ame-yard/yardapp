@@ -1,6 +1,6 @@
 /* AME Timesheet Mailer — split the weekly Timesheet Summary PDF (one employee per page) and email each person their own page. Accounting. Desktop web. */
 (function(){
-const own=()=>typeof isOwner==='function'&&typeof curUser!=='undefined'&&isOwner(curUser);
+const own=()=>typeof isDev==='function'&&typeof curUser!=='undefined'&&isDev(curUser);
 const mk=id=>{let s=document.getElementById('tab-'+id);if(!s){s=document.createElement('section');s.id='tab-'+id;s.hidden=true;(document.querySelector('main')||document.body).appendChild(s)}return s};
 const S=mk('tsm');let STAFF=[],LOG=[],R=null,busy=false,histAll=false,SIG='';
 const sigKey=()=>'usersig/'+String(typeof curUser!=='undefined'?curUser:'').replace(/[^\w]+/g,'_');
@@ -128,5 +128,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 </style>`);
 const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/><path d="M15 17l2 2 3-3"/></svg>';
 window.__tsLoad=f=>load(f);
-AME.register({id:'tsm',ownerOnly:true,name:'Timesheet Mailer',desc:'Accounting · split the weekly timesheet PDF · email each person',allow:own,tabs:['tsm'],section:'tab-tsm',icon:ICON,open:()=>{showTab('tsm');render()},onShow:render});
+AME.register({id:'tsm',devOnly:true,name:'Timesheet Mailer',desc:'Accounting · split the weekly timesheet PDF · email each person',allow:own,tabs:['tsm'],section:'tab-tsm',icon:ICON,open:()=>{showTab('tsm');render()},onShow:render});
 })();

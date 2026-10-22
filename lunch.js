@@ -1,6 +1,6 @@
 /* AME Lunch — daily office lunch order: pick a restaurant, everyone answers eat / no, see who hasn't answered, one order sheet. */
 (function(){
-const own=()=>typeof isOwner==='function'&&typeof curUser!=='undefined'&&isOwner(curUser);
+const own=()=>typeof isDev==='function'&&typeof curUser!=='undefined'&&isDev(curUser);
 const mk=id=>{let s=document.getElementById('tab-'+id);if(!s){s=document.createElement('section');s.id='tab-'+id;s.hidden=true;(document.querySelector('main')||document.body).appendChild(s)}return s};
 const S=mk('lunch');let CFG={},DAYS=[],STAFF=[],day=today(),typing=false,chg=false;
 const DEF=[['Panda Express','https://www.pandaexpress.com/'],['Chipotle','https://www.chipotle.com/order'],['Chick-fil-A','https://order.chick-fil-a.com/'],['El Pollo Loco','https://order.elpolloloco.com/location/central-ave-moreno-st/menu'],['In-N-Out','https://www.in-n-out.com/menu'],['Mexican Food',''],["Domino's Pizza",'https://www.dominos.com/']].map(([name,url])=>({name,url,menu:[]}));
@@ -118,5 +118,5 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 @media(max-width:900px){.lgrid{grid-template-columns:1fr}.lhead{grid-template-columns:1fr}.lr{grid-template-columns:1fr auto;grid-auto-rows:auto}.lr.lh{display:none}.lr>span:nth-child(3),.lr>span:nth-child(4){grid-column:1/-1}.lr>span:nth-child(5){grid-column:1}.lcnt span{min-width:0;flex:1}}
 </style>`);
 const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v7a2 2 0 002 2v9M5 3v5M9 3v5"/><path d="M17 21V3c-2 1-3 4-3 8h3"/></svg>';
-AME.register({id:'lunch',ownerOnly:true,name:'Lunch',desc:'Today’s restaurant · who’s eating · one order sheet',allow:own,tabs:['lunch'],section:'tab-lunch',icon:ICON,open:()=>{showTab('lunch');day=today();render()},onShow:render});
+AME.register({id:'lunch',devOnly:true,name:'Lunch',desc:'Today’s restaurant · who’s eating · one order sheet',allow:own,tabs:['lunch'],section:'tab-lunch',icon:ICON,open:()=>{showTab('lunch');day=today();render()},onShow:render});
 })();
