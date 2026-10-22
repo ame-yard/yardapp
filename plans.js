@@ -27,7 +27,7 @@ function Viewer(host,opts){const V={pdf:null,page:1,z:1,size:[612,792],opts};
   V.render=async()=>{if(!V.pdf)return;const my=++seq;const pg=await V.pdf.getPage(V.page);const vp1=pg.getViewport({scale:1});V.size=[vp1.width,vp1.height];
     const dpr=Math.min(1.5,window.devicePixelRatio||1,4096/Math.max(1,vp1.width*V.z),4096/Math.max(1,vp1.height*V.z));const vp=pg.getViewport({scale:V.z*dpr});cv.width=vp.width;cv.height=vp.height;cv.style.width=(vp1.width*V.z)+'px';cv.style.height=(vp1.height*V.z)+'px';
     stage.style.width=cv.style.width;stage.style.height=cv.style.height;svg.setAttribute('viewBox',`0 0 ${vp1.width} ${vp1.height}`);svg.style.width=cv.style.width;svg.style.height=cv.style.height;
-    if(rt)try{rt.cancel()}catch(e){}rt=pg.render({canvasContext:cv.getContext('2d'),viewport:vp});try{await rt.promise}catch(e){}if(my===seq&&V.opts.onRender)V.opts.onRender()};
+    if(rt)try{rt.cancel()}catch(e){}rt=pg.render({canvasContext:cv.getContext('2d'),viewport:vp,...(V.opts.noAnnots&&V.opts.noAnnots()?{annotationMode:0}:{})});try{await rt.promise}catch(e){}if(my===seq&&V.opts.onRender)V.opts.onRender()};
   V.fit=async()=>{if(!V.pdf)return;const pg=await V.pdf.getPage(V.page);const vp=pg.getViewport({scale:1});V.z=Math.max(.1,(wrap.clientWidth-20)/vp.width);await V.render()};
   V.zoom=async f=>{const cx=wrap.scrollLeft+wrap.clientWidth/2,cy=wrap.scrollTop+wrap.clientHeight/2;const old=V.z;V.z=Math.min(8,Math.max(.1,V.z*f));await V.render();wrap.scrollLeft=cx*V.z/old-wrap.clientWidth/2;wrap.scrollTop=cy*V.z/old-wrap.clientHeight/2};
   V.go=async n=>{if(!V.pdf)return;V.page=Math.min(V.pdf.numPages,Math.max(1,n));await V.render()};
