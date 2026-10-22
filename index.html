@@ -695,13 +695,13 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='6.62',APP_DATE='2026-10-22';
+const APP_VERSION='6.63',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let db=null, items=[], logs=[], people=[], act='OUT', cart=[], yZone='', mZone='', sortK='loc', sortDir=1;
 const IC2={"trash": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h16\"/><path d=\"M10 11v6M14 11v6\"/><path d=\"M6 7l1 13h10l1-13\"/><path d=\"M9 7V4h6v3\"/></svg>", "bell": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 16V11a6 6 0 0 1 12 0v5l2 2H4z\"/><path d=\"M10 20a2 2 0 0 0 4 0\"/></svg>", "cam": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h4l2-3h4l2 3h4v13H4z\"/><circle cx=\"12\" cy=\"13\" r=\"4\"/></svg>", "img": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><circle cx=\"9\" cy=\"10\" r=\"2\"/><path d=\"M21 16l-5-5-9 9\"/></svg>", "wrench": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5\"/><path d=\"M14.5 6.5L17 4\"/></svg>", "alert": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3l10 18H2z\"/><path d=\"M12 10v5M12 18h.01\"/></svg>", "box": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"3\"/></svg>", "boxc": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"3\"/><path d=\"M8 12l3 3 5-6\"/></svg>"};
-const ACTNAME={DSPWK:'Dispatch week',LOGIN:'Signed in',LOGINX:'Sign-in blocked',DISPATCH:'Dispatch sent',DELIV:'Delivery notice',TRUCK:'Truck reservation',AUDIT:'Audit',LOST:'Lost on job',CLEARED:'Kept (flag cleared)',OUT:'Take Out',RETURN:'Return',RECEIVE:'Receive',ADJUST:'Count',DISPOSE:'Remove',REPAIR:'Repair',REPAIR_OUT:'Sent to repair',REPAIR_DONE:'Repaired',REPORT:'Problem reported',EDIT:'Item edited',JOB:'Job changed'};
+const ACTNAME={NOTICE:'Notice',DSPWK:'Dispatch week',LOGIN:'Signed in',LOGINX:'Sign-in blocked',DISPATCH:'Dispatch sent',DELIV:'Delivery notice',TRUCK:'Truck reservation',AUDIT:'Audit',LOST:'Lost on job',CLEARED:'Kept (flag cleared)',OUT:'Take Out',RETURN:'Return',RECEIVE:'Receive',ADJUST:'Count',DISPOSE:'Remove',REPAIR:'Repair',REPAIR_OUT:'Sent to repair',REPAIR_DONE:'Repaired',REPORT:'Problem reported',EDIT:'Item edited',JOB:'Job changed'};
 const REPOPTS=[['send','Send to repair'],['done','Repair done — back to yard'],['scrap','Can\'t fix — dispose']];let selRep='send';
 const REASONS=['Broken / Damaged','Thrown away','Expired','Used up (shop)','Lost / Missing'];let selReason='';
 
@@ -2019,6 +2019,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="deliv.js?v=432"></script>
 <script src="dispatch.js?v=1525"></script>
 <script src="hr.js?v=1"></script>
+<script src="notice.js?v=1"></script>
 <script src="admin.js?v=493"></script>
 <script src="lab.js?v=414"></script>
 <script src="lunch.js?v=5"></script>
