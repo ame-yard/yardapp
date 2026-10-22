@@ -41,8 +41,9 @@ const _st=window.showTab;window.showTab=function(t){
   document.getElementById('tab-home').hidden=true;hideSecs();const owner=AME.modules.find(m=>(m.tabs||[]).includes(t));
   if(owner&&owner.section){_st('yard');document.getElementById('tab-yard').hidden=true;document.getElementById(owner.section).hidden=false;document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));setMod(owner.id);if(owner.onShow)owner.onShow();scrollTo({top:0});return}
   if(owner&&owner.id!==AME.cur)setMod(owner.id);_st(t)};
-const _su=window.setUser;window.setUser=function(n){const ch=n!==curUser;_su(n);if(ch&&n)setTimeout(()=>AME.home(),30)};
-let started=false;const _ar=window.applyRole;window.applyRole=function(){_ar();if(curUser&&!started){started=true;setTimeout(()=>{if(start==='home'||!AME.mod(start)||!(typeof isEditor==='function'&&isEditor(curUser)))AME.home();else AME.open(start)},0);return}if(AME.cur)setMod(AME.cur);if(AME.cur==='home')renderHome()};
+const _su=window.setUser;window.setUser=function(n){const prev=curUser;const ch=n!==curUser;_su(n);/* go home only when switching people — not on a reload/token refresh, which should stay on the open app */if(ch&&n&&(prev||window.__ameLoggedOut)){window.__ameLoggedOut=false;setTimeout(()=>AME.home(),30)}};
+const _lo=window.logout;if(_lo)window.logout=function(){window.__ameLoggedOut=true;return _lo.apply(this,arguments)};
+let started=false;const _ar=window.applyRole;window.applyRole=function(){_ar();if(curUser&&!started){started=true;(function go(k){if(start!=='home'&&!AME.mod(start)&&k<20){setTimeout(()=>go(k+1),150);return}if(start==='home'||!AME.mod(start))AME.home();else AME.open(start)})(0);return}if(AME.cur)setMod(AME.cur);if(AME.cur==='home')renderHome()};
 document.getElementById('brand').onclick=()=>{try{closeDlg()}catch(e){}if(curUser)AME.home();else showTab('yard')};
 let start='home';try{start=sessionStorage.getItem('ameMod')||'home'}catch(e){}
 })();
