@@ -45,11 +45,13 @@ function connectDlg(after){const r=document.getElementById('dlgRoot');let em='';
     try{await MP.login(document.getElementById('mpE').value.trim(),document.getElementById('mpP').value);closeDlg();toast('Mob Prep connected');if(after)after();else render()}catch(e){toast(e.message);b.disabled=false;b.textContent='Connect'}}}
 
 /* ---------- matching ref items to yard inventory ---------- */
+/* MAP[rid] = one yard item id, or a list of ids (same item in several sizes/lengths) → use the first with stock */
+function mapItem(rid){const m=MAP[rid];if(!m)return null;const L=(Array.isArray(m)?m:[m]).map(id=>byId(id)).filter(Boolean);return L.find(i=>(Number(i.qty)||0)>0)||L[0]||null}
 function bestYard(name){const a=norm(name);if(!a.length)return null;let best=null,bs=0;
   for(const it of items){const b=norm(it.name+' '+(it.size||''));if(!b.length)continue;const hit=a.filter(w=>b.includes(w)).length;const sc=hit/Math.max(a.length,Math.min(b.length,a.length+2));
     if(sc>bs){bs=sc;best=it}}
   return bs>=0.5?best:null}
-function yardFor(line){if(line.yid&&byId(line.yid))return byId(line.yid);if(line.nolink)return null;const m=line.rid&&MAP[line.rid];if(m&&byId(m))return byId(m);return line.rid?bestYard(line.name):null}
+function yardFor(line){if(line.yid&&byId(line.yid))return byId(line.yid);if(line.nolink)return null;const m=line.rid&&mapItem(line.rid);if(m)return m;return line.rid?bestYard(line.name):null}
 
 /* ---------- data ---------- */
 function load(){db.doc('mplref/ref').onSnapshot(s=>{REF=s.data()||null;if(isOn())render()},()=>{});
@@ -201,7 +203,7 @@ function pickDlg(title,list,onPick){let qv='';const draw=()=>{const l=list.filte
 function linkYard(k){const l=W.lines[k];pickDlg('Link “'+esc(l.name)+'” to a yard item',[{t:'— Not a yard item —',s:'buy / rent',none:1},...items.map(i=>({t:i.name,s:[i.size,i.mfgr,i.loc].filter(Boolean).join(' · '),i}))],async x=>{
   if(x.none){l.yid='';l.nolink=true}else{l.yid=x.i.id;l.nolink=false;if(l.rid){MAP={...MAP,[l.rid]:x.i.id};try{await db.doc('config/mplmap').set(MAP)}catch(e){}}}render()})}
 function addItem(){const seg=W._seg||'all';const yl=items.filter(i=>!W.lines.some(l=>l.yid===i.id)).map(i=>({t:i.name,s:'Yard · '+[i.size,i.loc,(Number(i.qty)||0)+' '+(i.unit||'')].filter(Boolean).join(' · '),i}));
-  const rl=REF.its.filter(r=>!W.lines.some(l=>l.rid===r[0])).filter(r=>seg!=='buy'||!(MAP[r[0]]&&byId(MAP[r[0]]))).map(r=>({t:r[1],s:r[2]+' · '+r[3],r}));
+  const rl=REF.its.filter(r=>!W.lines.some(l=>l.rid===r[0])).filter(r=>seg!=='buy'||!(mapItem(r[0]))).map(r=>({t:r[1],s:r[2]+' · '+r[3],r}));
   const list=seg==='yard'?yl:seg==='buy'?[{t:'+ Type a new item…',s:'not on any list',custom:1},...rl]:[...rl,...yl];
   pickDlg(seg==='yard'?'Add a yard item':seg==='buy'?'Add an item to buy / rent':'Add an item',list,x=>{
   if(x.custom){setTimeout(()=>{const n=prompt('Item to buy / rent:');if(n&&n.trim()){W.lines.push({name:n.trim(),cat:'Custom',sub:'To buy',unit:'EA',n:1,from:'Added',nolink:true});render()}},50);return}
