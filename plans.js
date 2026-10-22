@@ -193,7 +193,7 @@ function bidXls(){if(!window.XLSX){toast('Excel library not loaded yet');return}
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(R),'Bid');XLSX.writeFile(wb,`Bid_${cur.name.replace(/[^\w]+/g,'_')}.xlsx`)}
 
 /* ================= MARKUP ================= */
-const M=mk('mkp');const MK={v:null,tool:'sel',color:'#e8594a',w:2,op:1,marks:{},sc:{},file:null,name:'',hist:[],panel:'thumbs',sel:null,chest:[],stamp:'APPROVED'};
+const M=mk('mkp');const MK={v:null,tool:'sel',color:'#e8594a',w:2,op:1,marks:{},sc:{},file:null,name:'',hist:[],panel:(innerWidth<700?'':'thumbs'),sel:null,chest:[],stamp:'APPROVED'};
 try{MK.chest=JSON.parse(localStorage.getItem('revuChest')||'[]')}catch(e){}
 const RV_I=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const RV_TOOLS=[
