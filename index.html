@@ -631,14 +631,14 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Jobs</h2>
       <div class="filters" style="margin:0"><select id="jstat"><option value="Active">Active jobs</option><option value="">All jobs</option><option value="Closed">Closed</option></select><button class="btn pri" id="addJob">+ New job</button></div></div>
     <div class="tblwrap" style="margin-bottom:18px"><table><thead><tr><th>Job #</th><th>Job name / Site</th><th>PM</th><th>FM</th><th>SFM</th><th>Status</th><th>Items out</th></tr></thead><tbody id="jbody"></tbody></table></div>
-    <div class="panel" style="margin-bottom:18px">
+    <div class="panel" id="admCrewP" style="margin-bottom:18px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Crew List</h3><span class="muted" style="font-size:13px">Names here show as buttons in the yard and as choices for PM / FM / SFM.</span></div>
       <div class="filters admin-only" style="margin-top:10px"><input id="cName" placeholder="Name"><select id="cRole"><option value="President">Admin</option><option>PM</option><option>Office</option><option>Intern</option><option>Yard</option><option>FM</option><option>SFM</option><option>Crew</option></select><button class="btn pri" id="cAdd">+ Add to crew</button></div>
       <div id="crewList"></div>
       <div class="filters admin-only" style="margin-top:12px"><span class="muted" id="pinState"></span><input id="newPin" inputmode="numeric" maxlength="4" placeholder="New 4-digit editor PIN" style="width:200px"><input id="ownPin" inputmode="numeric" maxlength="4" type="password" placeholder="My personal 4-digit PIN" style="width:200px"><button class="btn" id="saveOwnPin">Set my PIN</button><button class="btn" id="savePin">Set editor PIN</button></div>
     </div>
-    <div class="panel admin-only owner-only" style="margin-bottom:18px"><h3 style="margin-top:0">Who's using the app <small class="muted" id="onlineN"></small></h3><div id="onlineList" class="muted">Loading…</div></div>
-    <div class="panel admin-only owner-only permpanel" style="margin-bottom:18px">
+    <div class="panel admin-only owner-only" id="admOnline" style="margin-bottom:18px"><h3 style="margin-top:0">Who's using the app <small class="muted" id="onlineN"></small></h3><div id="onlineList" class="muted">Loading…</div></div>
+    <div class="panel admin-only owner-only permpanel" id="admPermsP" style="margin-bottom:18px">
       <h3 style="margin:0">Permissions</h3>
       <p class="muted" style="font-size:13px;margin:4px 0 10px">Pick one level for each person. Admins and Editors can do everything. Changes apply right away.</p>
       <details class="lvhelp"><summary>What each level can do — tick per app</summary><div class="tblwrap"><table class="lvtbl" id="lvTbl"></table></div></details>
@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.11',APP_DATE='2026-10-22';
+const APP_VERSION='7.12',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
