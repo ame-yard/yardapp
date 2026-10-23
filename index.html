@@ -32,7 +32,7 @@ html[data-theme=light] .dsinact[aria-pressed]{color:#c0392b}
 <script>document.documentElement.classList.add('boot');setTimeout(()=>document.documentElement.classList.remove('boot'),4000)</script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=446"></script>
+<script src="msbackend.js?v=447"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='8.11',APP_DATE='2026-10-22';
+const APP_VERSION='8.12',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -2048,7 +2048,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="shell.js?v=7.25"></script>
 <script src="polish.js?v=462"></script>
 <script src="mpl.js?v=411"></script>
-<script src="eqp.js?v=489"></script>
+<script src="eqp.js?v=490"></script>
 <script src="field.js?v=461"></script>
 <script src="trucks.js?v=480"></script>
 <script src="safety.js?v=418"></script>
@@ -2088,7 +2088,7 @@ window.__ameKeep=window.__ameKeep||{};window.ameKeep=(id,f)=>{window.__ameKeep[i
   function busy(){const d=document.querySelector('#dlgRoot .dlg');return !!(d&&d.querySelector('input:not([type=hidden]),textarea,select'))}
   function typing(){const a=document.activeElement;return !!(a&&(a.isContentEditable||(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='checkbox'&&a.type!=='radio'&&a.type!=='button')))}
   /* never interrupt someone mid-entry: a small pill waits; as soon as the dialog is closed (saved) or they stop typing, it updates by itself */
-  function working(){return !!document.querySelector('#dlgRoot .scrim')||typing()}
+  function working(){return !!document.querySelector('#dlgRoot .scrim')||typing()||(window.__ameUp||0)>0}
   function show(v){if(document.getElementById('updDlg'))return;const pop=!!new URLSearchParams(location.search).get('pop');
     const p=document.createElement('div');p.id='updDlg';p.style.cssText='position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:100001;background:#f47b20;color:#fff;border-radius:999px;padding:7px 8px 7px 16px;font-weight:700;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.35);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px)';
     p.innerHTML='<span id="updT"></span><button type="button" id="updNow" style="background:#fff;color:#c4560c;border:0;border-radius:999px;padding:4px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer">Update now</button>';document.body.appendChild(p);
