@@ -918,11 +918,20 @@ async function revRec(mon,before,after){const ch=revDiff(before,after);if(!ch.le
   const last=REV.filter(r=>r.mon===mon&&!r.undone).sort((a,b)=>String(b.at).localeCompare(a.at))[0];
   if(last&&last.by===curUser&&now-new Date(last.at).getTime()<10*60e3){const ch2=revDiff(last.before,after);await db.doc('dsprev/'+last._id).update({at:new Date().toISOString(),ch:ch2,after,n:(last.n||1)+1});return}
   await db.doc('dsprev/'+mon+'_'+now.toString(36)).set({mon,at:new Date().toISOString(),by:curUser,before,after,ch,n:1})}
+const chHtml0=ch=>(ch||[]).map(c=>`<div class="rvch"><b>${E(c.site)}</b> <small class="muted">${c.when==='week'?'whole week':E(fmtD(c.when))}</small> ${c.add.length?`<span class="ad">+ ${E(c.add.join(', '))}</span>`:''} ${c.rm.length?`<span class="rmv">− ${E(c.rm.join(', '))}</span>`:''}</div>`).join('');
 async function revCancel(r){const mon=r.mon;if(!wkEditable(mon)){toast('That week is approved & locked');return}const later=REV.filter(x=>x.mon===mon&&!x.undone&&x.at>r.at);
-  if(!confirm('Cancel this change'+(later.length?' and the '+later.length+' change(s) made after it':'')+'?\n\nThe week goes back to how it was before '+fmtD(r.at)+' ('+r.by+').'))return;
-  const cur=JSON.parse(JSON.stringify(DAY[mon]||{}));const back={...JSON.parse(JSON.stringify(r.before||{})),lock:cur.lock||r.before.lock||null,sent:cur.sent||r.before.sent||null,editAt:new Date().toISOString(),editBy:curUser};if(!back.lock)delete back.lock;if(!back.sent)delete back.sent;
-  await db.doc('dday/'+mon).set(back);DAY[mon]=back;const now=new Date().toISOString();for(const x of [r,...later])await db.doc('dsprev/'+x._id).update({undone:{by:curUser,at:now}});
-  await db.doc('dsprev/'+mon+'_'+Date.now().toString(36)).set({mon,at:now,by:curUser,before:cur,ch:revDiff(cur,back),n:1,cancelOf:r._id});toast('Change cancelled');render()}
+  const cur=JSON.parse(JSON.stringify(DAY[mon]||{}));const back={...JSON.parse(JSON.stringify(r.before||{})),lock:cur.lock||(r.before||{}).lock||null,sent:cur.sent||(r.before||{}).sent||null,editAt:new Date().toISOString(),editBy:curUser};if(!back.lock)delete back.lock;if(!back.sent)delete back.sent;
+  const ch=revDiff(cur,back);
+  /* nothing would change → just remove the revision */
+  if(!ch.length){await db.doc('dsprev/'+r._id).delete();REV=REV.filter(x=>x._id!==r._id);toast('Nothing to undo — revision removed');return true}
+  const ok=await new Promise(res=>{const d=dlg(`<h3>Cancel this change?</h3><p class="muted" style="margin-top:0">${E(wkLabel(mon))} goes back to how it was before ${E(fmtD(r.at))} (${E(r.by||'')}).</p>
+    <div style="font-weight:700;margin:8px 0 4px">This will happen to the schedule:</div><div class="rvitem" style="border-left-color:#e0a63a">${chHtml0(ch)}</div>
+    ${later.length?`<div class="banner frwarn" style="margin-top:8px"><b>${later.length} later change(s) will be undone too</b> — ${later.map(x=>E((x.by||'')+' '+fmtD(x.at))).join(', ')}</div>`:''}
+    <p class="muted" style="font-size:12px">+ means the person goes back on that job · − means they come off it.</p>
+    <div class="bar"><button class="btn" id="rcN">Keep it</button><button class="go" id="rcY" style="width:auto">Cancel the change</button></div>`);d.querySelector('#rcN').onclick=()=>{closeDlg();res(false)};d.querySelector('#rcY').onclick=()=>{closeDlg();res(true)}});
+  if(!ok)return false;
+  await db.doc('dday/'+mon).set(back);DAY[mon]=back;SRV[mon]=JSON.stringify(back);const now=new Date().toISOString();for(const x of [r,...later])await db.doc('dsprev/'+x._id).update({undone:{by:curUser,at:now}});
+  await db.doc('dsprev/'+mon+'_'+Date.now().toString(36)).set({mon,at:now,by:curUser,before:cur,after:back,ch,n:1,cancelOf:r._id});toast('Change cancelled');render();return true}
 function asOf(mon,data,fn){const o=DAY[mon],od=date,os=dsSel;try{DAY[mon]=data;date=mon;dsSel='wk';return fn()}finally{DAY[mon]=o;date=od;dsSel=os}}
 function tblView(title,sub,html,back){const d=dlg(`<h3 style="margin-top:0">${E(title)}</h3><p class="muted" style="margin:-4px 0 8px;font-size:13px">${E(sub)}</p><div class="dsprev" id="tvB">${html}</div><div class="bar"><button class="btn" id="tvP">Print / PDF</button><span style="flex:1"></span><button class="btn" id="tvBk">Back</button></div>`);
   const root=document.getElementById('dlgRoot');const dl=root.querySelector('.dlg');if(dl)dl.style.maxWidth='980px';
