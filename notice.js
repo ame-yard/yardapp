@@ -24,13 +24,21 @@ const AUD=[['all','Everyone'],['Field','Field (FM / SFM / crew)'],['HQ','Office 
 /* lowest permission level that may see this notice (Crew … Editor); admins always see */
 const myLv=()=>{try{if(isOwner(curUser)||((perms&&perms.admins)||[]).includes(curUser))return 99;const L=typeof effLevel==='function'?effLevel(curUser):'crew';return typeof LVI==='function'?LVI(L):0}catch(e){return 0}};
 const lvOk=x=>!x.minLv||(typeof LVI!=='function')||myLv()>=LVI(x.minLv);
-const forMe=x=>{if(x.by===curUser)return true;if(!lvOk(x))return false;const a=x.aud||'all';if(a==='all')return true;if(a==='Field'||a==='HQ')return grp(curUser)===a;if(a==='roles')return (x.roles||[]).includes(role(curUser));if(a==='people')return (x.ppl||[]).includes(curUser);return true};
+/* who sees which kind of notice, by role — set by Kyle / Don only (config/ntcvis = {hide:{role:[cat,…]}}) */
+let VIS={};const visOk=x=>{if(isOwner(curUser))return true;const h=(VIS.hide||{})[role(curUser)]||[];return !h.includes(x.cat||'general')};
+function visDlg(){if(!isOwner(curUser))return;const roles=[...new Set([...(typeof ROLES!=='undefined'?ROLES:[]),...crew.map(c=>c.role).filter(Boolean)])];const H=JSON.parse(JSON.stringify(VIS.hide||{}));
+  $('#dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg" style="max-width:900px"><h3>Who sees which notices</h3><p class="muted" style="margin-top:0">Uncheck a box to hide that kind of notice from everyone in that role. Only you and Don can change this. Each notice's own audience still applies on top.</p>
+   <div class="panel" style="padding:0;overflow:auto"><table class="nttbl"><thead><tr><th>Role</th>${CAT.map(([k,l])=>`<th style="text-align:center">${E(l)}</th>`).join('')}</tr></thead><tbody>${roles.map(r=>`<tr><td><b>${E(r)}</b></td>${CAT.map(([k])=>`<td style="text-align:center"><input type="checkbox" data-vr="${E(r)}|${k}" ${(H[r]||[]).includes(k)?'':'checked'}></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+   <div class="bar"><button class="btn" id="vsX">Cancel</button><button class="go" id="vsS" style="width:auto">Save</button></div></div></div>`;
+  $('#vsX').onclick=closeDlg;$('#vsS').onclick=async()=>{const hide={};document.querySelectorAll('[data-vr]').forEach(i=>{if(!i.checked){const[r,k]=i.dataset.vr.split('|');(hide[r]=hide[r]||[]).push(k)}});try{await db.doc('config/ntcvis').set({hide,by:curUser,at:new Date().toISOString()});VIS={hide};closeDlg();render();try{AME.badges()}catch(e){}toast('Saved')}catch(e){toast('Could not save')}}}
+const forMe=x=>{if(x.by===curUser)return true;if(!visOk(x))return false;if(!lvOk(x))return false;const a=x.aud||'all';if(a==='all')return true;if(a==='Field'||a==='HQ')return grp(curUser)===a;if(a==='roles')return (x.roles||[]).includes(role(curUser));if(a==='people')return (x.ppl||[]).includes(curUser);return true};
 const live=x=>!x.until||x.until>=today();
 const readBy=(x)=>Object.keys((RD[x._id]||{}));
 const isRead=x=>!!(RD[x._id]||{})[curUser]||x.by===curUser;
 const mine=()=>N.filter(x=>live(x)&&forMe(x)).sort((a,b)=>(b.pin?1:0)-(a.pin?1:0)||String(b.at).localeCompare(String(a.at)));
 const unread=()=>mine().filter(x=>!isRead(x));
 (function w(){if(typeof db!=='undefined'&&db&&db.collection){
+  db.doc('config/ntcvis').onSnapshot(s=>{VIS=(s.data&&s.data())||{};try{AME.badges()}catch(e){}if(AME.cur==='ntc')render()},()=>{});
   db.collection('notices').onSnapshot(s=>{N=s.docs.map(d=>({...d.data(),_id:d.id}));try{AME.badges()}catch(e){}if(AME.cur==='ntc'&&!document.querySelector('#dlgRoot .scrim'))render();urgentPop()},()=>{});
   db.collection('noticeread').onSnapshot(s=>{RD={};s.docs.forEach(d=>RD[d.id]=d.data());try{AME.badges()}catch(e){}if(AME.cur==='ntc'&&!document.querySelector('#dlgRoot .scrim'))render()},()=>{});
 }else setTimeout(w,400)})();
@@ -60,12 +68,12 @@ function openOne(x){if(!x)return;$('#dlgRoot').innerHTML=`<div class="scrim shee
 function render(){const L=mine();const old=N.filter(x=>!live(x)&&((can()&&lvOk(x))||forMe(x))).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const base=nv==='cal'?[...L,...old]:(tab==='feed'?L:old);
   const q=nq.toLowerCase();const S=base.filter(x=>(!ncat||catOf(x)===ncat)&&(!q||((x.title||'')+' '+(x.body||'')+' '+(x.titleEs||'')+' '+(x.bodyEs||'')+' '+(x.by||'')).toLowerCase().includes(q)));
-  sec.innerHTML=`<div class="mplhead"><h2>Notices</h2>${can()?'<span class="mtop"><button class="btn pri" id="nNew">+ New notice</button></span>':''}</div>
+  sec.innerHTML=`<div class="mplhead"><h2>Notices</h2><span class="mtop">${isOwner(curUser)?'<button class="btn" id="nVis">Who sees what</button>':''}${can()?'<button class="btn pri" id="nNew">+ New notice</button>':''}</span></div>
    <div class="ntbar">${nv!=='cal'?`<div class="viewseg"><button data-nt="feed" aria-pressed="${tab==='feed'}">Current${unread().length?' · '+unread().length+' new':''}</button><button data-nt="old" aria-pressed="${tab==='old'}">Past</button></div>`:''}
     <input class="search ntq" id="nQ" placeholder="Search notices" value="${E(nq)}"><select id="nCat" class="ntcat"><option value="">All categories</option>${CAT.map(([k,l])=>`<option value="${k}"${ncat===k?' selected':''}>${l}</option>`).join('')}</select><span style="flex:1"></span>
     <div class="ntvw">${VIEWS.map(([k,l,ic])=>`<button type="button" data-nv="${k}" class="${nv===k?'on':''}" title="${l}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ic}</svg><span>${l}</span></button>`).join('')}</div></div>
    <div id="nBody">${({feed:vFeed,list:vList,cal:vCal,board:vBoard})[nv](S)}</div>`;
-  sec.querySelectorAll('[data-nt]').forEach(b=>b.onclick=()=>{tab=b.dataset.nt;render()});const nb=sec.querySelector('#nNew');if(nb)nb.onclick=()=>edit();
+  sec.querySelectorAll('[data-nt]').forEach(b=>b.onclick=()=>{tab=b.dataset.nt;render()});const nb=sec.querySelector('#nNew');if(nb)nb.onclick=()=>edit();{const v=sec.querySelector('#nVis');if(v)v.onclick=visDlg}
   sec.querySelectorAll('[data-nv]').forEach(b=>b.onclick=()=>{nv=b.dataset.nv;try{localStorage.setItem('ntcView',nv)}catch(e){}render()});
   {const i=$('#nQ');i.oninput=()=>{nq=i.value;clearTimeout(render._q);render._q=setTimeout(()=>{render();const j=$('#nQ');j.focus();j.setSelectionRange(j.value.length,j.value.length)},250)}}
   $('#nCat').onchange=e=>{ncat=e.target.value;render()};
