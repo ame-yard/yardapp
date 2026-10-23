@@ -9,7 +9,7 @@ async function libs(){if(!window.pdfjsLib){await ld('https://cdnjs.cloudflare.co
   if(!window.PDFLib)await ld('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js')}
 
 /* sheet ids: A5.41 · A-501 · A501 · S2.01 · M1.1 · FP-101 · A5.41A — 1–3 letters, digits, optional dot part */
-const SHEET=/\b([A-Z]{1,3})[-\s]?(\d{1,3}(?:\.\d{1,3})?[A-Z]?)\b/g;
+const SHEET=/\b([A-Z]{1,3})[-\s]?(\d{1,3}(?:\.\d{1,3}){0,2}[A-Z]?)\b/g;
 const norm=s=>String(s||'').toUpperCase().replace(/[\s-]/g,'');
 const DISC=new Set(['A','AD','AS','C','CS','D','E','ED','EL','FP','FA','G','GN','I','ID','L','LS','M','MP','P','PL','Q','R','RF','S','SD','T','TS','X','Y','DT','DW','EX','DM','IN','FS']);
 
@@ -26,7 +26,7 @@ async function analyze(pdf,onProg){const n=pdf.numPages;const pages=[];
   for(let i=1;i<=n;i++){const pg=await pdf.getPage(i);const [X0,Y0,X1,Y1]=pg.view;const W=X1-X0,H=Y1-Y0;const B=boxes(await pg.getTextContent());
     let links=[];try{links=(await pg.getAnnotations()).filter(a=>a.subtype==='Link').map(a=>Object.assign(a.rect.slice(),{ext:!!(a.url||a.unsafeUrl)}))}catch(e){}
     /* title block guess: biggest sheet-like text in the right 30% or bottom 22% of the sheet */
-    const cands=[];B.forEach(b=>{const t=b.s.trim();const m=t.match(/^([A-Z]{1,3})[-\s]?(\d{1,3}(?:\.\d{1,3})?[A-Z]?)$/);if(!m||!DISC.has(m[1]))return;const cx=(b.r[0]+b.r[2])/2-X0,cy=(b.r[1]+b.r[3])/2-Y0;const inTB=cx>W*.7||cy<H*.22;const corner=cx>W*.8&&cy<H*.25;cands.push({id:norm(t),label:t,score:b.h*(inTB?2:1)*(corner?1.6:1),b})});
+    const cands=[];B.forEach(b=>{const t=b.s.trim();const m=t.match(/^([A-Z]{1,3})[-\s]?(\d{1,3}(?:\.\d{1,3}){0,2}[A-Z]?)$/);if(!m||!DISC.has(m[1]))return;const cx=(b.r[0]+b.r[2])/2-X0,cy=(b.r[1]+b.r[3])/2-Y0;const inTB=cx>W*.7||cy<H*.22;const corner=cx>W*.8&&cy<H*.25;cands.push({id:norm(t),label:t,score:b.h*(inTB?2:1)*(corner?1.6:1),b})});
     cands.sort((a,b)=>b.score-a.score);
     pages.push({i,W,H,X0,Y0,B,links,sheet:cands[0]?cands[0].id:'',label:cands[0]?cands[0].label:'',alt:[...new Set(cands.slice(0,4).map(c=>c.label))]});
     onProg&&onProg(i,n)}
