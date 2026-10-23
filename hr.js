@@ -12,7 +12,7 @@ const daysTo=d=>Math.round((new Date(d+'T12:00:00')-new Date(today()+'T12:00:00'
 const fd=d=>d?(typeof fmtD==='function'?fmtD(d):d):'';
 const key=n=>String(n||'').replace(/[^\w]+/g,'_');
 const H=n=>HR[key(n)]||{};
-const isHR=()=>{try{return !!curUser&&(isOwner(curUser)||((perms&&perms.admins)||[]).includes(curUser)||(typeof curRole==='function'&&curRole()==='HR'))}catch(e){return false}};
+const isHR=()=>{try{return !!curUser&&(isOwner(curUser)||((perms&&perms.admins)||[]).includes(curUser)||(typeof curRole==='function'&&(curRole()==='HR'||(typeof deptsOf==='function'&&deptsOf(curUser).includes('HR')))))}catch(e){return false}};
 const short=p=>p.short||p.name;
 /* ---- definitions ---- */
 const ONB=[['offer','Offer letter signed'],['i9','I-9 completed'],['w4','W-4'],['de4','DE-4 (CA)'],['hb','Employee handbook signed'],['iipp','IIPP / safety orientation'],['sh','Sexual harassment training'],['dd','Direct deposit form'],['ec','Emergency contact on file'],['ppe','PPE issued'],['union','Union dispatch slip (if union)']];

@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.49',APP_DATE='2026-10-22';
+const APP_VERSION='7.50',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1159,12 +1159,13 @@ function editLog(lid){if(!isAdmin){toast('Only editors can change records.');ret
 function editCrew(k){if(!isAdmin)return;const c=crew[k];if(!c)return;if(isOwner(c.name)&&!isOwner(curUser)){toast('The owner account can only be changed by Kyle.');return}
   $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>Edit person</h3><div class="fields">
    <label class="f">Name<input id="p_n" value="${esc(c.name)}"></label><label class="f">Role<select id="p_r">${ROLES.map(r=>`<option value="${r}" ${r===c.role?'selected':''}>${RL(r)}</option>`).join('')}</select></label>
+   <div class="f wide" id="p_dw" ${['Office','HR'].includes(c.role)?'':'hidden'}><span>Office department <small class="muted">— pick one or more. Each one turns on that department's apps.</small></span><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">${DEPTS.map(d=>`<label style="display:flex;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" data-pd="${d}" ${deptsOf(c.name).includes(d)?'checked':''}> ${d}</label>`).join('')}</div></div>
    <label class="f wide" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="p_e" ${c.editor?'checked':''}> Editor (office tools)</label>
    <label class="f wide">Microsoft account email <small class="muted">— signs this person in automatically. Leave empty for crew who use the shared yard iPad.</small><input id="p_m" type="email" value="${esc(c.email||'')}" placeholder="name@amebuilders.net"></label></div>
    <div class="bar"><button class="btn" id="p_c">Cancel</button><button class="btn pri" id="p_s">Save</button></div></div></div>`;
-  $('#p_c').onclick=closeDlg;
+  $('#p_c').onclick=closeDlg;$('#p_r').onchange=()=>{$('#p_dw').hidden=!['Office','HR'].includes($('#p_r').value)};
   $('#p_s').onclick=async()=>{const n=isOwner(c.name)?c.name:$('#p_n').value.trim();if(!n)return;const ed=$('#p_e').checked;if(!ed&&c.editor&&crew.filter(x=>x.editor).length===1){toast('Keep at least one editor.');return}
-    const em=$('#p_m').value.trim().toLowerCase();if(em&&crew.some((x,i)=>i!==k&&(x.email||'').toLowerCase()===em)){toast('That email is already linked to someone else.');return}await saveCrew(crew.map((x,i)=>i===k?{...x,name:n,role:$('#p_r').value,editor:ed,email:em}:x));
+    const em=$('#p_m').value.trim().toLowerCase();if(em&&crew.some((x,i)=>i!==k&&(x.email||'').toLowerCase()===em)){toast('That email is already linked to someone else.');return}await saveCrew(crew.map((x,i)=>i===k?{...x,name:n,role:$('#p_r').value,editor:ed,email:em,depts:['Office','HR'].includes($('#p_r').value)?$$('[data-pd]').filter(i=>i.checked).map(i=>i.dataset.pd):[]}:x));
     if(n!==c.name)for(const j of jobs){const u={};['pm','fm','sfm'].forEach(f=>{if(j[f]===c.name)u[f]=n});if(Object.keys(u).length)db.doc('jobs/'+j._id).update(u).catch(()=>{})}
     toast('Saved');closeDlg()}}
 let repMode=false,repPick=new Set();
@@ -1874,6 +1875,10 @@ function isOwnerName(n){return ['Don S.','DON'].includes(n)}
 try{const u=JSON.parse(sessionStorage.getItem('ameUser')||'null');if(u&&Date.now()-u.t<10*60e3&&!(isOwnerName(u.n)&&u.n!==OWNER))curUser=u.n}catch(e){}
 try{const p=localStorage.getItem('ameOwnerStay');if(!curUser&&p===OWNER)curUser=p;else if(p&&p!==OWNER)localStorage.removeItem('ameOwnerStay')}catch(e){}
 
+/* Office departments — one person can be in several (e.g. Accounting + HR) */
+const DEPTS=['HR','Accounting','Estimate','General'];
+function deptsOf(n){const c=crew.find(x=>x.name===n);if(!c)return [];const d=Array.isArray(c.depts)?c.depts.slice():[];if(c.role==='HR'&&!d.includes('HR'))d.push('HR');return d}
+window.ameDepts=deptsOf;
 function curRole(){const c=crew.find(c=>c.name===curUser);return c?c.role:(curUser?'Guest':'')}
 function setUserRaw(n){window.__raw=1;try{setUser(n)}finally{window.__raw=0}}
 function setUser(n){if(viewAs==='__login'&&n){toast('Preview only — tap the banner to return');return}if(n&&n!==curUser&&!window.__raw){if(!canUseName(n)){logLogin(n,true);toast('“'+n+'” is registered to another device. Ask Kyle to allow this device.');return}logLogin(n,false);bindName(n)}setTimeout(()=>{try{beat()}catch(e){}},300);if(n!==curUser){yView='map';yLoc='';act='OUT';selMode=false;try{showTab('yard')}catch(e){}}curUser=n;selWho=n;try{if(!viewAs)sessionStorage.setItem('ameUser',JSON.stringify({n,t:Date.now()}));if(viewAs){}else if(isOwner(n))localStorage.setItem('ameOwnerStay',n);else localStorage.removeItem('ameOwnerStay')}catch(e){}lastAct=Date.now();
@@ -2026,7 +2031,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=7.22"></script>
+<script src="shell.js?v=7.23"></script>
 <script src="polish.js?v=462"></script>
 <script src="mpl.js?v=408"></script>
 <script src="eqp.js?v=484"></script>
@@ -2034,8 +2039,8 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="trucks.js?v=475"></script>
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
-<script src="dispatch.js?v=7.02"></script>
-<script src="hr.js?v=1"></script>
+<script src="dispatch.js?v=7.03"></script>
+<script src="hr.js?v=2"></script>
 <script src="notice.js?v=7.09"></script>
 <script src="admin.js?v=7.13"></script>
 <script src="lab.js?v=414"></script>
