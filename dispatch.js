@@ -31,7 +31,8 @@ const DOWN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const code=s=>{s=(s==='wk'?monOf(date):s);return s.slice(2,4)+s.slice(5,7)+s.slice(8,10)};
 const wkLabel=s=>{const a=new Date(s+'T12:00:00'),b=new Date(sunOf(s)+'T12:00:00');const f=x=>x.toLocaleDateString('en-US',{month:'short',day:'numeric'});return f(a)+' – '+f(b)};
 const dLabel=s=>new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-const canEdit=()=>{try{return !!(isAdmin||(typeof can==='function'&&can('DISPATCH')))}catch(e){return false}};
+/* only PMs, the President and the owners can change the schedule; everyone else with access is view-only */
+const canEdit=()=>{try{if(!curUser)return false;if(isOwner(curUser))return true;const r=typeof curRole==='function'?curRole():'';return r==='PM'||r==='President'}catch(e){return false}};
 const E=s=>esc(s==null?'':String(s));
 const sid=()=>Math.random().toString(36).slice(2,10);
 const jno=n=>String(n||'').replace(/^#/,'');
@@ -74,7 +75,7 @@ function rowsFor(d){const week=d==='wk';const mon=week?monOf(date):monOf(d);if(m
     .map(s=>{const weekend=!week&&dw>=5;const p=pick(s._id);const uniq=L=>L.reduce((o,a)=>o.some(x=>x.n===a.n)?o:[...o,{n:a.n,...(a.t?{t:a.t}:{})}],[]);let asg=null;if(!weekend&&s.asg&&s.asg.length){const wk2=uniq(s.asg.filter(a=>week?(a.from<=sunOf(mon)&&a.to>=monOf(mon)):(a.from<=d&&a.to>=d)));asg=wk2.length?wk2:uniq(s.asg)}return {s,crew:sortCrew((p&&p.crew)||(weekend?[]:(asg||s.crew||[]))),note:(p&&p.note!=null)?p.note:(s.note||''),own:!!(p&&p.own)}})}
 /* ---------- week lock: Complete → Approve (admin) → locked. Locked/complete weeks are frozen (stored per day) so
    later schedule changes never rewrite them. ---------- */
-const dAdm=()=>{try{return !!curUser&&(isOwner(curUser)||((typeof perms!=='undefined'&&perms&&perms.admins)||[]).includes(curUser))}catch(e){return false}};
+const dAdm=()=>{try{return !!curUser&&canEdit()&&(isOwner(curUser)||((typeof perms!=='undefined'&&perms&&perms.admins)||[]).includes(curUser))}catch(e){return false}};
 const lockOf=mon=>(DAY[mon]||{}).lock||null;
 const isLocked=mon=>{const l=lockOf(mon);return !!(l&&l.st==='approved')};
 const wkEditable=mon=>!isLocked(mon)||dAdm();
