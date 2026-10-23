@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='8.08',APP_DATE='2026-10-22';
+const APP_VERSION='8.09',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -2054,7 +2054,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
 <script src="dispatch.js?v=7.32"></script>
-<script src="hr.js?v=19"></script>
+<script src="hr.js?v=20"></script>
 <script src="notice.js?v=7.10"></script>
 <script src="admin.js?v=7.16"></script>
 <script src="lab.js?v=415"></script>
@@ -2186,4 +2186,17 @@ table.cardrows.eqtbl>tbody>tr>td small{font-size:12px}
 <div id="ameConf">© ${new Date().getFullYear()} AME Builders, Inc. · Confidential and proprietary — for authorized AME employees only. Do not copy or share.</div>
 <script>document.getElementById('ameConf').textContent='© '+new Date().getFullYear()+' AME Builders, Inc. · Confidential and proprietary — for authorized AME employees only. Do not copy or share.';</script>
 <style>.ofl{margin:4px 0 10px;padding-left:20px;font-size:13px;line-height:1.6}#ameConf{text-align:center;font-size:11px;color:var(--muted,#999);opacity:.75;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));line-height:1.4}</style>
-</body></html>
+<script>
+/* every table in the app sorts by tapping a column title (unless the screen already has its own sorting) */
+(function(){const OWN='[data-ps],[data-cs],[data-dss],[data-sks],[data-gsk],[data-sk],[data-k],[data-ws],th[data-sort],.tqs,.nmsort,[data-sort-own],.hrth,.skth,.gsort,.eqsort';
+  const val=c=>{if(!c)return null;const d=c.dataset.sort;if(d!=null)return isNaN(+d)?d.toLowerCase():+d;let t=(c.innerText||c.textContent||'').trim();if(!t||t==='—'||t==='-')return null;
+    const m=t.match(/^\$?\s*-?[\d,]+(\.\d+)?/);if(m&&/^[\$\d\-\s,.]+(%|[a-z]{0,6})?(\b|$)/i.test(t)&&!/\d+\/\d+\/\d+|[A-Za-z]{3} \d/.test(t))return parseFloat(m[0].replace(/[\$,\s]/g,''));
+    const dt=Date.parse(t.replace(/(\d+\/\d+\/)(\d{2})$/,'$120$2'));if(!isNaN(dt)&&/\d/.test(t)&&/(\d{4}|\d+\/\d+)/.test(t))return dt;return t.toLowerCase()};
+  document.addEventListener('click',e=>{const th=e.target.closest('thead th');if(!th||e.target.closest('.hrrz,button,input,select,a,label'))return;if(th.matches(OWN)||th.querySelector(OWN))return;
+    const tb=th.closest('table');if(!tb||tb.closest('[data-nosort],.dsprev,.hrdtbl,.dstable,.certv')||!tb.tBodies[0])return;
+    const ths=[...th.parentNode.children];const i=ths.indexOf(th);const rows=[...tb.tBodies[0].rows];if(rows.length<2||rows.some(r=>r.cells.length!==ths.length))return;
+    const d=th.dataset.sd==='1'?-1:1;ths.forEach(x=>{delete x.dataset.sd;const a=x.querySelector('.tsar');if(a)a.remove()});th.dataset.sd=d>0?'1':'-1';th.insertAdjacentHTML('beforeend',`<span class="tsar">${d>0?' ▲':' ▼'}</span>`);
+    rows.sort((a,b)=>{const x=val(a.cells[i]),y=val(b.cells[i]);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),undefined,{numeric:true}))*d});
+    rows.forEach(r=>tb.tBodies[0].appendChild(r))},true);
+  document.head.insertAdjacentHTML('beforeend','<style>table thead th{cursor:pointer}.tsar{color:var(--hi,#f47b20)}</style>')})();
+</script></body></html>
