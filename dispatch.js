@@ -154,7 +154,7 @@ function render(){if(!sec)return;try{sessionStorage.setItem('dsView',view)}catch
   const ed0=ed;const lk=lockOf(date);if(ed&&!wkEditable(date))ed=false;
   const rows=rowsFor(cd());const day=DAY[date]||{};const sent=day.sent;const ch=changed(cd());
   const used=new Set(rows.flatMap(r=>r.crew.map(c=>c.n)));const dup=new Set();{const seen=new Set();rows.forEach(r=>r.crew.forEach(c=>{if(seen.has(c.n))dup.add(c.n);seen.add(c.n)}))}
-  const OFF=offList(date);const free=(dsSel==='wk'?ndList(monOf(date)):STAFF.filter(p=>p.st==='Active'&&p.cls!=='Office'&&!used.has(p.name)&&!offOn(p.name,cd()))).slice().sort((a,b)=>prRank(a.name)-prRank(b.name)||lvRank(a.lv)-lvRank(b.lv)||a.name.localeCompare(b.name));
+  const OFF=offList(date);const free=(dsSel==='wk'?ndList(monOf(date)):STAFF.filter(p=>p.st==='Active'&&p.cls!=='Office'&&!yardMan(p.name)&&!used.has(p.name)&&!offOn(p.name,cd()))).slice().sort((a,b)=>prRank(a.name)-prRank(b.name)||lvRank(a.lv)-lvRank(b.lv)||a.name.localeCompare(b.name));
   const total=rows.reduce((a,r)=>a+r.crew.length,0);
   const prevSent=sent&&sent.snap||{};
   /* day view: hide people who are off that day. week view: show the baseline, annotated with where/when people split across the week. */
@@ -507,9 +507,11 @@ function renderGantt(seg,ed){const T=dn(today());const ppd=gz;const WKR={};rowsW
         const o={start:st,end:en};if(s.asg&&s.asg.length)o.asg=mode==='move'?s.asg.map(a=>({...a,from:addD(a.from,dd),to:addD(a.to,dd)})):fitAsg(s,st,en);await up(id,o);toast(jno(s.no)+': '+fmtD(st)+' – '+fmtD(en))}}})}
   sec.querySelectorAll('[data-glv]').forEach(r=>r.onclick=()=>leaveDlg(LEAVE.find(l=>l._id===r.dataset.glv)))}
 /* people not dispatched in a week, by priority */
+/* yard staff (app role Yard, e.g. Jose S.) are not field crew — leave them out of Not dispatched */
+function yardMan(n){try{return (crew||[]).some(c=>c.role==='Yard'&&(c.name===n||c.name===fl(n)))}catch(e){return false}}
 function ndList(mon){const used=new Set();rowsWk(mon).forEach(r=>r.crew.forEach(c=>used.add(c.n)));for(let i=0;i<5;i++)rowsFor(addD(mon,i)).forEach(r=>r.crew.forEach(c=>used.add(c.n)));
   const allOff=n=>{for(let i=0;i<5;i++){const dd=addD(mon,i);if(!LEAVE.some(l=>l.n===n&&l.from<=dd&&(l.to||l.from)>=dd))return false}return true};
-  return STAFF.filter(p=>p.st==='Active'&&p.cls!=='Office'&&!used.has(p.name)&&!allOff(p.name))}
+  return STAFF.filter(p=>p.st==='Active'&&p.cls!=='Office'&&!yardMan(p.name)&&!used.has(p.name)&&!allOff(p.name))}
 function ndBtn(mon){const L=ndList(mon);const by=k=>L.filter(p=>String(p.pr||'')===k).length;return `<button type="button" class="gnd${L.length?'':' zero'}" id="gNd" title="Active field people with no job in ${E(wkLabel(mon))} — tap for the list"><span class="gndt">Not dispatched <b>${L.length}</b></span>${PRI.slice(1).concat([PRI[0]]).map(([k,l,c])=>{const n=by(k);return n?`<span class="gndp" style="--p:${k?c:'#9aa0a6'}" title="${k?l+' priority':'No priority'}: ${n}"><i></i>${n}</span>`:''}).join('')}</button>`}
 function ndDlg(mon){const L=ndList(mon);const d=dlg(`<h3>Not dispatched · ${E(wkLabel(mon))}</h3><p class="muted" style="margin-top:0">${L.length} active field people with no job that week (people off the whole week are left out).</p>${PRI.slice(1).concat([PRI[0]]).map(([k,l,c])=>{const g=L.filter(p=>String(p.pr||'')===k).sort((a,b)=>lvRank(a.lv)-lvRank(b.lv)||short(a.name).localeCompare(short(b.name)));return g.length?`<div class="ndgrp"><div class="ndh"><b class="prd" style="--p:${k?c:'transparent'}"></b><b>${k?l+' priority':'No priority'}</b><small class="muted">${g.length}</small></div><div class="dscrew">${g.map(p=>`<span class="dschip${['FM','SFM'].includes(p.lv)?' fm':''}"><span class="cn">${dot(p.name)}${E(short(p.name))}</span>${p.lv?`<em>${E(p.lv)}</em>`:''}</span>`).join('')}</div></div>`:''}).join('')||'<p class="muted">Everyone is dispatched.</p>'}<div class="bar"><button class="btn" id="ndB">Open that week's board</button><button class="go" id="ndX" style="width:auto">Close</button></div>`);d.querySelector('#ndX').onclick=closeDlg;d.querySelector('#ndB').onclick=()=>{closeDlg();date=mon;dsSel='wk';view='day';render()}}
 /* MS Project-style resource picker: checkboxes for the whole job */
