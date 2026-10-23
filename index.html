@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.70',APP_DATE='2026-10-22';
+const APP_VERSION='7.71',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -2046,13 +2046,13 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 </script>
 <script src="shell.js?v=7.24"></script>
 <script src="polish.js?v=462"></script>
-<script src="mpl.js?v=408"></script>
+<script src="mpl.js?v=409"></script>
 <script src="eqp.js?v=485"></script>
 <script src="field.js?v=461"></script>
 <script src="trucks.js?v=477"></script>
 <script src="safety.js?v=418"></script>
 <script src="deliv.js?v=432"></script>
-<script src="dispatch.js?v=7.14"></script>
+<script src="dispatch.js?v=7.15"></script>
 <script src="hr.js?v=2"></script>
 <script src="notice.js?v=7.09"></script>
 <script src="admin.js?v=7.15"></script>
@@ -2062,17 +2062,19 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="plans.js?v=40"></script>
 <script src="takeoff.js?v=6.93"></script>
 <script src="bid.js?v=2"></script><script src="est.js?v=4"></script>
-<script src="revu.js?v=17"></script><script src="hyperlink.js?v=6"></script>
+<script src="revu.js?v=18"></script><script src="hyperlink.js?v=6"></script>
 <script src="names.js?v=11"></script>
 <script src="tsheet.js?v=6.92"></script><script src="timesheets.js?v=4"></script><script src="weather.js?v=3"></script>
 <script src="labels.js?v=425"></script>
 <script src="scan.js?v=424"></script>
 <script>
+/* apps register what to bring back after an update: window.ameKeep(id,{get,set}) */
+window.__ameKeep=window.__ameKeep||{};window.ameKeep=(id,f)=>{window.__ameKeep[id]=f};
 /* auto-detect a newer app version */
 (function(){let shown=false,later=0;
   /* restore what was in progress before the update */
   try{const r=JSON.parse(sessionStorage.getItem('ameUpdRestore')||'null');if(r){sessionStorage.removeItem('ameUpdRestore');const go=()=>{if(typeof curUser==='undefined'||!curUser||typeof items==='undefined'||!items.length){setTimeout(go,500);return}
-      try{if(r.cart&&r.cart.length){cart=r.cart;renderCartBar()}if(r.mod&&r.mod!=='home'&&AME.mod(r.mod))AME.open(r.mod);if(r.tab&&r.mod==='yard')showTab(r.tab);if(r.act){const b=document.querySelector('#actions .act[data-act="'+r.act+'"]');b&&b.click()}closeDlg&&closeDlg();toast('Updated to '+APP_VERSION+' — everything you were doing is still here')}catch(e){}};setTimeout(go,800)}}catch(e){}
+      try{if(r.cart&&r.cart.length){cart=r.cart;renderCartBar()}if(r.mod&&r.mod!=='home'&&AME.mod(r.mod))AME.open(r.mod);if(r.tab&&r.mod==='yard')showTab(r.tab);if(r.act){const b=document.querySelector('#actions .act[data-act="'+r.act+'"]');b&&b.click()}for(const [k,v] of Object.entries(r.keep||{})){const f=(window.__ameKeep||{})[k];if(f)try{f.set(v)}catch(e){}}if(r.y)setTimeout(()=>scrollTo({top:r.y}),900);closeDlg&&closeDlg();toast('Updated to '+APP_VERSION+' — everything you were doing is still here')}catch(e){}};setTimeout(go,800)}}catch(e){}
   async function doUpdate(v,btn){btn.disabled=true;btn.textContent='Saving your work…';
     try{for(const h of (window.ameSaveHooks||[]))await h()}catch(e){}
     /* never reload until every pending write has flushed to the server (pending always returns to 0, even on error, so this can't hang) */
@@ -2080,7 +2082,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     /* if a save failed (bad connection), do NOT reload and risk losing it — let them retry */
     if(document.getElementById('syncTxt')?.dataset.s==='error'){btn.disabled=false;btn.textContent='Couldn’t save — check connection & tap to retry';btn.onclick=e=>doUpdate(v,e.target);return}
     try{const tab=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab;const act=document.querySelector('#actions .act[aria-pressed="true"]')?.dataset.act;
-      sessionStorage.setItem('ameUpdRestore',JSON.stringify({cart:(typeof cart!=='undefined'?cart:[]),mod:AME.cur,tab,act}))}catch(e){}
+      const keep={};for(const [k,f] of Object.entries(window.__ameKeep||{})){try{const v=f.get();if(v!=null)keep[k]=v}catch(e){}}sessionStorage.setItem('ameUpdRestore',JSON.stringify({cart:(typeof cart!=='undefined'?cart:[]),mod:AME.cur,tab,act,keep,y:scrollY}))}catch(e){}
     btn.textContent='Updating…';{const P=new URLSearchParams(location.search);const keep=['pop','doc','path'].filter(k=>P.get(k)).map(k=>'&'+k+'='+encodeURIComponent(P.get(k))).join('');try{window.__rvSavePos&&window.__rvSavePos()}catch(e){}location.replace(location.pathname+'?v='+v+keep)}}
   function busy(){const d=document.querySelector('#dlgRoot .dlg');return !!(d&&d.querySelector('input:not([type=hidden]),textarea,select'))}
   function typing(){const a=document.activeElement;return !!(a&&(a.isContentEditable||(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='checkbox'&&a.type!=='radio'&&a.type!=='button')))}

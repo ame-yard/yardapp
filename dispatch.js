@@ -9,7 +9,7 @@ let dpm=(()=>{try{return localStorage.getItem('dsPM')||''}catch(e){return ''}})(
 const dordKey=()=>'ameDspOrd:'+(typeof curUser!=='undefined'?curUser:'');
 const dordGet=()=>{try{return JSON.parse(localStorage.getItem(dordKey())||'[]')}catch(e){return[]}};
 const dordPut=a=>{try{localStorage.setItem(dordKey(),JSON.stringify(a))}catch(e){}};
-let S=[],DAY={},STAFF=[],CFG={},LEAVE=[],view=(()=>{try{return sessionStorage.getItem('dsView')||'day'}catch(e){return 'day'}})(),date=monOf(today()),q='',fltSite='active';
+let S=[],DAY={},STAFF=[],CFG={},LEAVE=[],view=(()=>{try{return sessionStorage.getItem('dsView')||'day'}catch(e){return 'day'}})(),date=(()=>{const t=today(),w=new Date(t+'T12:00').getDay();if(!(w===5||w===6||w===0))return monOf(t);const d=new Date(t+'T12:00');d.setDate(d.getDate()+(w===0?1:8-w));return monOf(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))})(),q='',fltSite='active';
 let dsDrag=0;
 /* safety net: any pointer release sweeps away stray drag clones (even if a drag was interrupted mid-way, and on any screen) */
 function dsClearGhosts(){document.querySelectorAll('.dscard.dsdrag,.dschip.dsghost,.dsghost').forEach(x=>x.remove());document.body.classList.remove('dsdragging')}
@@ -440,7 +440,7 @@ const GSK={no:s=>jno(s.no).padStart(12,'0'),nm:s=>(s.name||'').toLowerCase(),sys
 const gSort=a=>{if(gS.k==='man'){const o=gOrdGet();const ix=s=>{const i=o.indexOf(s._id);return i<0?1e6:i};return a.sort((x,y)=>ix(x)-ix(y)||(x.start||'').localeCompare(y.start||''))}const f=GSK[gS.k]||GSK.start;return a.sort((x,y)=>{const p=f(x),q=f(y);return (p<q?-1:p>q?1:0)*gS.d||(x.start||'').localeCompare(y.start||'')||jno(x.no).localeCompare(jno(y.no),undefined,{numeric:true})})};
 const GWD={no:44,nm:260,sys:110,pic:80,res:150};let GW=(()=>{try{return {...GWD,...JSON.parse(localStorage.getItem('dsGW')||'{}')}}catch(e){return {...GWD}}})();
 const gwVars=ed=>{const dt=ed?290:110;const sum=GW.no+GW.nm+GW.sys+GW.pic+24+34+(ed?GW.res:0)+dt+8*(ed?8:7)+(gHideSt?-8:50)+48;const glw=GW.split?Math.min(Math.max(sum+600,1800),Math.max(120,GW.split)):sum;return `--w-no:${GW.no}px;--w-nm:${GW.nm}px;--w-sys:${GW.sys}px;--w-pic:${GW.pic}px;--w-res:${GW.res}px;--glw-d:${glw}px`};
-let gz=(()=>{try{const v=+localStorage.getItem('dsGz')||7;return [3,7,36].includes(v)?v:7}catch(e){return 7}})(),gShowOld=false,gWk=addD(monOf(today()),7);
+let gz=(()=>{try{const v=+localStorage.getItem('dsGz')||7;return [3,7,36].includes(v)?v:7}catch(e){return 7}})(),gShowOld=false,gWk=date;
 const dn=s=>Math.round(new Date(s+'T12:00:00')/864e5);const fromN=n=>{const d=new Date(n*864e5);return d.toISOString().slice(0,10)};
 const fl=n=>{const w=String(n||'').replace(/^\d+\s+/,'').trim().split(/\s+/).filter(Boolean);return w.length>1?w[0]+' '+w[w.length-1][0].toUpperCase()+'.':(w[0]||'')};
 const crewNamesAll=s=>crewNames(s);const crewNames=s=>{const a=s.asg&&s.asg.length?[...new Map(s.asg.map(x=>[x.n,x])).values()]:(s.crew||[]);return sortCrew(a).map(c=>fl(c.n))};
@@ -1045,6 +1045,7 @@ body.gfull #tab-dsp{position:fixed;inset:0;z-index:9990;background:#2b2724;paddi
 .dsstaff{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-bottom:30px}.dssrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line,#555);border-radius:12px;cursor:pointer}.dssn{flex:1;min-width:0;display:flex;flex-direction:column}.dssn b,.dssn small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dslv{font-style:normal;font-size:11px;font-weight:700;opacity:.8;flex:none}.dssc{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex:none;font-size:12px;user-select:text;-webkit-user-select:text;max-width:46%;text-align:right}.dssc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.dsem{opacity:.7}.dsinfo{flex-direction:column;gap:4px;user-select:text;-webkit-user-select:text}.dsinfo b{display:inline-block;width:52px;font-size:12px;opacity:.7}.dssc .btn{padding:6px 8px;line-height:0}
 .dlg label.f{min-width:0}.dlg input[type=date]{min-width:0;width:100%;box-sizing:border-box}.f2col{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}.f2col label.f{margin:0}label.chk{display:flex;align-items:center;gap:8px;margin:6px 0}
 </style>`);
+;(function(){const reg=()=>{if(!window.ameKeep){setTimeout(reg,300);return}window.ameKeep('dsp',{get:()=>AME.cur==='dsp'?{view,date,dsSel,gWk,gz}:null,set:v=>{view=v.view||view;date=v.date||date;dsSel=v.dsSel??dsSel;gWk=v.gWk||gWk;if(v.gz)gz=v.gz;try{sessionStorage.setItem('dsView',view)}catch(e){}setTimeout(()=>{try{render()}catch(e){}},300)}})};reg()})();
 })();
 
 /* finish date can never be before start (schedule rows, job dialog, time off) */

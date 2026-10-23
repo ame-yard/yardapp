@@ -597,6 +597,7 @@ const IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-widt
   document.head.insertAdjacentHTML('beforeend','<style>.rvsolo header.top,.rvsolo .statusrow,.rvsolo .appback,.rvsolo #plFs,.rvsolo footer,.rvsolo .foot{display:none!important}.rvsolo body{padding:0}</style>');
   try{if(P.get('path'))setTimeout(()=>{try{getPlan({path:P.get('path')}).catch(()=>{})}catch(e){}},0);if(typeof libs==='function')libs().catch(()=>{})}catch(e){}
   let n=0;const go=()=>{n++;try{if(typeof curUser!=='undefined'&&curUser&&window.AME&&AME.mod('mkp')&&AME.allowed(AME.mod('mkp'))&&RDOCS.length){AME.open('mkp');const id=P.get('doc');const d=RDOCS.find(x=>x._id===id);if(d){open(d);document.title=(d.name||'PDF')+' — AME PDF'}setTimeout(()=>{const s=document.getElementById('tab-mkp');if(s&&window.__plFsSet)window.__plFsSet(s,true)},400);return}}catch(e){}if(n<120)setTimeout(go,500)};go()})();
+;(function(){const reg=()=>{if(!window.ameKeep){setTimeout(reg,300);return}window.ameKeep('mkp',{get:()=>AME.cur==='mkp'&&K.doc&&!new URLSearchParams(location.search).get('pop')?{id:K.doc._id}:null,set:v=>{let n=0;(function go(){const d=(RDOCS||[]).find(x=>x._id===v.id);if(!d){if(n++<60)setTimeout(go,300);return}open(d)})()}})};reg()})();
 })();
 
 ;document.head.insertAdjacentHTML('beforeend','<style>.rvdrop{outline:3px dashed var(--accent,#f47b20);outline-offset:-6px;border-radius:12px}</style>');
