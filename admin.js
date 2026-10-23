@@ -81,6 +81,8 @@ function apwDlg(then,mode){const me=apwKey(curUser);const rec=APW[me];const sett
     if(await check($i('apw1').value)){sessionStorage.setItem('ameAdmF',0);apwSet();closeDlg();then&&then()}else{fail();err('Wrong PIN.');$i('apw1').value='';$i('apw1').focus()}};
   $i('apwG').onclick=go;document.querySelectorAll('#dlgRoot input').forEach(x=>x.onkeydown=e=>{if(e.key==='Enter')go()})}
 window.ameAdminPw=()=>apwDlg(null,'set');
+/* ask the Admin PIN for one change (always asks, does not unlock Admin) */
+window.ameAskPin=then=>{if(!APW[apwKey(curUser)]){apwDlg(then,'set');return}const u0=(()=>{try{return sessionStorage.getItem('ameAdmU')}catch(e){return null}})();try{sessionStorage.removeItem('ameAdmU')}catch(e){}apwDlg(()=>{try{if(u0)sessionStorage.setItem('ameAdmU',u0);else sessionStorage.removeItem('ameAdmU')}catch(e){}then&&then()})};
 function renderMaint(){const on=document.getElementById('mtOn'),off=document.getElementById('mtOff');if(!on)return;on.onclick=async()=>{await db.doc('config/app').update({maint:{on:true,msg:document.getElementById('mtMsg').value.trim(),by:curUser,at:new Date().toISOString()}});toast('Maintenance notice is on')};off.onclick=async()=>{await db.doc('config/app').update({maint:{on:false}});toast('Maintenance notice is off')}}
 function renderTrash(){if(admBusy(renderTrash))return;const P=document.getElementById('admTrash');if(!P)return;P.hidden=!isOwner(curUser);if(P.hidden)return;
   const q=trq.toLowerCase();const rows=[...TR].sort((a,b)=>String(b.at).localeCompare(String(a.at))).filter(r=>!q||[trLabel(r),r.coll,r.by,CN[r.coll]].join(' ').toLowerCase().includes(q));
