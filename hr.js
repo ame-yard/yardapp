@@ -9,7 +9,7 @@ let STAFF=[],CERT=[],RATE=[],LEAVE=[],HR={},INC=[],tab='dash',q='',fSt='Active',
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const addD=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
 const daysTo=d=>Math.round((new Date(d+'T12:00:00')-new Date(today()+'T12:00:00'))/864e5);
-const fd=d=>d?(typeof fmtD==='function'?fmtD(d):d):'';
+const fd=d=>{if(!d)return '';const t=new Date(String(d).slice(0,10)+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
 const key=n=>String(n||'').replace(/[^\w]+/g,'_');
 const H=n=>HR[key(n)]||{};
 const isHR=()=>{try{return !!curUser&&(isOwner(curUser)||((perms&&perms.admins)||[]).includes(curUser)||(typeof curRole==='function'&&(curRole()==='HR'||(typeof deptsOf==='function'&&deptsOf(curUser).includes('HR')))))}catch(e){return false}};
