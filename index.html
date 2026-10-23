@@ -32,7 +32,7 @@ html[data-theme=light] .dsinact[aria-pressed]{color:#c0392b}
 <script>document.documentElement.classList.add('boot');setTimeout(()=>document.documentElement.classList.remove('boot'),4000)</script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=445"></script>
+<script src="msbackend.js?v=446"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.67',APP_DATE='2026-10-22';
+const APP_VERSION='7.68',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1941,7 +1941,14 @@ function showLoginPicker(){
 }
 
 $('#verTxt').textContent=innerWidth<600?APP_VERSION:`App ${APP_VERSION} · ${APP_DATE}`;
-let lastSync=null;function markSync(){lastSync=new Date();if(Date.now()<(window.__svUntil||0))return;$('#syncTxt').textContent=(innerWidth<600?'':'Synced ')+lastSync.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'})}
+let lastSync=null;function markSync(){lastSync=new Date();setLive()}
+/* one status: All saved · Live / Saving… / Offline / Save failed. Save + Sync buttons only show when something is wrong */
+function setLive(){const t=document.getElementById('syncTxt');if(!t)return;const st=t.dataset.s||'';const off=navigator.onLine===false;const bad=off||st==='error';
+  const [txt,col]=off?['Offline — changes save when you’re back online','#ff8a7a']:st==='error'?['Save failed — tap Retry','#ff8a7a']:st==='saving'?['Saving…','']:['All saved · Live','#7fd18b'];
+  t.innerHTML=`<i class="lvdot" style="background:${col||'#e0a63a'}"></i>${txt}`;t.style.color=col;t.title=lastSync?'Last update from the server '+lastSync.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}):'';
+  const sb=document.getElementById('saveBtn'),yb=document.getElementById('syncBtn');if(sb)sb.hidden=!bad||off;if(yb){yb.hidden=!bad||off;if(!yb.disabled)yb.textContent='⟳ Retry'}}
+window.addEventListener('online',()=>{setLive();try{ameSync()}catch(e){}});window.addEventListener('offline',setLive);
+document.head.insertAdjacentHTML('beforeend','<style>.lvdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}#syncTxt{white-space:nowrap}</style>');setTimeout(setLive,0);
 (function(){let y0=null,dy=0,busy=false;const P=$('#ptr'),T=$('#ptrTxt');
   const top=()=>(window.scrollY||document.documentElement.scrollTop||0)<=0;
   document.addEventListener('touchstart',e=>{if(busy||$('#dlgRoot').firstChild||$('#loginRoot').firstChild||!top()){y0=null;return}y0=e.touches[0].clientY;dy=0},{passive:true});
@@ -1962,7 +1969,7 @@ $('#bellBtn').onclick=e=>{e.stopPropagation();let p=$('#bellPop');if(p){p.remove
   p.innerHTML=`<div class="bph"><b>Recent updates</b><small class="muted">${logs.filter(g=>g.ts>seen&&isOther(g)).length} new</small>${'Notification' in window&&Notification.permission!=='granted'?'<button type="button" class="btn small" id="bellNotif" title="Get truck and delivery alerts on this device">Turn on alerts</button>':''}${l.length?'<button type="button" class="btn small" id="bellClr" style="margin-left:auto">Clear</button>':''}</div>`+(l.length?l.map(g=>`<div class="bpi ${isOther(g)&&g.ts>seen?'new':''}" data-vi="${esc(g.itemId||'')}" ${g.action==='DELIV'&&g.dv?`data-dvc="${esc(g.dv)}"`:''}${g.action==='DISPATCH'||g.action==='DSPWK'?'data-dsp="1"':''} style="cursor:pointer" title="Open this item">${thumb(byId(g.itemId))}<div><b>${esc(g.by||'')}</b> <span class="a-${g.action}">${ACTNAME[g.action]||g.action}</span> · ${esc(g.name||'')}${g.n?` <span class="muted">(${g.n} ${esc(g.unit||'')})</span>`:''}${g.job?` <span class="muted">${esc(g.job)}</span>`:''}<small class="muted">${fmtD(g.ts)}${g.note?' · '+esc(g.note):''}</small></div><button type="button" class="bpx" data-bh="${esc(hk(g))}" aria-label="Remove this notification" title="Remove">×</button></div>`).join(''):`<div class="muted" style="padding:12px">${clr?'All caught up. Everything is still in Activity.':'No activity yet.'}</div>`);
   p.querySelectorAll('[data-vi]').forEach(x=>x.onclick=()=>{p.remove();if(x.dataset.vi==='__login'){AME.open('admin');return}if(x.dataset.dsp){AME.open('dsp');return}if(x.dataset.dvc&&window.ameDelivClaim){window.ameDelivClaim(x.dataset.dvc);return}viewItem(x.dataset.vi)});p.querySelectorAll('[data-bh]').forEach(x=>x.onclick=ev=>{ev.stopPropagation();hid=[x.dataset.bh,...hid].slice(0,300);try{localStorage.setItem(ck+':h',JSON.stringify(hid))}catch(e){}x.closest('.bpi').remove()});{const nb=p.querySelector('#bellNotif');if(nb)nb.onclick=ev=>{ev.stopPropagation();p.remove();window.ameNotifyAsk&&window.ameNotifyAsk()}}{const cb=p.querySelector('#bellClr');if(cb)cb.onclick=ev=>{ev.stopPropagation();try{localStorage.setItem(ck,(logs[0]&&logs[0].ts)||new Date().toISOString())}catch(x){}p.remove();markSeen();$('#bellBtn').click()}}document.body.appendChild(p);const r=$('#bellBtn').getBoundingClientRect();p.style.top=(r.bottom+8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px';markSeen()};
 document.addEventListener('click',e=>{const p=$('#bellPop');if(p&&!p.contains(e.target))p.remove()});
-$('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;ameSync().finally(()=>{$('#syncBtn').textContent='⟳ Sync to latest';$('#syncBtn').disabled=false})};
+$('#syncBtn').onclick=()=>{$('#syncBtn').textContent='Syncing…';$('#syncBtn').disabled=true;ameSync().finally(()=>{$('#syncBtn').textContent='⟳ Retry';setLive();$('#syncBtn').disabled=false})};
 async function ameSync(){try{const d=await window.claude.use('db');await d.refresh();try{markSync()}catch(e){}}catch(e){toast&&toast('Sync failed — check connection')}}
 
 matchMedia('(max-width:600px)').addEventListener('change',e=>{if(e.matches&&$('#tab-yard').hidden&&!isAdmin)showTab('yard')});
@@ -2076,15 +2083,20 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
       sessionStorage.setItem('ameUpdRestore',JSON.stringify({cart:(typeof cart!=='undefined'?cart:[]),mod:AME.cur,tab,act}))}catch(e){}
     btn.textContent='Updating…';{const P=new URLSearchParams(location.search);const keep=['pop','doc','path'].filter(k=>P.get(k)).map(k=>'&'+k+'='+encodeURIComponent(P.get(k))).join('');try{window.__rvSavePos&&window.__rvSavePos()}catch(e){}location.replace(location.pathname+'?v='+v+keep)}}
   function busy(){const d=document.querySelector('#dlgRoot .dlg');return !!(d&&d.querySelector('input:not([type=hidden]),textarea,select'))}
+  function typing(){const a=document.activeElement;return !!(a&&(a.isContentEditable||(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='checkbox'&&a.type!=='radio'&&a.type!=='button')))}
   function show(v){if(document.getElementById('updDlg'))return;if(busy()){setTimeout(()=>show(v),15000);return}
+    /* nothing open and they haven't touched anything for 20s → update by itself, quietly */
+    if(!new URLSearchParams(location.search).get('pop')&&!document.querySelector('#dlgRoot .scrim')&&!typing()){if(Date.now()-(typeof lastAct!=='undefined'?lastAct:0)<20000){setTimeout(()=>show(v),5000);return}
+      const p=document.createElement('div');p.id='updDlg';p.textContent='Updating to '+v+'…';p.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:100001;background:#f47b20;color:#fff;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.35)';document.body.appendChild(p);
+      const fake={disabled:false,textContent:'',onclick:null};setTimeout(()=>{if(document.querySelector('#dlgRoot .scrim')||typing()||Date.now()-lastAct<3000){p.remove();setTimeout(()=>show(v),15000);return}doUpdate(v,fake).then(()=>{if(fake.onclick){p.textContent='Couldn’t save — update later';setTimeout(()=>p.remove(),4000)}})},2500);return}
     if(new URLSearchParams(location.search).get('pop')){const p=document.createElement('button');p.id='updDlg';p.type='button';p.textContent='New version '+v+' — tap to reload (your place is kept)';p.style.cssText='position:fixed;right:12px;bottom:46px;z-index:100001;background:#f47b20;color:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer';p.onclick=()=>doUpdate(v,p);document.body.appendChild(p);return}
     const w=document.createElement('div');w.id='updDlg';w.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(10,8,6,.55);display:flex;align-items:center;justify-content:center;padding:20px';
     w.innerHTML=`<div style="background:var(--panel,#3b3633);border:1px solid var(--line,#5a514a);border-radius:16px;max-width:380px;width:100%;padding:22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)"><div style="line-height:1;color:var(--hi,#f26a1b)"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div><h3 style="margin:10px 0 6px">New version ready</h3><p class="muted" style="margin:0 0 16px">Version ${v} is here. Your cart and anything you're editing are saved first, then the app reloads right where you are.</p><button class="go" id="updGo" style="width:100%;min-height:52px">Update now</button></div>`;
     document.body.appendChild(w);w.querySelector('#updGo').onclick=e=>doUpdate(v,e.target)}
   async function chk(){if(shown||document.hidden||Date.now()-later<30*60e3)return;try{const t=await (await fetch(location.pathname+'?vchk='+Date.now(),{cache:'no-store'})).text();const m=t.match(/APP_VERSION='([\d.]+)'/);if(m&&m[1]!==APP_VERSION){shown=true;show(m[1])}}catch(e){}}
-  setTimeout(chk,8000);setInterval(chk,120000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
+  setTimeout(chk,8000);setInterval(chk,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
 
-window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st;t.textContent=st==='saving'?'Saving…':st==='saved'?'Saved':'Save failed — tap Sync';t.style.color=st==='error'?'#ff8a7a':st==='saved'?'#7fd18b':'';if(st!=='saved')window.__svUntil=Date.now()+60000;if(st==='saved'){window.__svUntil=Date.now()+4000;clearTimeout(window.__svT);window.__svT=setTimeout(()=>{t.style.color='';window.__svUntil=0;try{markSync()}catch(_){}},4100)}});
+window.addEventListener('ame-save',e=>{const t=document.getElementById('syncTxt');if(!t)return;const st=e.detail;t.dataset.s=st==='saved'?'':st;try{setLive()}catch(_){}});
 window.addEventListener('beforeunload',e=>{if(document.getElementById('syncTxt')?.dataset.s==='saving'){e.preventDefault();e.returnValue=''}});
 
 /* install as an app — and move people off the old address / old icon */

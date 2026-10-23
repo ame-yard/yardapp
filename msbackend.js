@@ -240,7 +240,7 @@ readyP=(async()=>{
   else try{await sd}catch(e){gate(e.message||String(e),false);throw e}
   (function tick(){setTimeout(()=>{poll().finally(tick)},CFG.pollMs*(0.8+Math.random()*0.5))})();
   setTimeout(()=>{let d='';try{d=localStorage.getItem('ameBkDay')}catch(e){}if(d!==new Date().toLocaleDateString('en-CA'))bkRun(false).catch(e=>console.warn('backup',e))},20000);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
+  {let lp=0;const nowPoll=()=>{if(document.hidden||Date.now()-lp<3000)return;lp=Date.now();poll()};document.addEventListener('visibilitychange',nowPoll);window.addEventListener('focus',nowPoll);window.addEventListener('online',()=>{lp=0;nowPoll()});window.addEventListener('pageshow',nowPoll)}
 })();
 window.claude={use:async name=>{
   await readyP;
