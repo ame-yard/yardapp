@@ -33,7 +33,7 @@ async function init(){
     cache:{cacheLocation:'localStorage'}});
   await msal.initialize();
   const r=await msal.handleRedirectPromise().catch(e=>{gate('Sign-in failed: '+(e.errorMessage||e.message),true);throw e});
-  account=r?.account||msal.getAllAccounts()[0]||null;
+  account=r?.account||msal.getAllAccounts()[0]||null;/* a different Microsoft account on this device: drop the previous person's cached data */try{const who=(account&&account.username||'').toLowerCase();const was=localStorage.getItem('amecWho');if(who&&was&&was!==who)Object.keys(localStorage).filter(k=>k.startsWith('amec:')).forEach(k=>localStorage.removeItem(k));if(who)localStorage.setItem('amecWho',who)}catch(e){}
   if(!account){gate('Sign in once with your company Microsoft account. You will stay signed in on this device.',true);
     return new Promise(()=>{})}               // waits for redirect
   msal.setActiveAccount(account);ungate();
