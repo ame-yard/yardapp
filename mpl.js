@@ -275,6 +275,7 @@ function renderYard(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m|
     const q=x=>R.querySelector(x);q('#yaN').focus();q('#yaX').onclick=()=>{R.innerHTML=''};
     q('#yaOk').onclick=async()=>{const nm=q('#yaN').value.trim();const n=Math.max(1,parseFloat(q('#yaQ').value)||1);if(!nm)return;const y=items.find(i=>(i.name+(i.size&&i.size!=='-'?' '+i.size:''))===nm);
       const line=Object.assign({name:y?y.name:nm,n,unit:q('#yaU').value.trim()||(y&&y.unit)||'EA',cat:y?(y.cat||''):'Added',sub:'',from:'Added during yard check by '+curUser},y?{yid:y.id}:{nolink:1});
+      const ex=(m.lines||[]).findIndex(z=>!z.rm&&z.name.toLowerCase()===line.name.toLowerCase());if(ex>=0){const lines=JSON.parse(JSON.stringify(m.lines));lines[ex].n=(+lines[ex].n||0)+n;m.lines=lines;R.innerHTML='';await upd({lines});toast('Already on the list — added '+n+' to it');renderYard();return}
       const lines=[...(m.lines||[]),line];m.lines=lines;R.innerHTML='';await upd({lines});toast('Added — the yard will check it');renderYard()}};
   const gg=document.getElementById('ycGo');if(gg)gg.onclick=()=>{W={...JSON.parse(JSON.stringify(m)),step:5,_seg:'yard'};view='wiz';render()}}
 /* Return → job: what the yard could not prepare */
