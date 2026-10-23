@@ -394,7 +394,7 @@ function sendDlg(){const day=DAY[date]||{};const rev=day.sent?(day.sent.rev||1)+
    <label class="f wide">Message<textarea id="sdMsg" rows="4">${E(intro)}</textarea></label>
    <details><summary class="muted">Preview the table</summary><div class="dsprev">${tableHTML(cd())}</div></details>
    <label class="chk"><input type="checkbox" id="sdMail" checked> Email it from my Outlook</label>
-   <label class="chk"><input type="checkbox" id="sdTeams" ${CFG.teams!==false?'checked':''}> Post to the Teams chat</label>
+   <label class="chk" style="opacity:.55" title="On hold while the Teams message layout is being redone"><input type="checkbox" id="sdTeams" disabled> Post to the Teams chat <small class="muted">(on hold — new layout coming)</small></label>
    <label class="chk"><input type="checkbox" id="sdBell" checked> App bell + phone alert for everyone</label>
    <div class="bar"><button class="btn" id="sdCopy">Copy table only</button><button class="btn" id="sdC">Cancel</button><button class="go" id="sdS" style="width:auto">Send</button></div>`);
   d.querySelector('#sdC').onclick=closeDlg;
@@ -408,7 +408,7 @@ function sendDlg(){const day=DAY[date]||{};const rev=day.sent?(day.sent.rev||1)+
     const now=new Date().toISOString();
     if(d.querySelector('#sdBell').checked){try{await db.collection('logs').add({ts:now,action:'DISPATCH',name:sub,by:curUser,note:rowsFor(cd()).length+' jobs · '+rowsFor(cd()).reduce((a,r)=>a+r.crew.length,0)+' people',dsp:date})}catch(err){}}
     await db.doc('dday/'+date).set({...(DAY[date]||{}),sent:{at:now,by:curUser,rev,snap:snap(cd())}});
-    try{await db.doc('config/dispatch').set({...CFG,to:toL,teams:d.querySelector('#sdTeams').checked})}catch(err){}
+    try{await db.doc('config/dispatch').set({...CFG,to:toL})}catch(err){}
     closeDlg();toast(res.join(' · ')||'Saved')}}
 async function copyHTML(html,text){try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})])}catch(e){try{await navigator.clipboard.writeText(text)}catch(x){}}}
 
