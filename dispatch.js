@@ -347,7 +347,7 @@ async function textCrew(site){if(!site)return;const r=rowsFor(cd()).find(x=>x.s.
   const have=rows.filter(x=>x.cell.length>=10),miss=rows.filter(x=>x.cell.length<10).map(x=>x.name);
   if(!have.length){toast('No phone numbers for this crew'+(miss.length?' ('+miss.length+' missing)':''));return}
   let T={};try{const g=await db.doc('dstext/'+site._id).get();T=(g.data&&g.data())||{}}catch(e){}
-  const job=(typeof jobs!=='undefined'?jobs:[]).find(j=>j.no===jno(site.no)||j.no===site.no)||{};let addr=T.addr||job.address||'';
+  const job=(typeof jobs!=='undefined'?jobs:[]).find(j=>j.no===jno(site.no)||j.no===site.no)||{};let addr=site.addr||T.addr||job.address||'';
   const body=`${jno(site.no)} ${site.name||''} — ${wkLabel(date)}. You're on this job. Reply if you can't make it.`;
   const nums=have.map(x=>'+'+(x.cell.length===10?'1'+x.cell:x.cell));
   const iOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(/Mac/.test(navigator.platform||'')&&(navigator.maxTouchPoints||0)>1);
@@ -363,14 +363,14 @@ async function textCrew(site){if(!site)return;const r=rowsFor(cd()).find(x=>x.s.
   const root=document.getElementById('dlgRoot');const dl=root.querySelector('.dlg');if(dl)dl.style.maxWidth='640px';
   d.querySelector('#tcC').onclick=closeDlg;
   const a=d.querySelector('#tcS'),ta=d.querySelector('#tcMsg'),ad=d.querySelector('#tcAd');const upd=()=>a.setAttribute('href',smsHref(ta.value));ta.oninput=upd;
-  d.querySelector('#tcAdd').onclick=()=>{const v=ad.value.trim();if(!v){toast('Type the jobsite address first');ad.focus();return}ta.value=ta.value.replace(/\n*Address:[^\n]*\nhttps:\/\/maps\.google\.com\/\?q=\S+/,'').replace(/\s+$/,'')+`\n\nAddress: ${v}\n${mapL(v)}`;upd()};
+  d.querySelector('#tcAdd').onclick=()=>{const v=ad.value.trim();if(!v){toast('Type the jobsite address first');ad.focus();return}ta.value=ta.value.replace(/\n*Address:[^\n]*\nhttps:\/\/maps\.google\.com\/\?q=\S+(\nOn-site contact:[^\n]*)?(\nGate \/ parking:[^\n]*)?/,'').replace(/\s+$/,'')+`\n\nAddress: ${v}\n${mapL(v)}`+(site.poc?`\nOn-site contact: ${site.poc}${site.pocPh?' '+site.pocPh:''}`:'')+(site.gate?`\nGate / parking: ${site.gate}`:'');upd()};
   const remember=async()=>{const msg=ta.value.trim();const v=ad.value.trim();const hist=[{msg,at:new Date().toISOString(),by:curUser},...(T.hist||[]).filter(h=>h.msg!==msg)].slice(0,15);T={...T,hist,addr:v};try{await db.doc('dstext/'+site._id).set(T)}catch(e){}};
   d.querySelectorAll('[data-tcu]').forEach(b=>b.onclick=()=>{ta.value=H[+b.dataset.tcu].msg;upd()});
   d.querySelectorAll('[data-tcp]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(H[+b.dataset.tcp].msg);toast('Copied')}catch(e){toast('Copy failed')}});
   d.querySelector('#tcN').onclick=async()=>{try{await navigator.clipboard.writeText(nums.join(', '));toast('Numbers copied')}catch(e){toast('Copy failed')}};
   d.querySelector('#tcCopy').onclick=async()=>{try{await navigator.clipboard.writeText(ta.value)}catch(e){}remember();toast('Message copied — paste it into Messages if it doesn’t open')};
   a.addEventListener('click',()=>{remember();setTimeout(closeDlg,1500)})}
-document.head.insertAdjacentHTML('beforeend','<style>.gw.gwd{text-align:center;font-size:10px;white-space:nowrap;overflow:hidden}.gw.gwd.we{opacity:.55}i.gdl{opacity:.35}i.gdl.we{opacity:1;background:rgba(127,127,127,.08)!important}.tch{margin:8px 0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}.tchr{display:flex;gap:6px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px}.tcht{flex:1;min-width:0;font-size:13px;white-space:pre-wrap;word-break:break-word}.tcht small{display:block;margin-top:4px;font-size:11px}</style>');
+document.head.insertAdjacentHTML('beforeend','<style>.gw.gwd{text-align:center;font-size:10px;white-space:nowrap;overflow:hidden}.gw.gwd.we{opacity:.55}i.gdl{opacity:.35}i.gdl.we{opacity:1;background:rgba(127,127,127,.08)!important}.seblk{display:flex;flex-direction:column;margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--line)}.seblk small{font-size:12px}.tch{margin:8px 0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}.tchr{display:flex;gap:6px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px}.tcht{flex:1;min-width:0;font-size:13px;white-space:pre-wrap;word-break:break-word}.tcht small{display:block;margin-top:4px;font-size:11px}</style>');
 /* ---------- send ---------- */
 const DEF_TO=[];
 function tableHTML(d,opt){opt=opt||{};const bw=!!opt.bw;const week=d==='wk';const rows=rowsFor(d);const F='font-family:Calibri,Arial,sans-serif;';
@@ -589,11 +589,22 @@ function siteDlg(s){const nw=!s;s=s||{status:'Active',start:date,isNew:true,crew
    <div class="f2col"><label class="f">Start<input type="date" id="seS" value="${E(s.start||'')}"></label><label class="f">Finish<input type="date" id="seE" value="${E(s.end||'')}"></label></div><small class="muted" style="display:block;margin:-4px 0 8px">Leave Finish blank if the end date isn’t set yet.</small>
    <label class="f wide">Status<select id="seT">${['Active','On hold','Done'].map(x=>`<option ${x===(s.status||'Active')?'selected':''}>${x}</option>`).join('')}</select></label>
    <label class="chk"><input type="checkbox" id="seW" ${s.isNew?'checked':''}> New project</label>
+   <div class="seblk"><b>Jobsite info</b><small class="muted">Saved once — used for crew texts (map link), weather and trucks.</small></div>
+   <label class="f wide">Jobsite address<input id="seA" value="${E(s.addr||'')}" placeholder="Street, city, CA zip"></label>
+   <div class="f2col"><label class="f">On-site contact (POC)<input id="seCn" value="${E(s.poc||'')}" placeholder="Name"></label><label class="f">POC phone<input id="seCp" value="${E(s.pocPh||'')}" inputmode="tel" placeholder="(909) 000-0000"></label></div>
+   <div class="f2col"><label class="f">GC / Owner<input id="seG" value="${E(s.gc||'')}"></label><label class="f">Gate code / parking<input id="seGt" value="${E(s.gate||'')}"></label></div>
+   ${s.lat?`<small class="muted" style="display:block;margin:-4px 0 8px">Location found · <a href="https://maps.google.com/?q=${s.lat},${s.lon}" target="_blank" rel="noopener">see on map</a></small>`:''}
    <div class="bar">${!nw&&isOwner(curUser)?'<button class="btn dng" id="seD">Delete</button>':''}<button class="btn" id="seC">Cancel</button><button class="go" id="seO" style="width:auto">Save</button></div>`);
   const ni=d.querySelector('#seN');ni.onchange=()=>{const x=sp.find(j=>'#'+j.no===ni.value||j.no===ni.value.replace(/^#/,''));const m=d.querySelector('#seM');if(x&&!m.value)m.value=x.name||''};
   d.querySelector('#seC').onclick=closeDlg;{const y=d.querySelector('#seY');y.onchange=()=>{if(y.value==='__new'){const n=prompt('New roof system:','');if(n&&n.trim()){const o=document.createElement('option');o.textContent=n.trim();y.insertBefore(o,y.firstChild);y.value=n.trim()}else y.value=''}}}{const x=d.querySelector('#seD');if(x)x.onclick=async()=>{if(!confirm('Delete '+jno(s.no)+' from dispatch? Past dispatches keep their crew list.'))return;await db.doc('dsites/'+s._id).delete();closeDlg()}}
-  d.querySelector('#seO').onclick=async()=>{const o={no:jno(d.querySelector('#seN').value.trim()),name:d.querySelector('#seM').value.trim(),sys:d.querySelector('#seY').value.trim(),pic:d.querySelector('#seP').value,start:d.querySelector('#seS').value,end:d.querySelector('#seE').value,status:d.querySelector('#seT').value,isNew:d.querySelector('#seW').checked,newAt:d.querySelector('#seW').checked?((s&&s.isNew&&s.newAt)||new Date().toISOString()):null,updated:new Date().toISOString(),by:curUser};
-    if(!o.no){toast('Job # is needed');return}if(nw)await db.doc('dsites/'+sid()).set({...o,crew:[],asg:[]});else{if(s.asg&&s.asg.length&&o.start&&o.end&&(o.start!==s.start||o.end!==s.end))o.asg=fitAsg(s,o.start,o.end);await db.doc('dsites/'+s._id).update(o)}closeDlg();toast('Saved')}}
+  d.querySelector('#seO').onclick=async()=>{const o={no:jno(d.querySelector('#seN').value.trim()),name:d.querySelector('#seM').value.trim(),sys:d.querySelector('#seY').value.trim(),pic:d.querySelector('#seP').value,start:d.querySelector('#seS').value,end:d.querySelector('#seE').value,status:d.querySelector('#seT').value,addr:d.querySelector('#seA').value.trim(),poc:d.querySelector('#seCn').value.trim(),pocPh:d.querySelector('#seCp').value.trim(),gc:d.querySelector('#seG').value.trim(),gate:d.querySelector('#seGt').value.trim(),isNew:d.querySelector('#seW').checked,newAt:d.querySelector('#seW').checked?((s&&s.isNew&&s.newAt)||new Date().toISOString()):null,updated:new Date().toISOString(),by:curUser};
+    if(!o.no){toast('Job # is needed');return}
+    /* address changed → find its location once (OpenStreetMap) and share it with Weather */
+    if(o.addr&&o.addr!==(s.addr||'')){try{const j=await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q='+encodeURIComponent(o.addr))).json();if(j&&j[0]){o.lat=+j[0].lat;o.lon=+j[0].lon}else{o.lat=null;o.lon=null;toast('Saved, but the address could not be found on the map — check it')}}catch(e){}}else if(!o.addr){o.lat=null;o.lon=null}
+    const myId=nw?sid():s._id;
+    if(nw)await db.doc('dsites/'+myId).set({...o,crew:[],asg:[]});else{if(s.asg&&s.asg.length&&o.start&&o.end&&(o.start!==s.start||o.end!==s.end))o.asg=fitAsg(s,o.start,o.end);await db.doc('dsites/'+s._id).update(o)}
+    if(o.lat!=null&&o.addr!==(s.addr||'')){try{const g=await db.doc('config/wxsites').get();const m={...(((g.data&&g.data())||{}).map||{})};m[myId]={lat:o.lat,lon:o.lon,place:o.addr,auto:false};await db.doc('config/wxsites').set({map:m,by:curUser,at:new Date().toISOString()})}catch(e){}}
+    closeDlg();toast('Saved')}}
 
 /* ---------- MS Project (XML) import ---------- */
 function importMSP(file){const rd=new FileReader();rd.onload=async()=>{try{
