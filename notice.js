@@ -43,7 +43,7 @@ function card(x){const p=PRI.find(y=>y[0]===(x.pri||'normal'))||PRI[0];const rd=
    ${(x.replies||[]).length?`<div class="ntreps">${x.replies.map(r=>`<div class="ntrp"><b>${E(r.by)}</b> <small class="muted">${E(typeof fmtD==='function'?fmtD(r.at):r.at)}</small><div>${fmtB(r.t)}</div></div>`).join('')}</div>`:''}
    <div class="ntcf">${rd?`<span class="muted" style="font-size:12px">✓ Read</span>`:`<button type="button" class="btn small pri" data-nr="${x._id}">Got it</button>`}${can()?`<button type="button" class="btn small" data-nrs="${x._id}">Read by ${n}</button>`:''}${canMod(x)?`<button type="button" class="btn small" data-ne="${x._id}">Edit</button>`:''}${x.until?`<small class="muted">until ${E(typeof fmtD==='function'?fmtD(x.until):x.until)}</small>`:''}</div></article>`}
 /* views: Feed (cards) · List (compact table) · Calendar (month) · Board (by category) */
-let nv=(()=>{try{return localStorage.getItem('ntcView')||'feed'}catch(e){return 'feed'}})(),nq='',ncat='',ncal=null;
+let nv=(()=>{try{return localStorage.getItem('ntcView')||'list'}catch(e){return 'feed'}})(),nq='',ncat='',ncal=null;
 const VIEWS=[['feed','Feed','<path d="M4 5h16M4 12h16M4 19h10"/>'],['list','List','<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'],['cal','Calendar','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'],['board','Board','<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/>']];
 const catOf=x=>x.cat||'general',catL=k=>(CAT.find(c=>c[0]===k)||[k,k])[1];
 const priC=x=>(PRI.find(p=>p[0]===(x.pri||'normal'))||PRI[0])[2];
