@@ -56,6 +56,8 @@ window.ameStaff=()=>STAFF;window.ameStaffFind=person;window.ameDspSites=()=>S.fi
 }else setTimeout(w,400)})();
 
 /* ---------- time off ---------- */
+/* HR (role or department) can add time off for anyone — nothing else in the schedule */
+const canLv=()=>{try{return canEdit()||(typeof deptsOf==='function'&&deptsOf(curUser).includes('HR'))}catch(e){return false}};
 const LT=['Time off','Vacation','Sick','Personal','Injury','Other'];
 const offOn=(n,d)=>d==='wk'?LEAVE.find(l=>l.n===n&&l.from<=sunOf(date)&&(l.to||l.from)>=monOf(date)):LEAVE.find(l=>l.n===n&&l.from<=d&&(l.to||l.from)>=d);
 const offList=d=>LEAVE.filter(l=>l.from<=sunOf(d)&&(l.to||l.from)>=monOf(d));
@@ -178,7 +180,7 @@ function render(){if(!sec)return;try{sessionStorage.setItem('dsView',view)}catch
       ${r.note?`<p class="dsnote"${ed?` data-note="${s._id}" title="Tap to edit or clear this note" style="cursor:pointer"`:''}>${E(r.note)}</p>`:''}<div class="dscrew dslist">${crewList(r,was)}${ed&&visCrew(r).length?`<button type="button" class="dschip addp" data-add="${s._id}"><span class="cn">+ Add person</span></button>`:''}</div>
       ${sent&&was?(()=>{const gone=was.map(x=>x.split('|')[1]).filter(n=>!r.crew.some(c=>c.n===n));return gone.length?`<small class="dsgone">Removed since sent: ${gone.map(n=>E(short(n))).join(', ')}</small>`:''})():''}
 </div>`}).join('')+(ed?`<button type="button" class="panel dsaddjob" id="dsAddJob"><b>+</b> Add job</button>`:'')})()}</div>
-   </div><aside class="dsside"><div class="prleg">${PRI.slice(1).map(([k,l,c])=>`<span><b class="prd" style="--p:${c}"></b>${l}</span>`).join('')}<span><b class="prd none"></b>None</span></div><div class="panel dsoff"><div class="dsoffh"><b>Time off</b><span class="muted">${OFF.length?OFF.length+' off this week':'Nobody off'}</span>${ed?'<button type="button" class="btn small" id="dsLv" style="margin-left:auto">+ Time off</button>':''}</div>${OFF.length?`<div class="dsofflist">${OFF.map(l=>`<button type="button" class="dsoffrow" data-lv="${l._id}" ${ed?'':'disabled'}><span class="non">${E(short(l.n))}</span><span class="dor"><em class="offb">${E(l.type||'Off')}</em><small class="muted">${l.to&&l.to!==l.from?E(fmtD(l.from))+' – '+E(fmtD(l.to)):E(fmtD(l.from))}</small></span></button>`).join('')}</div>`:''}</div>
+   </div><aside class="dsside"><div class="prleg">${PRI.slice(1).map(([k,l,c])=>`<span><b class="prd" style="--p:${c}"></b>${l}</span>`).join('')}<span><b class="prd none"></b>None</span></div><div class="panel dsoff"><div class="dsoffh"><b>Time off</b><span class="muted">${OFF.length?OFF.length+' off this week':'Nobody off'}</span>${canLv()?'<button type="button" class="btn small" id="dsLv" style="margin-left:auto">+ Time off</button>':''}</div>${OFF.length?`<div class="dsofflist">${OFF.map(l=>`<button type="button" class="dsoffrow" data-lv="${l._id}" ${canLv()?'':'disabled'}><span class="non">${E(short(l.n))}</span><span class="dor"><em class="offb">${E(l.type||'Off')}</em><small class="muted">${l.to&&l.to!==l.from?E(fmtD(l.from))+' – '+E(fmtD(l.to)):E(fmtD(l.from))}</small></span></button>`).join('')}</div>`:''}</div>
    ${ed&&free.length?`<details class="panel dsfree" ${innerWidth>=900?'open':''}><summary><b>Not dispatched</b> <span class="muted">${free.length} active field people</span></summary>${[['Foremen',p=>['FM','SFM'].includes(p.lv)],['Journeymen',p=>p.lv==='JM'],['Apprentices',p=>/^A\d/.test(p.lv||'')],['Other',p=>!['FM','SFM','JM'].includes(p.lv)&&!/^A\d/.test(p.lv||'')]].map(([h,f])=>{const g=free.filter(f);return g.length?`<div class="dsgrp"><small>${h} · ${g.length}</small><div class="dscrew">${g.map(p=>`<button type="button" class="dschip${['FM','SFM'].includes(p.lv)?' fm':''}${dsPick.has(p.name)?' picked':''}" data-free="${E(p.name)}"><span class="cn">${dot(p.name)}${E(short(p.name))}</span><em>${E(p.lv||'')}</em></button>`).join('')}</div></div>`:''}).join('')}</div></details>`:''}</aside></div>
    ${!STAFF.length?`<div class="panel muted">No staff list yet.${ed?' Open <b>Staff</b> and import the Field Employees Contact workbook.':''}</div>`:''}`;
   bindCommon();bindLock();
@@ -193,9 +195,9 @@ function render(){if(!sec)return;try{sessionStorage.setItem('dsView',view)}catch
   sec.querySelectorAll('[data-cjob]').forEach(b=>b.onclick=()=>{q=S.find(x=>x._id===b.dataset.cjob).no;dlay='cards';render()});
   if(window.ameSwipe&&!('ontouchstart' in window)){}
   {let x0=null;const R=sec.querySelector('#dsRows');R.addEventListener('touchstart',e=>{if(e.target.closest('.dschip'))return;x0=e.touches[0].clientX},{passive:true});R.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>90)go(dx<0?7:-7)})}
+  {const b=sec.querySelector('#dsLv');if(b)b.onclick=()=>leaveDlg()}if(canLv())sec.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>leaveDlg(LEAVE.find(l=>l._id===b.dataset.lv)));
   if(!ed)return;
   sec.querySelector('#dsSend').onclick=()=>sendDlg();
-  {const b=sec.querySelector('#dsLv');if(b)b.onclick=()=>leaveDlg()}
   sec.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>leaveDlg(LEAVE.find(l=>l._id===b.dataset.lv)));
   sec.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>pick(S.find(s=>s._id===b.dataset.add)));
   sec.querySelectorAll('[data-sopen]').forEach(b=>b.onclick=()=>{const s=S.find(x=>x._id===b.dataset.sopen);if(s){if(ed)siteDlg(s);else if(!isPhone()){view='gantt';render()}}});
@@ -329,7 +331,7 @@ function leaveDlg(l,who){const nw=!l;l=l||{n:who||'',type:'Vacation',from:date,t
    <label class="f wide">Person<input id="lvN" list="lvNL" value="${E(l.n?short(l.n):'')}" autocomplete="off" placeholder="Type a name…"><datalist id="lvNL">${L.map(p=>`<option value="${E(short(p.name))}">${E(p.lv||'')}</option>`).join('')}</datalist></label>
    <label class="f wide">Type<select id="lvT">${LT.map(t=>`<option ${t===l.type?'selected':''}>${t}</option>`).join('')}</select></label>
    <div class="f2col"><label class="f">From<input type="date" id="lvF" value="${E(l.from)}"></label><label class="f">To<input type="date" id="lvTo" value="${E(l.to||l.from)}"></label></div>
-   <label class="f wide">Note<input id="lvO" value="${E(l.note||'')}" placeholder="optional"></label>
+   <label class="f wide">Reason<input id="lvO" value="${E(l.note||'')}" placeholder="e.g. doctor appointment, family trip"></label>
    <p class="muted" style="font-size:13px">They’re taken off any job on these days and won’t show as free to dispatch.</p>
    <div class="bar">${nw?'':'<button class="btn dng" id="lvD">Delete</button>'}<button class="btn" id="lvC">Cancel</button><button class="go" id="lvS" style="width:auto">Save</button></div>`);
   d.querySelector('#lvC').onclick=closeDlg;{const x=d.querySelector('#lvD');if(x)x.onclick=async()=>{await db.doc('dleave/'+l._id).delete();closeDlg();toast('Time off removed')}}
