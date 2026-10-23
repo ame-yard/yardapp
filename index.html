@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.03',APP_DATE='2026-10-22';
+const APP_VERSION='7.04',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -2030,7 +2030,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="bid.js?v=2"></script><script src="est.js?v=2"></script>
 <script src="revu.js?v=4"></script>
 <script src="names.js?v=11"></script>
-<script src="tsheet.js?v=6.92"></script><script src="timesheets.js?v=3"></script>
+<script src="tsheet.js?v=6.92"></script><script src="timesheets.js?v=4"></script>
 <script src="labels.js?v=425"></script>
 <script src="scan.js?v=424"></script>
 <script>

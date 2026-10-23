@@ -299,7 +299,7 @@ const CSS=`.tqseg{display:inline-flex;border:1px solid #ffffff55;border-radius:4
 .seg .btn.on{background:var(--accent,#f47b20);color:#fff;border-color:var(--accent,#f47b20)}
 @media(max-width:700px){.tsr,.tslist .tsh{grid-template-columns:minmax(0,1fr) 90px 24px}.tsc3,.tslist .tsh span:nth-child(3){display:none}.tsc4{grid-column:1/3}.tslist .tsh span:nth-child(4){display:none}.tstbl{font-size:12.5px}.tstbl .tsnm{min-width:120px;white-space:normal}.tstbl .tsd input{width:46px}}`;
 
-AME.register({id:'ts',name:'Timesheets',desc:'Crew timesheets per job · hours by day · OT · approve · lock pay period · summary & CSV',beta:true,allow:canUse,tabs:['ts'],section:'tab-ts',icon:IC,
+AME.register({id:'ts',name:'Timesheets',desc:'Crew timesheets per job · hours by day · OT · approve · lock pay period · summary & CSV',devOnly:true,allow:()=>typeof isDev==='function'&&isDev(curUser)&&canUse(),tabs:['ts'],section:'tab-ts',icon:IC,
   open:()=>{showTab('ts');render()},onShow:render});
 window.ameTimesheets={render,sheets:()=>TS};
 })();
