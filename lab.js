@@ -55,7 +55,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .ytt-card{border:2px solid var(--line);border-radius:14px;background:var(--chip);overflow:hidden;cursor:pointer}.ytt-card.in{border-color:var(--hi,#f26a1b)}.ytt-card.out{opacity:.55}
 .ytt-pic{position:relative;height:calc(110px*var(--z));display:flex;align-items:center;justify-content:center;background:#3b4b6b;color:#c9d6f0}
 .ytt-body{padding:.6em .7em}.ytt-name{font-weight:800;font-size:1.05em;line-height:1.25}.ytt-sub{opacity:.75;font-size:.85em;margin-top:2px}
-.ytt-foot{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:.5em}.ytt-loc{font-family:var(--mono,monospace);font-size:.85em;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08)}.ytt-qty{font-weight:800;font-size:1.05em}
+.ytt-foot{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:.5em}.ytt-loc{font-family:var(--mono,monospace);font-size:.85em;padding:2px 6px;border-radius:6px;background:rgba(127,127,127,.08)}.ytt-qty{font-weight:800;font-size:1.05em}
 .ytt-list .ytt-card{display:flex}.ytt-list .ytt-body{flex:1}
 .ytt-step{display:inline-flex;align-items:center;background:var(--hi,#f26a1b);color:var(--hi-ink,#111);border-radius:999px;height:calc(40px*var(--z));font-size:1.1em}.ytt-pic .ytt-step{position:absolute;top:8px;left:8px}
 .ytt-step b{width:calc(40px*var(--z));text-align:center;font-weight:900;cursor:pointer}.ytt-step em{font-style:normal;font-weight:800;min-width:1.4em;text-align:center}

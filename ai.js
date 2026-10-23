@@ -55,7 +55,7 @@ function render(){if(!key()){S.innerHTML=`<div class="mplhead"><h2>AI Assistant<
   const L=S.querySelector('#aiLog');if(L)L.scrollTop=L.scrollHeight;if(!busy)q.focus()}
 document.head.insertAdjacentHTML('beforeend',`<style>
 #tab-ai{max-width:900px;margin:0 auto}.aichat{display:flex;flex-direction:column;gap:10px;height:calc(100vh - 230px);min-height:420px}.ailog{flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:4px}
-.aim{max-width:85%;padding:10px 14px;border-radius:14px;line-height:1.45;font-size:15px}.aim.me{align-self:flex-end;background:var(--hi,#f47b20);color:#fff;border-bottom-right-radius:4px}.aim.bot{align-self:flex-start;background:rgba(255,255,255,.06);border:1px solid var(--line);border-bottom-left-radius:4px}
+.aim{max-width:85%;padding:10px 14px;border-radius:14px;line-height:1.45;font-size:15px}.aim.me{align-self:flex-end;background:var(--hi,#f47b20);color:#fff;border-bottom-right-radius:4px}.aim.bot{align-self:flex-start;background:rgba(127,127,127,.06);border:1px solid var(--line);border-bottom-left-radius:4px}
 .aibusy{opacity:.7;font-style:italic}.aiat{opacity:.85}.aiempty{margin:auto;text-align:center;max-width:520px}.aiex{display:block;width:100%;margin:6px 0;padding:10px;border:1px solid var(--line);border-radius:10px;background:none;color:inherit;font:inherit;cursor:pointer;text-align:left}.aiex:hover{border-color:var(--hi)}
 .aiin{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:end}.aiin textarea{width:100%;box-sizing:border-box;padding:10px;font:inherit;resize:none;border-radius:10px}.aifiles{display:flex;flex-wrap:wrap;gap:6px}
 .aiset ol{line-height:1.6;padding-left:20px}
