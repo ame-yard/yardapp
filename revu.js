@@ -85,7 +85,8 @@ const fmt=(k,v)=>k==='deg'?v.toFixed(1)+'°':k==='rad'||k==='diam'?ftIn(v):k==='
 const MEAS=new Set(['len','plen','area','rarea','perim','count','dim','vol','diam','rad','angle']);const measTxt=(m,pg)=>{if(!MEAS.has(m.t))return '';const r=res(m,pg);const keys=m.cap&&m.cap.length?m.cap:(m.t==='count'?['count']:m.t==='area'||m.t==='rarea'?['area']:m.t==='vol'?(num(m.depth)?['vol']:['area']):m.t==='angle'?['deg']:m.t==='perim'?['perim']:['len']);return keys.filter(k=>r[k]!=null).map(k=>fmt(k,r[k])).join(' · ')||(m.t==='count'?'':'Scale Not Set')};
 
 /* ---------- document list ---------- */
-function list(){K.doc=null;K.v=null;K.file=null;const L=[...RDOCS].sort((a,b)=>String(b.at).localeCompare(a.at));const PLV=getPLV();
+function dropPdf(){try{if(K.v&&K.v.pdf){const p=K.v.pdf;K.v.pdf=null;p.destroy()}}catch(e){}K.bmPdf=null;K.bm=null;K.thPdf=null;K.th={};K.lk={};K.vh=[];K.vhi=-1}
+function list(){dropPdf();K.doc=null;K.v=null;K.file=null;const L=[...RDOCS].sort((a,b)=>String(b.at).localeCompare(a.at));const PLV=getPLV();
   M.innerHTML=`<div class="mplhead"><h2>PDF</h2><span class="muted" style="font-size:12px">Draft · only you</span><span style="flex:1"></span><button type="button" class="btn" id="rvHl" title="Make sheet / detail callouts clickable in any PDF — download the linked file">Auto Hyperlink</button><label class="btn pri">+ Add PDF<input type="file" id="rvAdd" accept="application/pdf" multiple hidden></label>${vSeg()}</div>
    ${!L.length?'<div class="panel muted">No documents yet. Add a PDF to start marking it up.</div>':PLV==='list'?`<div class="panel" style="overflow:auto;padding:0"><table class="osttbl pltbl"><thead><tr><th>Document</th><th class="n">Pages</th><th class="n">Markups</th><th>Updated</th><th>By</th><th></th></tr></thead><tbody>${L.map(d=>`<tr class="plrow" data-rd="${d._id}"><td><b>${esc(d.name)}</b></td><td class="n">${d.pages||''}</td><td class="n">${Object.values(d.marks||{}).reduce((a,x)=>a+x.length,0)}</td><td>${d.at?new Date(d.at).toLocaleString():''}</td><td>${esc(d.by||'')}</td><td><button class="tkpdel" style="position:static" data-rdel="${d._id}" title="Delete">${TR}</button></td></tr>`).join('')}</tbody></table></div>`
    :`<div class="tkpl">${L.map(d=>`<div class="tkpw"><button class="tkpc" data-rd="${d._id}" style="width:100%"><b>${esc(d.name)}</b><small>${d.pages?d.pages+' pages · ':''}${Object.values(d.marks||{}).reduce((a,x)=>a+x.length,0)} markups</small><small class="muted">${d.at?new Date(d.at).toLocaleDateString():''} · ${esc(d.by||'')}</small></button><button class="tkpdel" data-rdel="${d._id}" title="Delete">${TR}</button></div>`).join('')}</div>`}`;
@@ -108,7 +109,7 @@ async function bgUpload(id,path,f){let blob=f,n=0;
     await db.doc('revu/'+id).update({up:null,size:blob.size,hlinks:n||0});toast(n?('Uploaded · '+n+' detail links added'):'Uploaded');
     if(n&&K.doc&&K.doc._id===id&&!Object.keys(K.doc.marks||{}).some(k=>(K.doc.marks[k]||[]).length)){const pg=K.v&&K.v.page;K.file=blob;render();if(pg&&pg>1)setTimeout(()=>go(pg),600)}}
   catch(x){window.__upErr=String(x&&x.stack||x);try{await db.doc('revu/'+id).update({up:'failed'})}catch(e){}toast('Upload failed: '+(x.message||x)+' — the file is still open here; try again')}}
-async function open(d){K.doc=JSON.parse(JSON.stringify(d));K.doc._id=d._id;K.file=null;K.sel=[];K.hist=[];K.redo=[];render();try{K.file=await getPlan({path:d.path});render()}catch(e){toast('Could not open: '+(e.message||e))}}
+async function open(d){dropPdf();K.v=null;K.doc=JSON.parse(JSON.stringify(d));K.doc._id=d._id;K.file=null;K.sel=[];K.hist=[];K.redo=[];render();try{K.file=await getPlan({path:d.path});render()}catch(e){toast('Could not open: '+(e.message||e))}}
 
 /* ---------- main render ---------- */
 function render(){if(!K.doc){list();return}const d=K.doc;const np=K.v&&K.v.pdf?K.v.pdf.numPages:(d.pages||'–');
@@ -128,7 +129,7 @@ function render(){if(!K.doc){list();return}const d=K.doc;const np=K.v&&K.v.pdf?K
   ${menu('Tools',[['tool:sel','Select (V)'],['tool:pan','Pan'],['-'],...toolsMenu,['-'],['scale','Set Scale for this page…'],['scaleall','Apply this scale to all pages'],['calt','Calibrate…'],['vpt','Add Viewport…'],['vplist','Manage Viewports…'],['-'],['mstatus','Manage Statuses…'],['mcols','Manage Custom Columns…'],['mlayers','Manage Layers…']])}
   ${menu('Window',[['panel:list',(K.list?'✓ ':'')+'Markups List (Alt+L)'],['-']].concat(PANELS.map(([k,l])=>['panel:'+k,(K.panel===k?'✓ ':'')+l])).concat([['-'],['props',(K.props?'✓ ':'')+'Properties (Ctrl+E)']]))}
   ${menu('Help',[['keys','Keyboard shortcuts']])}
-  <span style="flex:1"></span><button class="rvmi plFsB" title="Full screen"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+  <span style="flex:1"></span>${new URLSearchParams(location.search).get('pop')?'':`<button class="rvmi" id="rvPop" title="Open this PDF in its own window — keep using the app here"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg> New window</button>`}<button class="rvmi plFsB" title="Full screen"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
  <div class="rvbar2"><span class="rvfilebtn"><button class="rvmi" id="rvDocs" title="File Access">${I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>')}</button><button class="rvmi rvcaret" id="rvDocs2" title="Open documents">▾</button></span><span><b>Name:</b> ${esc(d.name)}</span><span id="rvPgC"><b>Pages:</b> ${np}</span><button class="rvmi rvnewdoc" id="rvNew" title="Add a PDF">${I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M12 11v6M9 14h6"/>')}</button></div><div class="rvptbar" id="rvPTW" hidden><div class="rvprops" id="rvPT"></div></div><i class="rvsz rvszh" id="rvSzT" title="Drag down/up to make the top bars bigger/smaller · double-click to reset"></i>
  <div class="rvbody"><div class="rvtabs">${PANELBTN}</div>
   <aside class="rvside" id="rvSide"></aside><i class="rvsz rvszv" id="rvSzL" title="Drag to resize · double-click to reset"></i>
@@ -143,6 +144,7 @@ function render(){if(!K.doc){list();return}const d=K.doc;const np=K.v&&K.v.pdf?K
   const q=s=>M.querySelector(s);
   q('#rvDocs').onclick=()=>{save();K.doc=null;list()};q('#rvClose').onclick=()=>{save();K.doc=null;list()};q('#rvDocs2').onclick=()=>{K.panel='files';render()};q('#rvNew').onclick=()=>{save();K.doc=null;list();setTimeout(()=>{const a=M.querySelector('#rvAdd');if(a)a.click()},50)};
   M.querySelectorAll('[data-pm]').forEach(b=>b.onclick=()=>{if(b.dataset.pm!=='single')toast('Only Single Page view for now')});
+  {const pb=q('#rvPop');if(pb)pb.onclick=()=>{save();const w=window.open(location.origin+'/?pop=mkp&doc='+encodeURIComponent(d._id),'amepdf_'+d._id,'popup=yes,width='+Math.min(screen.availWidth,1600)+',height='+Math.min(screen.availHeight,1000));if(!w){toast('Allow pop-ups for this site to open a new window');return}K.doc=null;list();toast('Opened in a new window')}}
   q('#vwPrev').onclick=()=>viewNav(-1);q('#vwNext').onclick=()=>viewNav(1);
   M.querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>setTool(b.dataset.mt));
   M.querySelectorAll('[data-pn]').forEach(b=>b.onclick=()=>{const k=b.dataset.pn;if(k==='__props'){act('props');b.setAttribute('aria-pressed',K.props);return}K.panel=K.panel===k?'':k;M.querySelectorAll('[data-pn]').forEach(x=>{if(x.dataset.pn!=='__props')x.setAttribute('aria-pressed',x.dataset.pn===K.panel)});side()});
@@ -426,7 +428,7 @@ async function bookmarksPanel(S){if(!K.v||!K.v.pdf){S.innerHTML='<h4>Bookmarks</
     let bm=[];try{const ol=await pdf.getOutline();if(ol&&ol.length){for(const o of ol){let n=null;try{const d=typeof o.dest==='string'?await pdf.getDestination(o.dest):o.dest;if(d)n=(await pdf.getPageIndex(d[0]))+1}catch(e){}bm.push({t:o.title,pg:n})}}}catch(e){}
     if(!bm.length&&window.ameHyperlink){try{await ameHyperlink.libs();const pages=await ameHyperlink.analyze(pdf);K.hlPages=pages;bm=pages.map(p=>({t:p.label||('Page '+p.i),pg:p.i}))}catch(e){}}
     if(!bm.length)bm=Array.from({length:pdf.numPages},(_,i)=>({t:'Page '+(i+1),pg:i+1}));K.bm=bm;if(K.bmPdf!==pdf||K.panel!=='bookmarks')return}
-  const pg=K.v.page;S.innerHTML=`<h4>Bookmarks</h4>${(K.bm||[]).map((b,i)=>`<button class="rvfr rvbm ${b.pg===pg?'on':''}" data-bm="${i}">${esc(b.t)}<small style="float:right;color:#888">p.${b.pg||'–'}</small></button>`).join('')}`;
+  if(!K.v||K.v.pdf!==pdf||!document.body.contains(S))return;const pg=K.v.page;S.innerHTML=`<h4>Bookmarks</h4>${(K.bm||[]).map((b,i)=>`<button class="rvfr rvbm ${b.pg===pg?'on':''}" data-bm="${i}">${esc(b.t)}<small style="float:right;color:#888">p.${b.pg||'–'}</small></button>`).join('')}`;
   S.querySelectorAll('[data-bm]').forEach(b=>b.onclick=()=>{const x=K.bm[+b.dataset.bm];if(x.pg)go(x.pg)})}
 function listPanel(S){if(!K.cols)K.cols=COLS.map(c=>c[0]).filter(c=>!['lay','lab','s'].includes(c));const cols=[...COLS.filter(c=>K.cols.includes(c[0])),...(D().cols||[]).map(c=>['cx:'+c.id,c.name,80])];
   let R=allMarks().filter(({pg,m})=>passFilter(m,pg)&&(!K.filt.pg||pg===K.v.page));
@@ -580,6 +582,10 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 </style>`);
 const IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 12h8M12 8v8"/></svg>';
 (function reg(){if(typeof AME==='undefined'||!AME.register){setTimeout(reg,300);return}AME.register({id:'mkp',devOnly:true,name:'PDF',desc:'PDF markup & measure · markups list · scales & viewports · stamps · legend · flatten',allow:dev,tabs:['mkp'],section:'tab-mkp',icon:IC,open:()=>{showTab('mkp');if(!K.doc)list()},onShow:()=>{if(!M.innerHTML)list()}})})();
+/* pop-out window: ?pop=mkp&doc=<id> opens just this PDF, full window */
+(function popOut(){const P=new URLSearchParams(location.search);if(P.get('pop')!=='mkp')return;document.documentElement.classList.add('rvsolo');
+  document.head.insertAdjacentHTML('beforeend','<style>.rvsolo header.top,.rvsolo .statusrow,.rvsolo .appback,.rvsolo #plFs,.rvsolo footer,.rvsolo .foot{display:none!important}.rvsolo body{padding:0}</style>');
+  let n=0;const go=()=>{n++;try{if(typeof curUser!=='undefined'&&curUser&&window.AME&&AME.mod('mkp')&&AME.allowed(AME.mod('mkp'))&&RDOCS.length){AME.open('mkp');const id=P.get('doc');const d=RDOCS.find(x=>x._id===id);if(d){open(d);document.title=(d.name||'PDF')+' — AME PDF'}setTimeout(()=>{const s=document.getElementById('tab-mkp');if(s&&window.__plFsSet)window.__plFsSet(s,true)},400);return}}catch(e){}if(n<120)setTimeout(go,500)};go()})();
 })();
 
 ;document.head.insertAdjacentHTML('beforeend','<style>.rvdrop{outline:3px dashed var(--accent,#f47b20);outline-offset:-6px;border-radius:12px}</style>');
