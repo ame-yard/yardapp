@@ -56,7 +56,7 @@ function yardFor(line){if(line.yid&&byId(line.yid))return byId(line.yid);if(line
 /* ---------- data ---------- */
 let NAMES={};const applyNames=()=>{if(REF&&REF.its)REF.its.forEach(r=>{if(r._o==null)r._o=r[1];r[1]=(NAMES._live&&NAMES[r[0]])||r._o})};
 function load(){db.doc('mplref/ref').onSnapshot(s=>{REF=s.data()||null;applyNames();if(isOn())render()},()=>{});db.doc('config/mplnames').onSnapshot(s=>{NAMES=s.data()||{};applyNames();if(isOn())render()},()=>{});
-  db.collection('mpl').onSnapshot(s=>{MPLS=s.docs.map(d=>({...d.data(),_id:d.id}));AME.badges&&AME.badges();if(isOn())render()},()=>{});
+  db.collection('mpl').onSnapshot(s=>{const prev=new Map(MPLS.map(m=>[m._id,m]));MPLS=s.docs.map(d=>({...d.data(),_id:d.id}));try{MPLS.forEach(m=>{const p=prev.get(m._id);if(p&&m.status==='yard'&&m.yardDone&&!p.yardDone&&(m.sentBy===curUser||m.prep===curUser))readyNote(m);if(p&&m.status==='yard'&&!p.status!=='yard'&&p.status!=='yard'&&isYC()&&m.sentBy!==curUser)toast('New yard check: '+jobLabel(m.job)+' · '+(m.lines||[]).length+' items')})}catch(e){}AME.badges&&AME.badges();if(isOn())render()},()=>{});
   db.doc('config/spectrum').onSnapshot(s=>{SPC=s.data()||null},()=>{});
   db.doc('config/mplmap').onSnapshot(s=>{MAP=s.data()||{}},()=>{});
   db.doc('config/mplchain').onSnapshot(s=>{CH=s.data()||{};if(isOn()&&document.getElementById('chDlg'))chDraw()},()=>{})}
@@ -106,19 +106,19 @@ function chDraw(){const d=document.getElementById('chDlg');if(!d)return;const pa
 function render(){const box=el();if(!box)return;
   if(!REF){box.innerHTML=`<h2>Mobilization Prep List</h2><div class="panel"><p>The Mob Prep reference data (roof systems, deck types, assemblies and items) hasn't been imported yet.</p>
     <p class="muted">Kyle: open amebuilders.org signed in, then Claude runs the one-time import. ${isOwner(curUser)?'':''}</p></div>`;return}
-  if(view==='list')return renderList();if(view==='wiz')return renderWiz();if(view==='view')return renderView()}
-function stat(m){return m.status==='closed'?'<span class="pill p-good">Closed</span>':m.status==='out'?'<span class="pill p-needs">Out on job</span>':'<span class="pill p-ver">Draft</span>'}
+  if(view==='list')return renderList();if(view==='wiz')return renderWiz();if(view==='view')return renderView();if(view==='ycheck')return renderYard()}
+function stat(m){return m.status==='yard'?(m.yardDone?'<span class="pill p-good">Yard checked</span>':'<span class="pill p-needs">At yard check</span>'):m.status==='closed'?'<span class="pill p-good">Closed</span>':m.status==='out'?'<span class="pill p-needs">Out on job</span>':'<span class="pill p-ver">Draft</span>'}
 async function delMpl(id){const m=MPLS.find(x=>x._id===id);if(!m)return;if(!confirm('Delete the MPL for '+jobLabel(m.job)+'?'+(m.status==='out'?'\n\nIts items are still checked out — they stay out on the job (return them with Return).':'')+'\n\nYard records stay in Activity.'))return;
   try{await db.doc('mpl/'+id).delete();toast('MPL deleted');if(openId===id){openId='';view='list'}render()}catch(e){toast('Could not delete: '+(e.message||e.code))}}
 function topBtns(m,id){return `<span class="mtop">${exportBtns('t')}${m&&(isAdmin||m.prep===curUser)&&id?`<button class="btn dng" data-tdel="${esc(id)}">Delete</button>`:''}</span>`}
-function renderList(){if(W&&W._dirty&&W.job&&(openId||W.lines)){W._dirty=false;saveDraft(false)}const box=el();const l=[...MPLS].filter(m=>!m.priv||m.priv===curUser).sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
+function renderList(){if(W&&W._dirty&&W.job&&(openId||W.lines)){W._dirty=false;saveDraft(false)}const box=el();const l=[...MPLS].filter(visM).sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
   box.innerHTML=`<div class="mplhead"><h2>Mobilization Prep Lists</h2>${isAdmin?'<button class="btn" id="mplChain">Edit system lists</button>':''}<button class="btn pri" id="mplNew">+ New MPL</button></div>
   ${l.length?`<div class="mplcards">${l.map(m=>`<button class="mplcard" data-m="${esc(m._id)}"><b>${esc(jobLabel(m.job))}</b>${stat(m)}${m.priv?'<em class="betatag owntag" style="margin:0 0 4px">Only you</em>':''}<small>Prepared by ${esc(m.prep||'')} · crew ${m.crew||'-'} · ${(m.lines||[]).length} items</small><small class="muted">${esc((m.st||[]).map(stName).join(', '))}</small><small class="muted">Updated ${fmtD(m.updated)}</small>${(isAdmin||m.prep===curUser)?`<span class="mcdel" data-del="${esc(m._id)}" role="button" aria-label="Delete MPL" title="Delete">${IC2.trash}</span>`:''}</button>`).join('')}</div>`:'<div class="panel muted">No MPLs yet. Tap “+ New MPL” to prepare a job.</div>'}`;
   {const cb=document.getElementById('mplChain');if(cb)cb.onclick=chEdit}
   document.getElementById('mplNew').onclick=()=>{openId='';W={step:0,job:'',pm:'',fm:'',crew:6,st:[],lines:null,prep:curUser};openId='';view='wiz';render()};
   box.querySelectorAll('[data-del]').forEach(x=>x.onclick=e=>{e.stopPropagation();delMpl(x.dataset.del)});
   box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=MPLS.find(x=>x._id===b.dataset.m);if(!m)return;openId=m._id;
-    if(m.status==='draft'){W={...JSON.parse(JSON.stringify(m)),step:4,_seg:'yard'};view='wiz'}else view='view';render()})}
+    if(m.status==='draft'){W={...JSON.parse(JSON.stringify(m)),step:4,_seg:'yard'};view='wiz'}else if(m.status==='yard')view='ycheck';else view='view';render()})}
 function crumbs(){return `<div class="mplsteps">${STEPS.map(([k,l],n)=>`<button data-st="${n}" class="${n===W.step?'on':n<W.step?'done':''}" ${n>W.step+0&&!W.lines?'disabled':''}><span>${n+1}</span>${l}</button>`).join('')}</div>`}
 function chips(list,sel,attr){return `<div class="mplchips">${list.map(([id,name])=>`<button data-${attr}="${id}" aria-pressed="${sel.includes(id)}">${esc(name)}</button>`).join('')}</div>`}
 let svT=null;const snap=()=>JSON.stringify([W.job,W.jobName,W.mpPm,W.mpFm,W.pm,W.fm,W.crew,W.st,W.lines]);
@@ -133,7 +133,7 @@ function renderWiz(){if(W&&W._saved===undefined)W._saved=openId?snap():'';W._dir
   else if(s===4){if(!W.lines)W.lines=generate(W.st);if(!W._seg)W._seg='yard';body=listHtml();next='Review check-out'}
   else if(s===5){body=goHtml();next=''}
   box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${W.job?esc(jobLabel(W.job)):'New MPL'}</h2>${W.step>=4?topBtns(W,openId):''}</div>${crumbs()}<div class="panel mplbody">${body}</div>
-   <div class="mplbar">${s>=4?exportBtns():''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${W.job?`<span class="mplsv" id="mSv">${W._dirty?'Unsaved changes':'All changes saved'}</span><button class="btn ${W._dirty?'pri':''}" id="mSave">Save</button>`:''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
+   <div class="mplbar">${s>=4?exportBtns():''}${s===4&&!W.yardDone&&W.job?`<button class="btn pri" id="mYard">Send to yard check</button>`:''}${s>=4?`<button class="btn" id="mSend">${W.mp?'Sent to Mob Prep ✓ (send again)':'Send to Mob Prep'}</button>`:''}${W.job?`<span class="mplsv" id="mSv">${W._dirty?'Unsaved changes':'All changes saved'}</span><button class="btn ${W._dirty?'pri':''}" id="mSave">Save</button>`:''}${next?`<button class="go" id="mNext" style="width:auto">${next}</button>`:''}</div>`;
   wire()}
 let mpJ=null,mpU=null,mpErr='',jq='',mpLive=false,mpBusy=false,SPC=null;
 function jobStep(){if(!MP.tok())return `<h3>Which job?</h3><div class="panel" style="margin:0"><p>Job numbers come from <b>Spectrum through Mob Prep</b>. Connect once on this device.</p><button class="go" id="mpConn" style="width:auto">Connect Mob Prep</button></div>`;
@@ -166,12 +166,13 @@ function listHtml(){const seg=W._seg||'all';const inY=l=>!!yardFor(l);const nY=W
      return `<div class="mline"><div class="mname"><b>${esc(l.name)}</b><small>${esc(l.sub||'')}${l.from?' · '+esc(l.from):''}</small>
        <button class="ylink ${y?(av>=l.n?'ok':'low'):'none'}" data-yl="${k}">${y?`In yard: ${av} ${esc(y.unit||'')} · ${esc(y.loc)}${av<l.n?' (short)':''}`:'Not in yard inventory — tap to link'}</button></div>
        <div class="step"><button data-q="${k}" data-d="-1">−</button><b>${l.n}</b><button data-q="${k}" data-d="1">+</button></div><button class="mx" data-rm="${k}" aria-label="Remove">✕</button></div>`}).join('')}</div>`).join('')}`}
-function goLines(){return W.lines.map(l=>{const y=yardFor(l);return {l,y,take:y?Math.max(0,Math.min(l.n,Number(y.qty)||0)):0}})}
+function goLines(){return W.lines.map((l,k)=>{if(l.rm)return null;const y=yardFor(l);let take=y?Math.max(0,Math.min(l.n,Number(y.qty)||0)):0;const c=W.yardDone&&W.yc?W.yc[k]:null;let prep=null;if(W.yardDone){const ok=!c?0:c.s==='ok'?l.n:c.s==='short'?(+c.q||0):0;prep=ok;take=y?Math.min(take,ok):0}return {l,y,take,c,prep}}).filter(Boolean)}
 function goHtml(){const g=goLines();const yard=g.filter(x=>x.y),other=g.filter(x=>!x.y);
   return `<h3>Check out from the yard</h3><p class="muted">These come out of the yard inventory as <b>Take Out → ${esc(jobLabel(W.job))}</b>. You can return them anytime with Return, or close out this MPL when the job ends.</p>
    <div class="tblwrap"><table><thead><tr><th>Item</th><th>Yard item</th><th>Need</th><th>Taking</th></tr></thead><tbody>${yard.map(x=>`<tr><td>${esc(x.l.name)}</td><td>${esc(x.y.name)} <small class="muted">${esc(x.y.loc)}</small></td><td class="n">${x.l.n}</td><td class="n ${x.take<x.l.n?'bad':''}">${x.take}</td></tr>`).join('')}</tbody></table></div>
    ${other.length?`<div class="qlabel">Not from the yard (buy / rent / bring otherwise) · ${other.length}</div><div class="muted" style="font-size:13px">${other.map(x=>esc(x.l.name)+' ×'+x.l.n).join(' · ')}</div>`:''}
-   <div class="mplbar"><button class="go" id="mGo" ${yard.some(x=>x.take>0)&&W.job?'':'disabled'}>Check out ${yard.filter(x=>x.take>0).length} items from the yard</button></div>`}
+   ${W.yardDone?`<div class="panel" style="margin:10px 0"><b>Yard checked</b> by ${esc(W.yardDone.by)} · ${fmtD(W.yardDone.at)}<br><span class="muted">Only what the yard prepared is checked out. The rest goes to <b>Not prepared</b> under ${esc(jobLabel(W.job))} in Return.</span>${(()=>{const got=x=>x.y?x.take:(x.prep??0);const np=g.filter(x=>got(x)<x.l.n);return np.length?`<div class="qlabel" style="margin-top:8px">Not prepared · ${np.length}</div><div class="muted" style="font-size:13px">${np.map(x=>esc(x.l.name)+' ×'+(x.l.n-got(x))).join(' · ')}</div>`:''})()}</div>`:''}
+   <div class="mplbar">${W.yardDone?'':`<button class="btn pri" id="mYard" ${W.job?'':'disabled'}>Send to yard check (${YC.join(', ')})</button>`}<button class="go" id="mGo" ${(yard.some(x=>x.take>0)||W.yardDone)&&W.job?'':'disabled'}>${W.yardDone?'Confirm check-out':'Check out'} ${yard.filter(x=>x.take>0).length} items from the yard</button></div>`}
 function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f);
   document.getElementById('mBack').onclick=()=>{view='list';render();scrollTo({top:0})};
   q('[data-st]',b=>b.onclick=()=>{const n=+b.dataset.st;if(n<=W.step||W.lines){if(n===5&&!W.lines)return;W.step=n;render()}});
@@ -194,8 +195,8 @@ function wire(){const box=el();const q=(s,f)=>box.querySelectorAll(s).forEach(f)
   const sv=document.getElementById('mSave');if(sv)sv.onclick=()=>saveDraft(true);
   const nx=document.getElementById('mNext');if(nx)nx.onclick=()=>{if(W.step===0){if(!W.job){toast('Pick the job first.');return}}
     if(W.step===3&&!W.st.length){toast('Pick at least one scope.');return}if(W.step===3)W.lines=generate(W.st);W.step++;render();scrollTo({top:0})};
-  const go=document.getElementById('mGo');if(go)go.onclick=checkout}
-async function save(status,extra){const now=new Date().toISOString();const d={job:W.job,jobName:W.jobName||'',mpPm:W.mpPm||'',mpFm:W.mpFm||'',mp:W.mp||null,pm:W.pm||'',fm:W.fm||'',crew:W.crew,prep:W.prep||curUser,st:W.st,lines:W.lines||[],status,updated:now,created:W.created||now,...(extra||{})};
+  const go=document.getElementById('mGo');if(go)go.onclick=checkout;const yb=document.getElementById('mYard');if(yb)yb.onclick=sendYard}
+async function save(status,extra){const now=new Date().toISOString();const d={job:W.job,jobName:W.jobName||'',mpPm:W.mpPm||'',mpFm:W.mpFm||'',mp:W.mp||null,pm:W.pm||'',fm:W.fm||'',crew:W.crew,prep:W.prep||curUser,st:W.st,lines:W.lines||[],status,...(W.priv?{priv:W.priv}:{}),...(W.yc?{yc:W.yc}:{}),...(W.yardDone?{yardDone:W.yardDone}:{}),updated:now,created:W.created||now,...(extra||{})};
   if(!openId)openId='m'+Date.now().toString(36);W.created=d.created;await db.doc('mpl/'+openId).set(d);return d}
 function pickDlg(title,list,onPick){let qv='';const draw=()=>{const l=list.filter(x=>!qv||x.t.toLowerCase().includes(qv)).slice(0,120);
   document.getElementById('dlgRoot').innerHTML=`<div class="scrim sheet"><div class="dlg"><h3>${title}</h3><input id="pdq" class="search" placeholder="Search…" value="${esc(qv)}"><div class="qpl" style="max-height:55vh">${l.map((x,n)=>`<button class="qpi" data-pi="${n}"><b>${esc(x.t)}</b><span>${esc(x.s||'')}</span></button>`).join('')||'<div class="muted" style="padding:10px">No match</div>'}</div><div class="bar"><button class="btn" id="pdc">Cancel</button></div></div></div>`;
@@ -211,13 +212,62 @@ function addItem(){const seg=W._seg||'all';const yl=items.filter(i=>!W.lines.som
   if(x.r&&seg==='buy'){W.lines.push({rid:x.r[0],name:x.r[1],cat:x.r[2],sub:x.r[3],unit:x.r[4],n:1,from:'Added',nolink:true});render();return}
   if(x.r)W.lines.push({rid:x.r[0],name:x.r[1],cat:x.r[2],sub:x.r[3],unit:x.r[4],n:1,from:'Added'});else W.lines.push({yid:x.i.id,name:x.i.name,cat:'Custom',sub:'From yard',unit:x.i.unit,n:1,from:'Added'});render()})}
 async function addJobIfMissing(job,now){const ex=jobs.find(j=>j.no===job);if(ex&&W.jobName&&ex.name!==W.jobName){try{await db.doc('jobs/'+ex._id).update({name:W.jobName})}catch(e){}}if(job&&!ex){try{await db.doc('jobs/J'+job.replace(/[^A-Za-z0-9]/g,'')).set({no:job,name:W.jobName||'',pm:W.pm||'',fm:W.fm||'',address:'',status:'Active',notes:'Added from MPL by '+curUser,autoAdded:true,updatedAt:now})}catch(e){}}}
-async function checkout(){const g=goLines().filter(x=>x.y&&x.take>0);if(!g.length)return;if(!confirm(`Take ${g.length} items out of the yard to ${jobLabel(W.job)}?`))return;
+async function checkout(){const g=goLines().filter(x=>x.y&&x.take>0);if(!g.length&&!W.yardDone)return;if(!confirm(`Take ${g.length} items out of the yard to ${jobLabel(W.job)}?`+(W.yardDone?'\n\nAnything the yard could not prepare is listed under Not prepared in Return.':'')))return;
   const b=document.getElementById('mGo');b.disabled=true;b.textContent='Checking out…';const now=new Date().toISOString();await addJobIfMissing(W.job,now);let ok=0;
   for(const x of g){const it=byId(x.y.id);if(!it)continue;const before=Number(it.qty)||0,n=Math.min(x.take,before);if(n<=0)continue;
     try{await writeItem(it.id,{qty:before-n,out:(it.out||0)+n,lastJob:W.job,updatedAt:now,updatedBy:curUser});
       await db.collection('logs').add({ts:now,action:'OUT',itemId:it.id,name:it.name,size:it.size||'',unit:it.unit||'',loc:it.loc,n,before,after:before-n,job:W.job,by:curUser,note:'MPL check-out',cond:''});
       x.l.yid=it.id;x.l.taken=n;ok++}catch(e){toast('Could not take '+it.name+': '+(e.message||e.code))}}
+  if(W.yardDone){const G=goLines();G.forEach(x=>{if(!x.y&&x.prep!=null)x.l.ready=x.prep})}
+  W.lines=W.lines.filter(l=>!l.rm);W.lines.forEach(l=>{const got=l.yid&&l.taken!=null?(+l.taken||0):(l.ready!=null?+l.ready:(+l.taken||0));const np=Math.max(0,(+l.n||0)-got);if(np>0)l.np=np;else delete l.np});
   await save('out',{outAt:now,outBy:curUser});toast(ok+' items checked out to '+jobLabel(W.job));view='view';render()}
+/* ---------- yard check (Jose S. / David H.) ---------- */
+const YC=['Jose S.','David H.'];
+const isYC=()=>YC.includes(curUser)||(typeof isOwner==='function'&&isOwner(curUser));
+function readyNote(m){document.getElementById('mplReady')?.remove();const b=document.createElement('button');b.id='mplReady';b.type='button';b.innerHTML=`<b>Yard is ready · ${esc(jobLabel(m.job))}</b><span>${esc(m.yardDone.by)} finished the check — tap to confirm the check-out</span>`;
+  Object.assign(b.style,{position:'fixed',left:'50%',top:'14px',transform:'translateX(-50%)',zIndex:9998,display:'flex',flexDirection:'column',gap:'2px',alignItems:'center',background:'#2ea043',color:'#fff',border:'0',borderRadius:'14px',padding:'12px 20px',boxShadow:'0 8px 24px rgba(0,0,0,.35)',font:'inherit',cursor:'pointer',maxWidth:'92vw'});
+  b.onclick=()=>{b.remove();openId=m._id;view='ycheck';AME.open('mpl')};document.body.appendChild(b);setTimeout(()=>b.remove(),60000)}
+function visM(m){return !m.priv||m.priv===curUser||(m.status==='yard'&&isYC())}
+async function sendYard(){if(!W||!W.job)return;if(!confirm('Send this list to the yard (Jose S., David H.) to check what is ready?\n\nThe list is locked until they finish or you recall it.'))return;
+  await saveDraft(false);const now=new Date().toISOString();try{await db.doc('mpl/'+openId).update({status:'yard',sentAt:now,sentBy:curUser,yc:{},yardDone:null,updated:now});toast('Sent to the yard');view='list';W=null;render()}catch(e){toast('Could not send: '+(e.message||e))}}
+function renderYard(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m||m.status!=='yard'){view='list';return render()}
+  const yc=m.yc||{};const lines=m.lines||[];const done=!!m.yardDone;const canChk=isYC()&&!done;const mine=m.prep===curUser||(typeof isOwner==='function'&&isOwner(curUser));
+  const cnt={ok:0,short:0,na:0,none:0};lines.forEach((l,k)=>{if(l.rm)return;const c=yc[k];cnt[c?c.s:'none']++});
+  const lab={ok:'Prepared',short:'Short',na:'Not available'};
+  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${esc(jobLabel(m.job))}</h2>${stat(m)}</div>
+   <div class="panel"><p class="muted" style="margin:0">Sent by ${esc(m.sentBy||m.prep||'')} · ${fmtD(m.sentAt)} · ${lines.length} items${m.jobName?' · '+esc(m.jobName):''}</p>
+   <p style="margin:6px 0 0"><b>${cnt.ok}</b> prepared · <b>${cnt.short}</b> short · <b>${cnt.na}</b> not available · <b>${cnt.none}</b> not checked</p>
+   ${done?`<p class="muted" style="margin:6px 0 0">Checked by ${esc(m.yardDone.by)} · ${fmtD(m.yardDone.at)}</p>`:canChk?'<p class="muted" style="margin:6px 0 0">Tap what is ready. For <b>Short</b>, enter how many you have.</p>':''}</div>
+   ${canChk?'<div class="mplbar" style="margin:8px 0"><button class="btn" id="ycAll">Mark all not-checked as Prepared</button></div>':''}
+   <div class="mpllines">${lines.map((l,k)=>{if(l.rm)return '';const c=yc[k];const y=yardFor(l);return `<div class="mline ycl ${c?'yc-'+c.s:''}"><div class="mname"><b>${esc(l.name)}</b><small>Need ${l.n} ${esc(l.unit||'')}${y?` · yard: ${esc(y.loc||'')} · has ${Number(y.qty)||0}`:' · not a yard item'}${l.from?' · '+esc(l.from):''}</small>${c?`<small class="ycst">${lab[c.s]}${c.s==='short'?' · have '+(c.q||0):''} · ${esc(c.by||'')}</small>`:''}</div>
+     ${canChk?`<div class="ycbtns"><button data-yc="${k}" data-s="ok" aria-pressed="${c&&c.s==='ok'}">Prepared</button><button data-yc="${k}" data-s="short" aria-pressed="${c&&c.s==='short'}">Short</button><button data-yc="${k}" data-s="na" aria-pressed="${c&&c.s==='na'}">N/A</button></div>`:''}${mine&&!done?`<div class="ycbtns ycedit"><button data-yq="${k}" data-d="-1" title="Less">−</button><button data-yq="${k}" data-d="1" title="More">+</button><button data-yrm="${k}" title="Remove">×</button></div>`:''}</div>`}).join('')}</div>
+   <div class="mplbar">${canChk?`<button class="go" id="ycDone" style="width:auto" ${cnt.none?'disabled':''}>${cnt.none?cnt.none+' left to check':'Done — send back to '+esc(m.sentBy||m.prep||'PM')}</button>`:''}
+    ${mine?(done?`<button class="go" id="ycGo" style="width:auto">Continue to check-out</button>`:`<button class="btn pri" id="ycAdd">+ Add item</button>`)+`<button class="btn" id="ycRecall">Recall to draft</button>`:''}</div>`;
+  document.getElementById('mBack').onclick=()=>{view='list';render()};
+  const upd=async o=>{try{await db.doc('mpl/'+m._id).update({...o,updated:new Date().toISOString()})}catch(e){toast('Could not save: '+(e.message||e))}};
+  box.querySelectorAll('[data-yc]').forEach(b=>b.onclick=async()=>{const k=b.dataset.yc,st=b.dataset.s;const v={s:st,by:curUser,at:new Date().toISOString()};if(st==='short'){const n=prompt('How many do you have? (need '+lines[k].n+')',String(Math.max(0,lines[k].n-1)));if(n==null)return;v.q=Math.max(0,Math.min(lines[k].n,parseFloat(n)||0))}
+    const cur=MPLS.find(x=>x._id===m._id)||m;const nyc={...(cur.yc||{}),[k]:v};cur.yc=nyc;m.yc=nyc;await upd({yc:nyc});renderYard()});
+  const al=document.getElementById('ycAll');if(al)al.onclick=async()=>{const nyc={...(m.yc||{})};const now=new Date().toISOString();lines.forEach((l,k)=>{if(!nyc[k])nyc[k]={s:'ok',by:curUser,at:now}});m.yc=nyc;await upd({yc:nyc});renderYard()};
+  const dn=document.getElementById('ycDone');if(dn)dn.onclick=async()=>{dn.disabled=true;await upd({yardDone:{by:curUser,at:new Date().toISOString()}});toast('Sent back to '+(m.sentBy||m.prep||'the PM'));view='list';render()};
+  const rc=document.getElementById('ycRecall');if(rc)rc.onclick=async()=>{if(!confirm(done?'Go back to draft? The yard check results will be cleared.':'Recall this list from the yard?'))return;await upd({status:'draft',yc:{},yardDone:null});view='list';render()};
+  box.querySelectorAll('[data-yq]').forEach(b=>b.onclick=async()=>{const k=+b.dataset.yq;const lines2=JSON.parse(JSON.stringify(m.lines));const l=lines2[k];const nn=Math.max(1,(+l.n||1)+ +b.dataset.d);if(nn===l.n)return;l.n=nn;const nyc={...(m.yc||{})};if(nyc[k]&&(nyc[k].s!=='ok'||+b.dataset.d>0))delete nyc[k];if(nyc[k]&&nyc[k].s==='ok'&&+b.dataset.d<0){}m.lines=lines2;m.yc=nyc;await upd({lines:lines2,yc:nyc});renderYard()});
+  box.querySelectorAll('[data-yrm]').forEach(b=>b.onclick=async()=>{const k=+b.dataset.yrm;if(!confirm('Remove '+m.lines[k].name+' from the list?'))return;const lines2=JSON.parse(JSON.stringify(m.lines));lines2[k].rm=1;const nyc={...(m.yc||{})};delete nyc[k];m.lines=lines2;m.yc=nyc;await upd({lines:lines2,yc:nyc});renderYard()});
+  const ad=document.getElementById('ycAdd');if(ad)ad.onclick=()=>{const R=document.getElementById('dlgRoot');R.innerHTML=`<div class="scrim"><div class="dlg" style="max-width:420px"><h3 style="margin-top:0">Add an item</h3><p class="muted" style="margin-top:0">The yard sees it right away and checks it too.</p>
+    <label class="f">Item<input id="yaN" list="yaL" placeholder="e.g. Pallet Jack"><datalist id="yaL">${items.slice(0,800).map(i=>`<option value="${esc(i.name+(i.size&&i.size!=='-'?' '+i.size:''))}">`).join('')}</datalist></label>
+    <div style="display:flex;gap:8px"><label class="f" style="flex:1">Qty<input id="yaQ" type="number" min="1" value="1"></label><label class="f" style="flex:1">Unit<input id="yaU" value="EA"></label></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" id="yaX">Cancel</button><button class="btn primary" id="yaOk">Add</button></div></div></div>`;
+    const q=x=>R.querySelector(x);q('#yaN').focus();q('#yaX').onclick=()=>{R.innerHTML=''};
+    q('#yaOk').onclick=async()=>{const nm=q('#yaN').value.trim();const n=Math.max(1,parseFloat(q('#yaQ').value)||1);if(!nm)return;const y=items.find(i=>(i.name+(i.size&&i.size!=='-'?' '+i.size:''))===nm);
+      const line=Object.assign({name:y?y.name:nm,n,unit:q('#yaU').value.trim()||(y&&y.unit)||'EA',cat:y?(y.cat||''):'Added',sub:'',from:'Added during yard check by '+curUser},y?{yid:y.id}:{nolink:1});
+      const lines=[...(m.lines||[]),line];m.lines=lines;R.innerHTML='';await upd({lines});toast('Added — the yard will check it');renderYard()}};
+  const gg=document.getElementById('ycGo');if(gg)gg.onclick=()=>{W={...JSON.parse(JSON.stringify(m)),step:5,_seg:'yard'};view='wiz';render()}}
+/* Return → job: what the yard could not prepare */
+window.ameMplNP=job=>MPLS.filter(m=>m.status==='out'&&(!job||m.job===job)).flatMap(m=>(m.lines||[]).map((l,k)=>({m,l,k})).filter(x=>x.l.np>0&&!x.l.npDone));
+(function npObs(){const yl=document.getElementById('ylist');if(!yl){setTimeout(npObs,800);return}
+  const paint=()=>{try{if(typeof act==='undefined'||act!=='RETURN'||typeof yGroup==='undefined'||!yGroup.startsWith('rj:')){return}if(yl.querySelector('.mplnp'))return;const job=yGroup==='rj:all'?'':yGroup.slice(3);const L=window.ameMplNP(job);if(!L.length)return;
+    yl.insertAdjacentHTML('afterbegin',`<div class="mplnp panel" style="border-color:#e8a33c;margin-bottom:10px"><b style="color:#e8a33c">Not prepared · ${L.length}</b> <small class="muted">from the MPL — the yard could not get these ready</small><div style="margin-top:6px">${L.map(x=>`<div class="mline"><div class="mname"><b>${esc(x.l.name)}</b><small>${job?'':esc(jobLabel(x.m.job))+' · '}×${x.l.np} ${esc(x.l.unit||'')}${x.m.yc&&x.m.yc[x.k]?' · '+({short:'Short',na:'Not available',ok:'Prepared'}[x.m.yc[x.k].s]||''):''}</small></div><button class="btn small" data-npd="${esc(x.m._id)}|${x.k}">Sent</button></div>`).join('')}</div></div>`);
+    yl.querySelectorAll('[data-npd]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const [id,k]=b.dataset.npd.split('|');const m=MPLS.find(x=>x._id===id);if(!m)return;const lines=JSON.parse(JSON.stringify(m.lines));lines[k].npDone={by:curUser,at:new Date().toISOString()};try{await db.doc('mpl/'+id).update({lines,updated:new Date().toISOString()});b.closest('.mline').remove()}catch(x){toast('Could not save')}})}catch(e){}};
+  new MutationObserver(paint).observe(yl,{childList:true});paint()})();
 function renderView(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m){view='list';return render()}
   const taken=(m.lines||[]).filter(l=>l.taken>0);
   box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${esc(jobLabel(m.job))}</h2>${stat(m)}${topBtns(m,m._id)}</div>
@@ -266,9 +316,12 @@ function wireExport(){document.querySelectorAll('#tab-mpl [data-xl]').forEach(a=
 /* ---------- module registration ---------- */
 document.head.insertAdjacentHTML('beforeend','<style>.chadd{position:relative;margin:8px 0}.chhits{border:1px solid var(--line,#555);border-radius:10px;margin-top:4px;max-height:260px;overflow:auto}.chhits button{display:grid;grid-template-columns:1fr auto;width:100%;text-align:left;padding:8px 10px;background:none;border:0;border-bottom:1px solid var(--line,#444);color:inherit}.chhits small{grid-column:1;opacity:.7}.chhits span{grid-row:1/3;grid-column:2;align-self:center;color:#f26a1b;font-weight:700}.chlist{max-height:48vh;overflow:auto;margin:6px 0}.chrow{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line,#444)}.chrow>div:first-child{flex:1;min-width:0}.chrow small{display:block;opacity:.7}.chrow.off{opacity:.45}.chrow.off b{text-decoration:line-through}.chrow.adm b{color:#f5a25d}.chrow .step input{width:44px;text-align:center}</style>');
 AME.nav=AME.nav||{};AME.nav.mpl={get:()=>({view,openId,step:view==='wiz'&&W?W.step:null}),set:s=>{if(s.view==='wiz'&&!W)s={view:'list'};view=s.view||'list';openId=s.openId||'';if(view==='wiz'&&W&&s.step!=null)W.step=s.step;render()}};
-AME.register({id:'mpl',name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',tabs:['mpl'],section:'tab-mpl',
+AME.register({id:'mpl',name:'Mobilization Prep List',desc:'Job → system → deck → scope → list → yard check-out',perm:'MPL',allow:()=>can('MPL')||['Jose S.','David H.'].includes(curUser),tabs:['mpl'],section:'tab-mpl',
   icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M8.5 11l1.5 1.5 3-3M8.5 16.5l1.5 1.5 3-3"/></svg>',
-  open:()=>showTab('mpl'),onShow:()=>{view=view==='wiz'&&W?view:'list';render()}});
-const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="mpl"]');if(b)b.hidden=!can('MPL')};
+  open:()=>showTab('mpl'),onShow:()=>{view=(view==='wiz'&&W)||view==='ycheck'?view:'list';render()}});
+try{const mm=AME.mod&&AME.mod('mpl');if(mm)mm.badge=()=>MPLS.filter(m=>m.status==='yard'&&((!m.yardDone&&isYC()&&m.sentBy!==curUser)||(m.yardDone&&(m.prep===curUser||m.sentBy===curUser)))).length}catch(e){}
+const _ar=window.applyRole;window.applyRole=function(){_ar();const b=document.querySelector('nav.tabs [data-tab="mpl"]');if(b)b.hidden=!(can('MPL')||YC.includes(curUser))};
 (function wait(){if(typeof db!=='undefined'&&db&&typeof db.collection==='function'){load()}else setTimeout(wait,300)})();
 })();
+
+;document.head.insertAdjacentHTML('beforeend','<style>.ycbtns{display:flex;gap:4px;flex:none}.ycbtns button{border:1px solid var(--line);background:var(--chip);color:var(--ink);font:inherit;font-size:12px;font-weight:700;padding:7px 10px;border-radius:8px;cursor:pointer}.ycbtns button[data-s=ok][aria-pressed=true]{background:#2ea043;border-color:#2ea043;color:#fff}.ycbtns button[data-s=short][aria-pressed=true]{background:#e8a33c;border-color:#e8a33c;color:#111}.ycbtns button[data-s=na][aria-pressed=true]{background:#e2513a;border-color:#e2513a;color:#fff}.ycl.yc-ok{border-left:4px solid #2ea043}.ycl.yc-short{border-left:4px solid #e8a33c}.ycl.yc-na{border-left:4px solid #e2513a}.ycst{color:var(--ink);font-weight:700}@media(max-width:600px){.ycl{flex-wrap:wrap}.ycbtns{width:100%}.ycbtns button{flex:1}}</style>');
