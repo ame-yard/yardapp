@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.57',APP_DATE='2026-10-22';
+const APP_VERSION='7.58',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1886,10 +1886,16 @@ function setUser(n){if(viewAs==='__login'&&n){toast('Preview only — tap the ba
   isAdmin=accountAdmin&&(isEditor(n)||can('EDIT'));applyRole();renderPerms()}
 function logout(){curUser='';selWho='';cart=[];try{sessionStorage.removeItem('ameUser');localStorage.removeItem('ameOwnerStay')}catch(e){}$('#userChip').hidden=true;isAdmin=false;applyRole();closeDlg();showLogin()}
 $('#userChip').onclick=()=>{if(viewAs){endViewAs();return}if(isDev(curUser)){viewAsDlg();return}if(myName()===curUser){toast('Signed in with your Microsoft account ('+msEmail+')');return}logout()};
-function viewAsDlg(){$('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true"><h3>View the app as…</h3><p class="muted" style="margin-top:0">See exactly what this person sees. No sign-in is recorded for them, but anything you change is saved under their name. Tap the orange banner to come back.</p>
-   <div class="names">${[...crew].filter(c=>c.name!==curUser&&c.name!==vaOwner).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name)).map(c=>`<button data-va="${esc(c.name)}" class="lname">${esc(c.name)}<small style="display:block;opacity:.6;font-size:11px">${esc(RL(c.role))}</small></button>`).join('')}</div>
-   <div class="bar"><button class="btn" id="vaShared">Shared-device sign-in screen</button><button class="btn" id="vaX">Close</button></div></div></div>`;
-  $('#vaX').onclick=closeDlg;$('#vaShared').onclick=()=>{closeDlg();vaOwner=vaOwner||curUser;viewAs='__login';curUser='';$('#userChip').hidden=true;isAdmin=false;applyRole();showLoginPicker();vaBanner()};
+function viewAsDlg(){const ppl=[...crew].filter(c=>c.name!==curUser&&c.name!==vaOwner);
+  const G=[['Office',c=>['President','PM','HR','Office','Intern','Yard'].includes(c.role)],['Field',c=>['FM','SFM'].includes(c.role)],['Crew',c=>!['President','PM','HR','Office','Intern','Yard','FM','SFM'].includes(c.role)]];
+  const sub=c=>RL(c.role)+(c.role==='Office'&&(c.depts||[]).length?' · '+c.depts.join(' + '):'');
+  $('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg vadlg" role="dialog" aria-modal="true" style="max-width:720px"><h3 style="margin-bottom:4px">View the app as…</h3><p class="muted" style="margin-top:0;font-size:13px">See exactly what this person sees. Nothing is tracked while viewing. Tap the orange banner to come back.</p>
+   <input id="vaQ" class="search" placeholder="Search a name…" autocomplete="off" style="width:100%;margin-bottom:8px">
+   <div id="vaL">${G.map(([g,f])=>{const L=ppl.filter(f).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role)||a.name.localeCompare(b.name));return L.length?`<div class="vag"><div class="vagh">${g} · ${L.length}</div><div class="vagl">${L.map(c=>`<button data-va="${esc(c.name)}" data-q="${esc((c.name+' '+c.role+' '+(c.depts||[]).join(' ')).toLowerCase())}" class="vab"><b>${esc(c.name)}</b><small>${esc(sub(c))}</small></button>`).join('')}</div></div>`:''}).join('')}</div>
+   <div class="bar"><button class="btn" id="vaX">Close</button></div></div></div>
+   <style>.vag{margin:6px 0 10px}.vagh{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}.vagl{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}.vab{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:inherit;cursor:pointer;text-align:left;min-width:0}.vab b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.vab small{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.vab:hover{border-color:var(--hi,#f47b20)}#vaL{max-height:60vh;overflow:auto}</style>`;
+  $('#vaX').onclick=closeDlg;const q=$('#vaQ');q.focus();q.oninput=()=>{const v=q.value.trim().toLowerCase();$$('#vaL .vab').forEach(b=>b.hidden=!!v&&!b.dataset.q.includes(v));$$('#vaL .vag').forEach(g=>g.hidden=![...g.querySelectorAll('.vab')].some(b=>!b.hidden))};
+  q.onkeydown=e=>{if(e.key==='Enter'){const b=$$('#vaL .vab').find(x=>!x.hidden);if(b)b.click()}};
   $$('[data-va]').forEach(b=>b.onclick=()=>{closeDlg();startViewAs(b.dataset.va)})}
 let vaOwner='';function startViewAs(n){vaOwner=vaOwner||curUser;viewAs=n;curUser='';setUserRaw(n);vaBanner()}
 function endViewAs(){const o=vaOwner;viewAs='';vaOwner='';document.getElementById('vaBan')?.remove();curUser='';setUserRaw(o);toast('Back to '+o)}
@@ -2046,10 +2052,10 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="lab.js?v=414"></script>
 <script src="lunch.js?v=5"></script>
 <script src="ai.js?v=1"></script>
-<script src="plans.js?v=39"></script>
+<script src="plans.js?v=40"></script>
 <script src="takeoff.js?v=6.93"></script>
 <script src="bid.js?v=2"></script><script src="est.js?v=4"></script>
-<script src="revu.js?v=16"></script><script src="hyperlink.js?v=6"></script>
+<script src="revu.js?v=17"></script><script src="hyperlink.js?v=6"></script>
 <script src="names.js?v=11"></script>
 <script src="tsheet.js?v=6.92"></script><script src="timesheets.js?v=4"></script><script src="weather.js?v=3"></script>
 <script src="labels.js?v=425"></script>
@@ -2068,9 +2074,10 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     if(document.getElementById('syncTxt')?.dataset.s==='error'){btn.disabled=false;btn.textContent='Couldn’t save — check connection & tap to retry';btn.onclick=e=>doUpdate(v,e.target);return}
     try{const tab=$$('nav.tabs button').find(b=>b.getAttribute('aria-selected')==='true')?.dataset.tab;const act=document.querySelector('#actions .act[aria-pressed="true"]')?.dataset.act;
       sessionStorage.setItem('ameUpdRestore',JSON.stringify({cart:(typeof cart!=='undefined'?cart:[]),mod:AME.cur,tab,act}))}catch(e){}
-    btn.textContent='Updating…';location.replace(location.pathname+'?v='+v)}
+    btn.textContent='Updating…';{const P=new URLSearchParams(location.search);const keep=['pop','doc','path'].filter(k=>P.get(k)).map(k=>'&'+k+'='+encodeURIComponent(P.get(k))).join('');try{window.__rvSavePos&&window.__rvSavePos()}catch(e){}location.replace(location.pathname+'?v='+v+keep)}}
   function busy(){const d=document.querySelector('#dlgRoot .dlg');return !!(d&&d.querySelector('input:not([type=hidden]),textarea,select'))}
   function show(v){if(document.getElementById('updDlg'))return;if(busy()){setTimeout(()=>show(v),15000);return}
+    if(new URLSearchParams(location.search).get('pop')){const p=document.createElement('button');p.id='updDlg';p.type='button';p.textContent='New version '+v+' — tap to reload (your place is kept)';p.style.cssText='position:fixed;right:12px;bottom:46px;z-index:100001;background:#f47b20;color:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer';p.onclick=()=>doUpdate(v,p);document.body.appendChild(p);return}
     const w=document.createElement('div');w.id='updDlg';w.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(10,8,6,.55);display:flex;align-items:center;justify-content:center;padding:20px';
     w.innerHTML=`<div style="background:var(--panel,#3b3633);border:1px solid var(--line,#5a514a);border-radius:16px;max-width:380px;width:100%;padding:22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)"><div style="line-height:1;color:var(--hi,#f26a1b)"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div><h3 style="margin:10px 0 6px">New version ready</h3><p class="muted" style="margin:0 0 16px">Version ${v} is here. Your cart and anything you're editing are saved first, then the app reloads right where you are.</p><button class="go" id="updGo" style="width:100%;min-height:52px">Update now</button></div>`;
     document.body.appendChild(w);w.querySelector('#updGo').onclick=e=>doUpdate(v,e.target)}

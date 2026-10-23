@@ -40,6 +40,7 @@ function Viewer(host,opts){const V={pdf:null,page:1,z:1,size:[612,792],opts};
     if(my!==seq)return;hi.width=c.width;hi.height=c.height;hi.getContext('2d').drawImage(c,0,0);Object.assign(hi.style,{display:'block',left:x0+'px',top:y0+'px',width:(x1-x0)+'px',height:(y1-y0)+'px'})}
   const hiLater=(ms)=>{clearTimeout(hiTimer);hiTimer=setTimeout(()=>renderHi(),ms??120)};
   V.load=async blob=>{await libs();V.pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;V.page=1;pg=null;bgKey='';await V.fit()};
+  V.useP=async pdf=>{await libs();V.pdf=pdf;V.page=1;pg=null;bgKey='';await V.fit()};
   V.render=async()=>{if(!V.pdf)return;await getPg();layout();hi.style.display='none';await renderBg();renderHi();if(V.opts.onRender)V.opts.onRender()};
   V.fit=async()=>{if(!V.pdf)return;await getPg();V.z=Math.max(.05,Math.min((wrap.clientWidth-20)/V.size[0],(wrap.clientHeight-20)/V.size[1]));await V.render()};
   V.fitWidth=async()=>{if(!V.pdf)return;await getPg();V.z=Math.max(.05,(wrap.clientWidth-20)/V.size[0]);await V.render()};
