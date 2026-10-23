@@ -570,7 +570,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 </div></header>
 
 <main class="wrap">
-  <div class="statusrow"><div class="status" id="status">Connecting to the yard database…</div><div class="ver"><span id="verTxt"></span><span id="syncTxt"></span><button class="btn" id="saveBtn" title="Save all changes to SharePoint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" style="vertical-align:-2px"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg> Save</button><button class="btn" id="syncBtn">⟳ Sync</button></div></div>
+  <div class="statusrow"><div class="status" id="status">Connecting to the yard database…</div><div class="ver"><span id="verTxt"></span><span id="syncTxt"></span><button type="button" id="rfBtn" title="Get the latest now" aria-label="Refresh" style="background:none;border:0;color:var(--muted);cursor:pointer;padding:4px;display:inline-flex;border-radius:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button><button class="btn" id="saveBtn" title="Save all changes to SharePoint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" style="vertical-align:-2px"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg> Save</button><button class="btn" id="syncBtn">⟳ Sync</button></div></div>
 
   <!-- YARD -->
   <section id="tab-yard">
@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.73',APP_DATE='2026-10-22';
+const APP_VERSION='7.74',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1947,6 +1947,7 @@ function setLive(){const t=document.getElementById('syncTxt');if(!t)return;const
   const [txt,col]=off?['Offline — changes save when you’re back online','#ff8a7a']:st==='error'?['Save failed — tap Retry','#ff8a7a']:st==='saving'?['Saving…','']:['All saved · Live','#7fd18b'];
   t.innerHTML=`<i class="lvdot" style="background:${col||'#e0a63a'}"></i>${txt}`;t.style.color=col;t.title=lastSync?'Last update from the server '+lastSync.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}):'';
   const sb=document.getElementById('saveBtn'),yb=document.getElementById('syncBtn');if(sb)sb.hidden=!bad||off;if(yb){yb.hidden=!bad||off;if(!yb.disabled)yb.textContent='⟳ Retry'}}
+setTimeout(()=>{const r=document.getElementById('rfBtn');if(r)r.onclick=async()=>{r.disabled=true;r.style.animation='rfspin .8s linear infinite';try{await ameSync()}catch(e){}r.style.animation='';r.disabled=false;toast('Up to date')}},0);document.head.insertAdjacentHTML('beforeend','<style>@keyframes rfspin{to{transform:rotate(360deg)}}#rfBtn:hover{color:var(--fg);background:rgba(127,127,127,.15)}</style>');
 window.addEventListener('online',()=>{setLive();try{ameSync()}catch(e){}});window.addEventListener('offline',setLive);
 document.head.insertAdjacentHTML('beforeend','<style>.lvdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}#syncTxt{white-space:nowrap}</style>');setTimeout(setLive,0);
 (function(){let y0=null,dy=0,busy=false;const P=$('#ptr'),T=$('#ptrTxt');
