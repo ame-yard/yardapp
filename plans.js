@@ -20,27 +20,50 @@ const COLORS=['#f47b20','#2f81f7','#3fb950','#d2a8ff','#e8594a','#f2cc60','#39c5
 
 /* ---------------- shared PDF viewer ---------------- */
 function Viewer(host,opts){const V={pdf:null,page:1,z:1,size:[612,792],opts};
-  host.innerHTML=`<div class="pvwrap"><div class="pvstage"><canvas></canvas><svg class="pvsvg"></svg></div></div>`;
-  const wrap=host.querySelector('.pvwrap'),stage=host.querySelector('.pvstage'),cv=host.querySelector('canvas'),svg=host.querySelector('svg');V.svg=svg;V.wrap=wrap;
-  let rt=null,seq=0;
-  V.load=async blob=>{await libs();V.pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;V.page=1;await V.fit()};
-  V.render=async()=>{if(!V.pdf)return;const my=++seq;const pg=await V.pdf.getPage(V.page);const vp1=pg.getViewport({scale:1});V.size=[vp1.width,vp1.height];
-    const dpr=Math.min(1.5,window.devicePixelRatio||1,4096/Math.max(1,vp1.width*V.z),4096/Math.max(1,vp1.height*V.z));const vp=pg.getViewport({scale:V.z*dpr});cv.width=vp.width;cv.height=vp.height;cv.style.width=(vp1.width*V.z)+'px';cv.style.height=(vp1.height*V.z)+'px';
-    stage.style.width=cv.style.width;stage.style.height=cv.style.height;svg.setAttribute('viewBox',`0 0 ${vp1.width} ${vp1.height}`);svg.style.width=cv.style.width;svg.style.height=cv.style.height;
-    if(rt)try{rt.cancel()}catch(e){}rt=pg.render({canvasContext:cv.getContext('2d'),viewport:vp,...(V.opts.noAnnots&&V.opts.noAnnots()?{annotationMode:0}:{})});try{await rt.promise}catch(e){}if(my===seq&&V.opts.onRender)V.opts.onRender()};
-  V.fit=async()=>{if(!V.pdf)return;const pg=await V.pdf.getPage(V.page);const vp=pg.getViewport({scale:1});V.z=Math.max(.1,(wrap.clientWidth-20)/vp.width);await V.render()};
-  V.zoom=async f=>{const cx=wrap.scrollLeft+wrap.clientWidth/2,cy=wrap.scrollTop+wrap.clientHeight/2;const old=V.z;V.z=Math.min(8,Math.max(.1,V.z*f));await V.render();wrap.scrollLeft=cx*V.z/old-wrap.clientWidth/2;wrap.scrollTop=cy*V.z/old-wrap.clientHeight/2};
-  V.go=async n=>{if(!V.pdf)return;V.page=Math.min(V.pdf.numPages,Math.max(1,n));await V.render()};
+  /* two layers: a low-res whole page (instant while zooming / panning) + a sharp canvas for just the visible area */
+  host.innerHTML=`<div class="pvwrap"><div class="pvstage"><canvas class="pvbg"></canvas><canvas class="pvhi"></canvas><svg class="pvsvg"></svg></div></div>`;
+  const wrap=host.querySelector('.pvwrap'),stage=host.querySelector('.pvstage'),bg=host.querySelector('.pvbg'),hi=host.querySelector('.pvhi'),svg=host.querySelector('svg');V.svg=svg;V.wrap=wrap;
+  let bgT=null,hiT=null,bgKey='',seq=0,hiTimer=0,pg=null;
+  const noAnn=()=>V.opts.noAnnots&&V.opts.noAnnots()?{annotationMode:0}:{};
+  const layout=()=>{const w=V.size[0]*V.z,h=V.size[1]*V.z;for(const el of [stage,bg,svg]){el.style.width=w+'px';el.style.height=h+'px'}svg.setAttribute('viewBox',`0 0 ${V.size[0]} ${V.size[1]}`)};
+  const getPg=async()=>{if(!pg||pg._n!==V.page){pg=await V.pdf.getPage(V.page);pg._n=V.page;const vp=pg.getViewport({scale:1});V.size=[vp.width,vp.height]}return pg};
+  async function renderBg(){const p=await getPg();const key=V.page+'|'+(noAnn().annotationMode??1);if(bgKey===key)return;bgKey=key;
+    const s=Math.min(2600/Math.max(V.size[0],V.size[1]),3);const vp=p.getViewport({scale:s});if(bgT)try{bgT.cancel()}catch(e){}
+    const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;bgT=p.render({canvasContext:c.getContext('2d'),viewport:vp,...noAnn()});try{await bgT.promise}catch(e){bgKey='';return}
+    bg.width=c.width;bg.height=c.height;bg.getContext('2d').drawImage(c,0,0)}
+  async function renderHi(){const my=++seq;const p=await getPg();const dpr=Math.min(2,window.devicePixelRatio||1);
+    const W=V.size[0]*V.z,H=V.size[1]*V.z;const ox=stage.offsetLeft,oy=stage.offsetTop;
+    const x0=Math.max(0,wrap.scrollLeft-ox-80),y0=Math.max(0,wrap.scrollTop-oy-80),x1=Math.min(W,wrap.scrollLeft-ox+wrap.clientWidth+80),y1=Math.min(H,wrap.scrollTop-oy+wrap.clientHeight+80);
+    if(x1<=x0||y1<=y0){hi.style.display='none';return}
+    const vp=p.getViewport({scale:V.z*dpr,offsetX:-x0*dpr,offsetY:-y0*dpr});if(hiT)try{hiT.cancel()}catch(e){}
+    const c=document.createElement('canvas');c.width=Math.ceil((x1-x0)*dpr);c.height=Math.ceil((y1-y0)*dpr);hiT=p.render({canvasContext:c.getContext('2d'),viewport:vp,...noAnn()});try{await hiT.promise}catch(e){return}
+    if(my!==seq)return;hi.width=c.width;hi.height=c.height;hi.getContext('2d').drawImage(c,0,0);Object.assign(hi.style,{display:'block',left:x0+'px',top:y0+'px',width:(x1-x0)+'px',height:(y1-y0)+'px'})}
+  const hiLater=(ms)=>{clearTimeout(hiTimer);hiTimer=setTimeout(()=>renderHi(),ms??120)};
+  V.load=async blob=>{await libs();V.pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;V.page=1;pg=null;bgKey='';await V.fit()};
+  V.render=async()=>{if(!V.pdf)return;await getPg();layout();hi.style.display='none';await renderBg();renderHi();if(V.opts.onRender)V.opts.onRender()};
+  V.fit=async()=>{if(!V.pdf)return;await getPg();V.z=Math.max(.05,Math.min((wrap.clientWidth-20)/V.size[0],(wrap.clientHeight-20)/V.size[1]));await V.render()};
+  V.fitWidth=async()=>{if(!V.pdf)return;await getPg();V.z=Math.max(.05,(wrap.clientWidth-20)/V.size[0]);await V.render()};
+  /* zoom about a screen point (default: centre). Instant: stretches the layers, sharp render follows */
+  V.zoom=async(f,cx,cy)=>{if(!V.pdf)return;const r=wrap.getBoundingClientRect();if(cx==null){cx=r.left+wrap.clientWidth/2;cy=r.top+wrap.clientHeight/2}
+    const sx=wrap.scrollLeft+(cx-r.left)-stage.offsetLeft,sy=wrap.scrollTop+(cy-r.top)-stage.offsetTop;const old=V.z;V.z=Math.min(16,Math.max(.05,V.z*f));const k=V.z/old;
+    layout();hi.style.display='none';wrap.scrollLeft=sx*k+stage.offsetLeft-(cx-r.left);wrap.scrollTop=sy*k+stage.offsetTop-(cy-r.top);hiLater(140);if(V.opts.onRender){clearTimeout(V._or);V._or=setTimeout(()=>V.opts.onRender(),60)}};
+  V.go=async n=>{if(!V.pdf)return;const t=Math.min(V.pdf.numPages,Math.max(1,n));if(t===V.page&&pg)return V.render();V.page=t;bgKey='';await V.render()};
   V.pt=e=>{const r=svg.getBoundingClientRect();return [(e.clientX-r.left)/V.z,(e.clientY-r.top)/V.z]};
-  wrap.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();V.zoom(e.deltaY<0?1.15:1/1.15)}},{passive:false});
-  /* drag to pan with middle / right mouse or space */
-  let pan=null,space=false;window.addEventListener('keydown',e=>{if(e.code==='Space'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA')space=true});window.addEventListener('keyup',e=>{if(e.code==='Space')space=false});
-  wrap.addEventListener('pointerdown',e=>{if(e.button===1||e.button===2||space||(e.button===0&&V.opts.panLeft&&V.opts.panLeft()&&!e.target.closest('[data-m],[data-id],[data-h]'))){pan={x:e.clientX,y:e.clientY,l:wrap.scrollLeft,t:wrap.scrollTop};e.preventDefault()}});
-  window.addEventListener('pointermove',e=>{if(pan){wrap.scrollLeft=pan.l-(e.clientX-pan.x);wrap.scrollTop=pan.t-(e.clientY-pan.y)}});window.addEventListener('pointerup',()=>pan=null);
+  wrap.addEventListener('scroll',()=>hiLater(90),{passive:true});
+  /* wheel = zoom at the cursor (Bluebeam style). Trackpad two-finger scroll pans; pinch zooms. */
+  wrap.addEventListener('wheel',e=>{if(!V.pdf)return;const trackpadPan=!e.ctrlKey&&!e.metaKey&&(Math.abs(e.deltaX)>0||(e.deltaMode===0&&Math.abs(e.deltaY)<40&&!Number.isInteger(e.deltaY)));if(trackpadPan||e.shiftKey)return;
+    e.preventDefault();const d=e.deltaMode===1?e.deltaY*33:e.deltaY;const f=Math.exp(-Math.max(-300,Math.min(300,d))*(e.ctrlKey?.01:.0022));V.zoom(f,e.clientX,e.clientY)},{passive:false});
+  /* drag to pan: middle / right button, Space+drag, or left button with the Pan tool */
+  let pan=null,space=false;window.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))space=true});window.addEventListener('keyup',e=>{if(e.code==='Space')space=false});
+  wrap.addEventListener('pointerdown',e=>{if(e.button===1||e.button===2||space||(e.button===0&&V.opts.panLeft&&V.opts.panLeft()&&!e.target.closest('[data-m],[data-id],[data-h]'))){pan={x:e.clientX,y:e.clientY,l:wrap.scrollLeft,t:wrap.scrollTop,id:e.pointerId};wrap.classList.add('pvpan');e.preventDefault()}});
+  window.addEventListener('pointermove',e=>{if(pan){wrap.scrollLeft=pan.l-(e.clientX-pan.x);wrap.scrollTop=pan.t-(e.clientY-pan.y)}});window.addEventListener('pointerup',()=>{if(pan){pan=null;wrap.classList.remove('pvpan')}});
   wrap.addEventListener('contextmenu',e=>e.preventDefault());
-  /* pinch zoom on touch */
-  let pinch=null;wrap.addEventListener('touchstart',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinch={d}}},{passive:true});
-  wrap.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(Math.abs(d/pinch.d-1)>.12){V.zoom(d/pinch.d);pinch.d=d}}},{passive:true});wrap.addEventListener('touchend',()=>pinch=null);
+  /* middle-click double = fit page */
+  wrap.addEventListener('auxclick',e=>{if(e.button===1&&e.detail===2)V.fit()});
+  window.addEventListener('resize',()=>hiLater(150));
+  /* pinch zoom on touch, anchored at the fingers */
+  let pinch=null;wrap.addEventListener('touchstart',e=>{if(e.touches.length===2){const[a,b]=e.touches;pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}}},{passive:true});
+  wrap.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const[a,b]=e.touches;const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(Math.abs(d/pinch.d-1)>.04){V.zoom(d/pinch.d,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2);pinch.d=d}}},{passive:true});wrap.addEventListener('touchend',()=>pinch=null);
   return V}
 
 /* ---------------- projects (shared by Takeoff + Bid) ---------------- */
@@ -267,7 +290,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 section.appfs{position:fixed!important;inset:0;z-index:940;background:var(--bg);overflow:auto;padding:10px 12px;margin:0!important;max-width:none!important}section.appfs .tkmain{height:calc(100vh - 150px)}section.appfs .rvbody{height:calc(100vh - 110px)}
 .mplhead:has(.plvseg){justify-content:flex-start!important;align-items:center;gap:10px}.mplhead:has(.plvseg) h2{margin:0}.plvseg{margin-left:8px!important}.osttbl th.n{text-align:right}.pltbl{table-layout:fixed}.pltbl th,.pltbl td{padding:9px 12px!important;vertical-align:middle}.pltbl th:nth-child(1){width:auto}.pltbl th:nth-child(2){width:110px}.pltbl th:nth-child(3),.pltbl th:nth-child(4){width:110px}.pltbl th:nth-child(5){width:150px}.pltbl th:nth-child(6){width:110px}.pltbl th:nth-child(7){width:90px}.pltbl th:last-child:empty{width:56px}.pltbl td{font-variant-numeric:tabular-nums}.pltbl td b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pltbl td small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plvseg button{display:grid;place-items:center;padding:6px 9px!important}.pltbl tr.plrow{cursor:pointer}.pltbl tr.plrow:hover td{background:color-mix(in srgb,var(--hi) 8%,transparent)}
 .tkhelp{font-size:12px;margin-top:10px}.tkview{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#555;position:relative}.mkview{height:calc(100vh - 190px);min-height:480px}
-.pvwrap{position:absolute;inset:0;overflow:auto}.pvstage{position:relative;margin:10px}.pvstage canvas{display:block;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.4)}.pvsvg{position:absolute;left:0;top:0;touch-action:none}.tkl{font-weight:800;fill:#111;paint-order:stroke;stroke:#fff;stroke-width:3px;text-anchor:middle}
+.pvwrap{position:absolute;inset:0;overflow:auto}.pvstage{position:relative;margin:10px}.pvstage canvas.pvbg{display:block;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.4)}.pvstage canvas.pvhi{position:absolute;display:none;pointer-events:none}.pvwrap.pvpan{cursor:grabbing!important}.pvwrap.pvpan *{cursor:grabbing!important}.pvsvg{position:absolute;left:0;top:0;touch-action:none}.tkl{font-weight:800;fill:#111;paint-order:stroke;stroke:#fff;stroke-width:3px;text-anchor:middle}
 .bdgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px;align-items:start}.bdgrid>div{min-width:0}.bdc{overflow-x:auto;max-width:100%}.bdt{table-layout:fixed;min-width:0}.bdt th{white-space:normal;line-height:1.15;padding:3px 2px!important}.bdt td{padding:2px!important}.bdt input,.bdt select{font-size:12px!important;padding:4px 3px!important;width:100%!important;box-sizing:border-box;min-width:0}.bdt th:nth-child(1){width:26%}.bdt.fx th:nth-child(1){width:18%}.bdt th:nth-child(2){width:14%}.bdt th:nth-child(15){width:30px}.bdt th:nth-child(14){width:96px}.bdt td.n{font-size:12px;white-space:nowrap}.bdt:not(.fx):not(.bdx) th:nth-child(n+2):nth-child(-n+5),.bdt:not(.fx):not(.bdx) td:nth-child(n+2):nth-child(-n+5){display:none}.bdc{margin-bottom:10px}.bdch{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}.bdch select{padding:6px;font:inherit;font-size:13px}
 .bdt{width:100%;border-collapse:collapse;font-size:13px}.bdt th{font-size:11px;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px}.bdt td{padding:3px 4px;border-top:1px solid var(--line);vertical-align:middle}.bdt .n{text-align:right}.bdt input{width:100%;box-sizing:border-box;padding:5px 6px;font:inherit;font-size:13px;min-width:0}.bdt input.sm{width:72px}.bdt input.n{text-align:right}
 .bdsum{position:sticky;top:90px}.bdr{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;font-size:14px}.bdr input.sm{width:52px;padding:3px 5px;font:inherit;text-align:right}.bdr.tot{border-top:1px solid var(--line);margin-top:4px;padding-top:8px}.bdr.big{border-top:2px solid var(--hi);margin-top:6px;padding-top:10px;font-size:18px}.bdr.big b{color:var(--hi)}
