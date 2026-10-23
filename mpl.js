@@ -235,7 +235,7 @@ function renderYard(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m|
   const yc=m.yc||{};const lines=m.lines||[];const done=!!m.yardDone;const canChk=isYC()&&!done;const mine=m.prep===curUser||(typeof isOwner==='function'&&isOwner(curUser));
   const cnt={ok:0,short:0,na:0,none:0};lines.forEach((l,k)=>{if(l.rm)return;const c=yc[k];cnt[c?c.s:'none']++});
   const lab={ok:'Prepared',short:'Short',na:'Not available'};
-  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${esc(jobLabel(m.job))}</h2>${stat(m)}</div>
+  box.innerHTML=`<div class="mplhead"><button class="btn" id="mBack">← All MPLs</button><h2>${esc(jobLabel(m.job))}</h2>${stat(m)}<span class="mtop"><button class="btn" data-pdf="1">PDF / Print</button></span></div>
    <div class="panel"><p class="muted" style="margin:0">Sent by ${esc(m.sentBy||m.prep||'')} · ${fmtD(m.sentAt)} · ${lines.length} items${m.jobName?' · '+esc(m.jobName):''}</p>
    <p style="margin:6px 0 0"><b>${cnt.ok}</b> prepared · <b>${cnt.short}</b> short · <b>${cnt.na}</b> not available · <b>${cnt.none}</b> not checked</p>
    ${done?`<p class="muted" style="margin:6px 0 0">Checked by ${esc(m.yardDone.by)} · ${fmtD(m.yardDone.at)}</p>`:canChk?'<p class="muted" style="margin:6px 0 0">Tap what is ready. For <b>Short</b>, enter how many you have.</p>':''}</div>
@@ -245,7 +245,7 @@ function renderYard(){const box=el();const m=MPLS.find(x=>x._id===openId);if(!m|
    ${notesHtml(m.notes,true)}
    <div class="mplbar">${canChk?`<button class="go" id="ycDone" style="width:auto" ${cnt.none?'disabled':''}>${cnt.none?cnt.none+' left to check':'Done — send back to '+esc(m.sentBy||m.prep||'PM')}</button>`:''}
     ${mine?(done?`<button class="go" id="ycGo" style="width:auto">Continue to check-out</button>`:`<button class="btn pri" id="ycAdd">+ Add item</button>`)+`<button class="btn" id="ycRecall">Recall to draft</button>`:''}</div>`;
-  document.getElementById('mBack').onclick=()=>{view='list';render()};
+  document.getElementById('mBack').onclick=()=>{view='list';render()};wireExport();
   const upd=async o=>{try{await db.doc('mpl/'+m._id).update({...o,updated:new Date().toISOString()})}catch(e){toast('Could not save: '+(e.message||e))}};
   box.querySelectorAll('[data-yc]').forEach(b=>b.onclick=async()=>{const k=b.dataset.yc,st=b.dataset.s;const v={s:st,by:curUser,at:new Date().toISOString()};if(st==='short'){const n=prompt('How many do you have? (need '+lines[k].n+')',String(Math.max(0,lines[k].n-1)));if(n==null)return;v.q=Math.max(0,Math.min(lines[k].n,parseFloat(n)||0))}
     const cur=MPLS.find(x=>x._id===m._id)||m;const nyc={...(cur.yc||{}),[k]:v};cur.yc=nyc;m.yc=nyc;await upd({yc:nyc});renderYard()});
@@ -304,7 +304,7 @@ function exportRows(m){const lines=m.lines||[];const ready=[],prep=[];
   return {ready,prep}}
 function exportHead(m){return [['AME Builders — Mobilization Prep List'],['Job',jobLabel(m.job)+(m.jobName&&!jobLabel(m.job).includes(m.jobName)?' · '+m.jobName:'')],['Prepared by',m.prep||''],['PM',m.pm||''],['FM',m.fm||''],['Crew size',m.crew||''],['Roof system',(()=>{const R=new Set(kids(8).map(x=>x[0]));const r=(m.st||[]).filter(i=>R.has(i)).map(stName);return r.join(', ')||'—'})()],['Status',m.status||''],['Exported',new Date().toLocaleString('en-US')]]}
 async function saveBlob(name,blob){const dl=await window.claude?.use?.('downloads');if(dl){await dl.save({filename:name,data:blob});return}const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove()}
-function curDoc(){if(view==='wiz')return {...W,status:W.status||'draft'};return MPLS.find(x=>x._id===openId)}
+function curDoc(){if(view==='ycheck')return MPLS.find(x=>x._id===openId);if(view==='wiz')return {...W,status:W.status||'draft'};return MPLS.find(x=>x._id===openId)}
 async function exportXlsx(){const m=curDoc();if(!m)return;if(!window.XLSX){toast('Excel library did not load.');return}const {ready,prep}=exportRows(m);const wb=XLSX.utils.book_new();
   const s1=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['FROM YARD ('+ready.length+')'],['Category','MPL item','Need','Unit','Yard item','Yard location','Pull Qty','On Truck ✓'],...ready.map(r=>[...r,''])]);s1['!cols']=[16,40,7,7,40,14,8].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s1,'From Yard');
   const s2=XLSX.utils.aoa_to_sheet([...exportHead(m),[],['TO BUY / RENT ('+prep.length+')'],['Category','Item','Needed','Unit','Prepared ✓','Note'],...prep.map(r=>[r[0],r[1],r[2],r[3],'',/Short/.test(r[4])?r[4]:''])]);s2['!cols']=[16,44,7,7,34].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,s2,'Buy - Rent');
@@ -318,8 +318,34 @@ async function exportPdf(){const m=curDoc();if(!m)return;try{if(!window.jspdf){a
   if(prep.length){d.addPage();d.setFontSize(16);d.text('Buy / Rent List',40,44);d.setFontSize(10);d.text('Job: '+H[1][1],40,64);d.text('Not in the yard inventory — buy, rent or bring otherwise.',40,78);
   d.autoTable({...mono,startY:92,head:[['TO BUY / RENT ('+prep.length+')','Category','Needed','Prepared']],body:prep.map(r=>[r[1]+(r[4]&&/Short/.test(r[4])?'  ('+r[4]+')':''),r[0],r[2]+' '+r[3],'']),columnStyles:{0:{cellWidth:250},3:{cellWidth:64}}})}
   await saveBlob(`MPL_${String(m.job).replace('#','')}_${new Date().toISOString().slice(0,10)}.pdf`,d.output('blob'))}
-function exportBtns(t=''){return `<button class="btn" data-xl="1">Excel</button><button class="btn" data-pdf="1">PDF</button>`}
-function wireExport(){document.querySelectorAll('#tab-mpl [data-xl]').forEach(a=>a.onclick=exportXlsx);document.querySelectorAll('#tab-mpl [data-pdf]').forEach(b=>b.onclick=exportPdf);document.querySelectorAll('#tab-mpl [data-tdel]').forEach(b=>b.onclick=()=>delMpl(b.dataset.tdel))}
+function exportBtns(t=''){return `<button class="btn" data-xl="1">Excel</button><button class="btn" data-pdf="1" title="Printable check sheet — print it or save as PDF">PDF / Print</button>`}
+/* printable yard check sheet (paper version of the MPL) — opens the browser print dialog: Print or Save as PDF */
+function sheetHtml(m){const lines=(m.lines||[]).filter(l=>!l.rm);const yc=m.yc||{};const H=exportHead(m);const fromY=[],other=[];
+  lines.forEach((l,k0)=>{const k=(m.lines||[]).indexOf(l);const y=l.yid?byId(l.yid):(m.status==='draft'||m.status==='yard'?yardFor(l):null);(y?fromY:other).push({l,y,c:yc[k]})});
+  const box=on=>`<span class="cb">${on?'&#10003;':''}</span>`;
+  const row=(x,i)=>`<tr><td class="n">${i+1}</td><td><b>${esc(x.l.name)}</b>${x.l.from&&!/^(Mon F550|Yard \/ trailer)/.test(x.l.from)?`<div class="sm">${esc(x.l.from)}</div>`:''}</td><td class="n">${x.l.n}</td><td>${esc(x.l.unit||'')}</td><td>${x.y?esc((x.y.loc||'')+(x.y.level?' '+x.y.level:'')):''}</td><td class="n">${x.y?(Number(x.y.qty)||0):''}</td><td class="c">${box(x.c&&x.c.s==='ok')}</td><td class="c">${x.c&&x.c.s==='short'?'<b>'+(x.c.q||0)+'</b>':'<span class="ln"></span>'}</td><td class="c">${box(x.c&&x.c.s==='na')}</td><td class="rm"></td></tr>`;
+  const tbl=(t,L)=>L.length?`<h2>${t} <small>(${L.length})</small></h2><table><colgroup><col style="width:26px"><col><col style="width:40px"><col style="width:36px"><col style="width:62px"><col style="width:40px"><col style="width:44px"><col style="width:46px"><col style="width:38px"><col style="width:120px"></colgroup><thead><tr><th class="n">#</th><th>Item</th><th class="n">Need</th><th>Unit</th><th>Yard loc.</th><th class="n">In yard</th><th class="c">Ready</th><th class="c">Short qty</th><th class="c">N/A</th><th>Remarks</th></tr></thead><tbody>${L.map(row).join('')}</tbody></table>`:'';
+  const notes=(m.notes||[]).map(n=>`<div><b>${esc(n.by)}</b> · ${esc(fmtD(n.at))}: ${esc(n.t)}</div>`).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>MPL ${esc(String(m.job))}</title><style>
+  @page{size:letter;margin:.45in}*{box-sizing:border-box}body{font:11px/1.35 Arial,Helvetica,sans-serif;color:#000;margin:0}
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px}.hd h1{font-size:18px;margin:0}.hd .r{text-align:right;font-size:11px}
+  .meta{display:grid;grid-template-columns:repeat(4,auto);gap:2px 18px;margin-bottom:8px}.meta b{display:inline-block;min-width:70px}
+  h2{font-size:13px;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.03em}h2 small{font-weight:400}
+  table{width:100%;border-collapse:collapse;page-break-inside:auto;table-layout:fixed}tr{page-break-inside:avoid}th,td{border:1px solid #444;padding:4px 5px;vertical-align:middle}th{background:#e8e8e8;font-size:10px;text-transform:uppercase}
+  td.n,th.n{text-align:right}td.c,th.c{text-align:center}.sm{font-size:9.5px;color:#444}
+  .cb{display:inline-block;width:14px;height:14px;border:1.4px solid #000;line-height:12px;font-weight:700}.ln{display:inline-block;width:30px;border-bottom:1px solid #000;height:12px}
+  .notes{border:1px solid #444;padding:6px;min-height:60px;margin-top:4px}.sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:18px}.sig div{border-top:1px solid #000;padding-top:3px;font-size:10px}
+  .tip{font-size:10px;color:#333;margin:2px 0 6px}</style></head><body>
+  <div class="hd"><div><h1>Mobilization Prep List — Yard Check</h1><div>${esc(H[1][1])}</div></div><div class="r">AME Builders, Inc.<br>Printed ${esc(new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}))}</div></div>
+  <div class="meta"><span><b>Prepared by</b>${esc(m.prep||'')}</span><span><b>PM</b>${esc(m.pm||'')}</span><span><b>Crew</b>${esc(String(m.crew||''))}</span><span><b>Status</b>${esc(m.status==='yard'?(m.yardDone?'Yard checked':'At yard check'):m.status||'')}</span></div>
+  <div class="tip">Check <b>Ready</b> when it is pulled and staged. Write how many you have under <b>Short qty</b>. Check <b>N/A</b> if the yard does not have it. Then enter the results in the app (MPL → Yard check) or hand this sheet to the PM.</div>
+  ${tbl('From the yard',fromY)}${tbl('Not in yard inventory — buy / rent / bring',other)}
+  <h2>Notes</h2><div class="notes">${notes}</div>
+  <div class="sig"><div>Checked by (yard)</div><div>Date / time</div><div>Received by (PM / foreman)</div></div>
+  </body></html>`}
+function printSheet(){const m=curDoc();if(!m)return;const f=document.createElement('iframe');Object.assign(f.style,{position:'fixed',right:'0',bottom:'0',width:'0',height:'0',border:'0'});document.body.appendChild(f);const w=f.contentWindow;w.document.open();w.document.write(sheetHtml(m));w.document.close();setTimeout(()=>{try{w.focus();w.print()}catch(e){toast('Could not open print')}setTimeout(()=>f.remove(),60000)},300)}
+window.ameMplSheet=sheetHtml;
+function wireExport(){document.querySelectorAll('#tab-mpl [data-xl]').forEach(a=>a.onclick=exportXlsx);document.querySelectorAll('#tab-mpl [data-pdf]').forEach(b=>b.onclick=printSheet);document.querySelectorAll('#tab-mpl [data-tdel]').forEach(b=>b.onclick=()=>delMpl(b.dataset.tdel))}
 
 /* ---------- module registration ---------- */
 document.head.insertAdjacentHTML('beforeend','<style>.chadd{position:relative;margin:8px 0}.chhits{border:1px solid var(--line,#555);border-radius:10px;margin-top:4px;max-height:260px;overflow:auto}.chhits button{display:grid;grid-template-columns:1fr auto;width:100%;text-align:left;padding:8px 10px;background:none;border:0;border-bottom:1px solid var(--line,#444);color:inherit}.chhits small{grid-column:1;opacity:.7}.chhits span{grid-row:1/3;grid-column:2;align-self:center;color:#f26a1b;font-weight:700}.chlist{max-height:48vh;overflow:auto;margin:6px 0}.chrow{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line,#444)}.chrow>div:first-child{flex:1;min-width:0}.chrow small{display:block;opacity:.7}.chrow.off{opacity:.45}.chrow.off b{text-decoration:line-through}.chrow.adm b{color:#f5a25d}.chrow .step input{width:44px;text-align:center}</style>');
