@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.77',APP_DATE='2026-10-22';
+const APP_VERSION='7.78',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1944,7 +1944,7 @@ $('#verTxt').textContent=innerWidth<600?APP_VERSION:`App ${APP_VERSION} · ${APP
 let lastSync=null;function markSync(){lastSync=new Date();setLive()}
 /* one status: All saved · Live / Saving… / Offline / Save failed. Save + Sync buttons only show when something is wrong */
 function setLive(){const t=document.getElementById('syncTxt');if(!t)return;const st=t.dataset.s||'';const off=navigator.onLine===false;const bad=off||st==='error';
-  const [txt,col]=off?['Offline — changes save when you’re back online','#ff8a7a']:st==='error'?['Save failed — tap Retry','#ff8a7a']:st==='saving'?['Saving…','']:['All saved · Live','#7fd18b'];
+  const [txt,col]=off?['Offline — changes save when you’re back online','#ff8a7a']:st==='error'?['Save failed — tap Retry','#ff8a7a']:st==='saving'?['Saving…','']:['All saved · Live','#2da44e'];
   t.innerHTML=`<i class="lvdot" style="background:${col||'#e0a63a'}"></i>${txt}`;t.style.color=col;t.title=lastSync?'Last update from the server '+lastSync.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}):'';
   const sb=document.getElementById('saveBtn'),yb=document.getElementById('syncBtn');if(sb)sb.hidden=!bad||off;if(yb){yb.hidden=!bad||off;if(!yb.disabled)yb.textContent='⟳ Retry'}}
 setTimeout(()=>{const r=document.getElementById('rfBtn');if(r)r.onclick=async()=>{r.disabled=true;r.style.animation='rfspin .8s linear infinite';try{await ameSync()}catch(e){}r.style.animation='';r.disabled=false;toast('Up to date')}},0);document.head.insertAdjacentHTML('beforeend','<style>@keyframes rfspin{to{transform:rotate(360deg)}}#rfBtn:hover{color:var(--fg);background:rgba(127,127,127,.15)}</style>');
@@ -2048,7 +2048,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
 <script src="shell.js?v=7.24"></script>
 <script src="polish.js?v=462"></script>
 <script src="mpl.js?v=409"></script>
-<script src="eqp.js?v=486"></script>
+<script src="eqp.js?v=487"></script>
 <script src="field.js?v=461"></script>
 <script src="trucks.js?v=477"></script>
 <script src="safety.js?v=418"></script>
