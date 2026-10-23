@@ -65,7 +65,7 @@ async function readColl(c){
   if(r.status===404){store[c]={etag:null,docs:{}};return store[c]}
   if(!r.ok)throw new Error('Read '+c+' failed ('+r.status+')');
   const t=await r.text();if(store[c]&&lastTxt[c]===t){return store[c]}lastTxt[c]=t;store[c]={etag:null,docs:JSON.parse(t),chg:true};
-  try{if(t.length<1500000)localStorage.setItem('amec:'+c,t);else localStorage.removeItem('amec:'+c)}catch(e){}
+  try{if(t.length<1500000){localStorage.setItem('amec:'+c,t);localStorage.setItem('amect:'+c,String(Date.now()))}else localStorage.removeItem('amec:'+c)}catch(e){}
   return store[c];
 }
 async function listEtags(){
@@ -86,7 +86,7 @@ function emit(c){
 let loading={};
 async function ensure(c){
   if(store[c])return store[c];
-  if(!loading[c]){let ch=null;try{ch=localStorage.getItem('amec:'+c)}catch(e){}
+  if(!loading[c]){let ch=null;try{/* the device copy is only a speed-up — drop it if this device has not synced for 14 days */const ts=+localStorage.getItem('amect:'+c)||0;if(Date.now()-ts>14*864e5){localStorage.removeItem('amec:'+c);localStorage.removeItem('amect:'+c)}else ch=localStorage.getItem('amec:'+c)}catch(e){}
     if(ch){try{store[c]={etag:null,docs:JSON.parse(ch)};const fresh=readColl(c).then(s=>{if(JSON.stringify(s.docs)!==ch)emit(c);return s}).catch(e=>console.warn('refresh',c,e));loading[c]=Promise.resolve(store[c]);return store[c]}catch(e){}}
     loading[c]=readColl(c).then(s=>{emit(c);return s})}
   return loading[c];
@@ -246,5 +246,5 @@ window.claude={use:async name=>{
   await readyP;
   return {db,assets,downloads,user,files}[name]||null;
 }};
-window.msSignOut=()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('amec:')||k==='ameWarm').forEach(k=>localStorage.removeItem(k))}catch(e){}msal?.logoutRedirect({account})};
+window.msSignOut=()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('amec:')||k.startsWith('amect:')||k==='ameWarm').forEach(k=>localStorage.removeItem(k))}catch(e){}msal?.logoutRedirect({account})};
 })();

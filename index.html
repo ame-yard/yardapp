@@ -5,7 +5,7 @@ html.boot section[id^=tab-]{visibility:hidden}
 .dvphw{position:relative;display:inline-block;margin:10px 0;max-width:100%}.dvphw img{display:block}.dvmin{position:absolute;top:8px;right:8px;border:0;background:none;padding:2px;color:var(--muted,#bbb);cursor:pointer;line-height:0}.dvmin:hover{color:#fff}.dvphb{position:absolute;top:6px;right:6px;border:0;background:none;padding:0;cursor:pointer;line-height:0}.dvphw.sm .dvphb svg{width:24px;height:24px}.dvphw img{max-width:100%;max-height:360px;border-radius:10px;cursor:zoom-in}.dvphw.sm img{max-height:90px;max-width:120px;object-fit:cover}
 .dvjob{flex:none;margin-left:auto!important;font-size:12px;font-weight:700;padding:4px 10px;border-radius:14px;border:1px solid var(--line,#666);white-space:nowrap}.dvjob.none{border-color:#f47b20;color:#f47b20}
 .mplcard.dvc{padding:10px 14px;gap:4px}.dvc .dvh{display:flex;align-items:center;gap:8px;min-width:0}.dvc .dvh b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.dvc .dvh>*:last-child{flex:none;margin:0}.dvc small{line-height:1.35}
-.lvd{width:100%;border-collapse:collapse}.lvd th,.lvd td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}.lvd .c,.lvd th{text-align:center}.lvd th:first-child{text-align:left}.lvd input{width:20px;height:20px}#lvTbl tr[data-lvb]:hover td{background:rgba(255,255,255,.04)}.lvtbl .lvapp td{background:rgba(244,123,32,.12);font-weight:800;color:var(--hi);font-size:12px;text-transform:uppercase;letter-spacing:.04em}.lvtbl td.c,.lvtbl th.c{text-align:center}.lvtbl input[type=checkbox]{width:18px;height:18px}</style><script>(function(){try{var t=localStorage.getItem('ameTheme')||'dark';if(t==='auto')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()</script>
+.lvd{width:100%;border-collapse:collapse}.lvd th,.lvd td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}.lvd .c,.lvd th{text-align:center}.lvd th:first-child{text-align:left}.lvd input{width:20px;height:20px}#lvTbl tr[data-lvb]:hover td{background:rgba(255,255,255,.04)}.lvtbl .lvapp td{background:rgba(244,123,32,.12);font-weight:800;color:var(--hi);font-size:12px;text-transform:uppercase;letter-spacing:.04em}.lvtbl td.c,.lvtbl th.c{text-align:center}.lvtbl input[type=checkbox]{width:18px;height:18px}.idraft{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;margin:0 0 10px;border:1px dashed var(--accent,#f47b20);border-radius:10px;font-size:13px}.idraft span{flex:1;min-width:160px}.iguard{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);border-radius:inherit}.igbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:340px;box-shadow:0 10px 30px rgba(0,0,0,.4)}.igbox b{font-size:17px}.igbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}.dlg[data-item]{position:relative}</style><script>(function(){try{var t=localStorage.getItem('ameTheme')||'dark';if(t==='auto')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()</script>
 <style id="themeLight">
 html[data-theme=light]{--bg:#f3efeb;--panel:#ffffff;--ink:#2b2420;--muted:#6f655d;--line:#d6ccc2;--chip:#ece5de;--ok:#2e8b57;--warn:#a87400;--bad:#d14334;color-scheme:light}
 html[data-theme=light] body{background:var(--bg);color:var(--ink)}
@@ -32,7 +32,7 @@ html[data-theme=light] .dsinact[aria-pressed]{color:#c0392b}
 <script>document.documentElement.classList.add('boot');setTimeout(()=>document.documentElement.classList.remove('boot'),4000)</script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
-<script src="msbackend.js?v=442"></script>
+<script src="msbackend.js?v=443"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.16',APP_DATE='2026-10-22';
+const APP_VERSION='7.17',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1626,8 +1626,24 @@ async function shrink(f){const MAX=1200;let src=null;
   for(let t=0;t<4;t++){const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(src,0,0,c.width,c.height);
     b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));if(b&&b.size<=400e3)break;k*=.8;q=Math.max(.6,q-.08)}
   return b||f}
-$('#dlgRoot').addEventListener('click',e=>{if(e.target.classList&&e.target.classList.contains('scrim')){closeDlg();render()}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#dlgRoot').firstChild){closeDlg();render()}});
+/* item form guard: tapping outside a New / Edit item box with typed info asks first (draft · discard · keep editing) */
+const IDK=()=>'ameItemDraft:'+(curUser||'');
+const itemDlg=()=>document.querySelector('#dlgRoot .dlg[data-item]');
+const formVals=d=>{const o={};d.querySelectorAll('input[id^="e_"],select[id^="e_"],textarea[id^="e_"]').forEach(x=>{if(x.type==='file')return;o[x.id]=x.type==='checkbox'?x.checked:x.value});return o};
+new MutationObserver(()=>{const d=itemDlg();if(!d||d.__init)return;d.__init=formVals(d);
+  /* new item: offer the saved draft */
+  if(!d.dataset.item){let dr=null;try{dr=JSON.parse(localStorage.getItem(IDK())||'null')}catch(e){}
+    if(dr&&dr.v&&Object.values(dr.v).some(v=>v&&v!=='0')){const bar=document.createElement('div');bar.className='idraft';bar.innerHTML=`<span>You have a draft from ${new Date(dr.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}${dr.v.e_name?' — <b>'+esc(dr.v.e_name)+'</b>':''}</span><button type="button" class="btn small" id="idrUse">Use draft</button><button type="button" class="btn small" id="idrDel">Delete draft</button>`;d.querySelector('h3').after(bar);
+      bar.querySelector('#idrUse').onclick=()=>{Object.entries(dr.v).forEach(([k,v])=>{const x=d.querySelector('#'+k);if(!x)return;if(x.type==='checkbox')x.checked=!!v;else x.value=v;x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}))});bar.remove()};
+      bar.querySelector('#idrDel').onclick=()=>{try{localStorage.removeItem(IDK())}catch(e){}bar.remove()}}}
+  const sv=d.querySelector('#e_save');if(sv)sv.addEventListener('click',()=>{if(!d.dataset.item)setTimeout(()=>{if(!itemDlg())try{localStorage.removeItem(IDK())}catch(e){}},600)},true)}).observe(document.getElementById('dlgRoot'),{childList:true,subtree:true});
+function itemGuard(close){const d=itemDlg();if(!d||!d.__init)return close();const now=formVals(d);const dirty=Object.keys(now).some(k=>String(now[k])!==String(d.__init[k]));if(!dirty)return close();
+  if(d.querySelector('.iguard'))return;const g=document.createElement('div');g.className='iguard';
+  g.innerHTML=`<div class="igbox"><b>Leave without saving?</b><p class="muted">You typed info that is not saved yet.</p><div class="igbtns">${d.dataset.item?'':'<button type="button" class="btn" data-ig="draft">Save as draft</button>'}<button type="button" class="btn" data-ig="drop" style="color:#e2513a">Discard</button><button type="button" class="go" data-ig="stay" style="width:auto">Keep editing</button></div></div>`;d.appendChild(g);
+  g.querySelectorAll('[data-ig]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const k=b.dataset.ig;if(k==='stay'){g.remove();return}if(k==='draft'){try{localStorage.setItem(IDK(),JSON.stringify({at:Date.now(),v:now}))}catch(e){}toast('Draft saved — it comes back next time you tap New item')}close()})}
+window.ameItemGuard=itemGuard;
+$('#dlgRoot').addEventListener('click',e=>{if(e.target.classList&&e.target.classList.contains('scrim')){itemGuard(()=>{closeDlg();render()})}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#dlgRoot').firstChild){itemGuard(()=>{closeDlg();render()})}});
 function closeDlg(){$('#dlgRoot').innerHTML=''}
 function openAddName(){$('#dlgRoot').innerHTML=`<div class="scrim"><div class="dlg"><h3>Add a name</h3><label class="f">Name<input id="nn" placeholder="First name"></label>
   <div class="bar"><button class="btn" id="nc">Cancel</button><button class="btn pri" id="ns">Add</button></div></div></div>`;
