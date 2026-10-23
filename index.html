@@ -695,7 +695,7 @@ nav.tabs button.offmod{display:none!important}body[data-mod="home"] nav.tabs{vis
 <div id="dlgRoot"></div>
 
 <script>
-const APP_VERSION='7.19',APP_DATE='2026-10-22';
+const APP_VERSION='7.20',APP_DATE='2026-10-22';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1991,7 +1991,7 @@ db.doc('config/racks').onSnapshot(s=>{rackCfg=s.data()||{};if(yLoc)renderYard()}
 #rmBar[hidden]{display:none!important}#ylist.picking .card{cursor:pointer}#ylist.picking .card.oos{opacity:.85;cursor:pointer}#ylist .card.picked{outline:3px solid #e2513a;outline-offset:-3px;position:relative}
 #ylist .card.picked::after{content:"\2713";position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#e2513a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:3}.card{position:relative}.cinfo{position:absolute;bottom:8px;right:8px;pointer-events:auto;z-index:3;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font:italic 700 16px/30px Georgia,serif;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .logo{height:52px;padding:4px 10px;min-width:96px;justify-content:center}.logo img{height:44px;max-width:180px}#brand{min-height:52px;padding:0;cursor:pointer}#brand:active .logo{transform:scale(.96)}
-@media (max-width:600px){.logo{height:46px;padding:3px 8px;min-width:84px}.logo img{height:40px;max-width:130px}}
+@media (max-width:600px){.logo{height:40px;padding:2px 8px;min-width:76px}.logo img{height:34px;max-width:120px}#brand{min-height:40px}}
 .elundo{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9999;background:#222;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:14px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:92vw}.elundo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.elundo button{background:none;border:0;color:#f6a04d;font-weight:800;font-size:15px}
 .cartpop{position:fixed;left:8px;right:8px;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:520px;margin:0 auto;max-height:55vh;overflow:auto;z-index:9998;background:var(--panel,#3a3532);border:1px solid var(--line,#555);border-radius:14px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.5)}.cph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.cpr{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line,#555)}.cpr>div{flex:1;min-width:0}.cpr small{display:block;opacity:.7}.cpr .thumb{width:32px;height:32px}.cprm{width:34px;height:34px;border-radius:50%;border:1px solid var(--line,#555);background:none;color:var(--bad,#e66);font-size:18px;flex:none}.cbview{font-size:12px;opacity:.8;margin-left:4px}@media (max-width:600px){.cbview{display:none}}
 #ymap.editing .bay:not(.bedit),#ymap.editing .zl{display:none}#ymap.editing{touch-action:none}#ymap .zedit{fill:rgba(242,106,27,.08);stroke:#f26a1b;stroke-dasharray:6 4;cursor:move}#ymap .zhandle{fill:#f26a1b;cursor:nwse-resize}#ymap .bedit{cursor:grab}#ymap .bedit rect{fill:#3a3532;stroke:#f6a04d;stroke-width:2}
@@ -2026,7 +2026,7 @@ document.getElementById('rmGo').onclick=async()=>{const ids=[...picked];if(!ids.
     await db.doc((it.pending?'newitems/':'items/')+it.id).delete();db.doc('stock/'+it.id).delete().catch(()=>{});ok++}catch(e){toast('Could not remove '+it.name+': '+(e.message||e.code))}}
   b.textContent='Remove';selMode=false;picked.clear();toast(ok+' item(s) removed');renderYard()};
 </script>
-<script src="shell.js?v=7.19"></script>
+<script src="shell.js?v=7.20"></script>
 <script src="polish.js?v=462"></script>
 <script src="mpl.js?v=399"></script>
 <script src="eqp.js?v=484"></script>
