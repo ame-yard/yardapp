@@ -178,11 +178,11 @@ function fromDXF(txt){const t=txt.split(/\r?\n/).map(s=>s.trim());const out=[];l
     if(e.T==='TEXT'||e.T==='MTEXT')out.push({t:'text',p:[+e['10'],+e['20']],h:+e['40']||6,s:(e['1']||'').replace(/\\P/g,' ').replace(/\{|\}|\\[A-Za-z][^;]*;/g,''),rot:+e['50']||0,layer:L})});
   return out.map(e=>({...e,id:uid()}))}
 /* ---------- import: drop / open many drawing formats ---------- */
-const ACCEPT='.dxf,.svg,.pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.json,.csv,.txt';
+const ACCEPT='.dwg,.dxf,.svg,.pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.json,.csv,.txt';
 async function importFiles(list,at){for(const f of list)await importFile(f,at)}
 async function importFile(f,at){const n=f.name.toLowerCase(),ext=n.split('.').pop();at=at||[V.x,V.y];
   try{
-  if(ext==='dwg'){toast('DWG is AutoCAD’s locked format. In AutoCAD: Save As → DXF, then drop the DXF here.');say('DWG not supported — save it as DXF first.');return}
+  if(ext==='dwg'){await dwgIn(f);return}
   if(ext==='dxf'){const ents=fromDXF(await f.text());D.ents.push(...ents);commit();zoomExt();say(`Imported ${ents.length} objects from ${f.name}`);return}
   if(ext==='json'){const o=JSON.parse(await f.text());const E2=(o.ents||[]).map(e=>({...e,id:uid()}));(o.layers||[]).forEach(l=>{if(!D.layers.some(x=>x.n===l.n))D.layers.push(l)});D.ents.push(...E2);commit();zoomExt();say(`Imported ${E2.length} objects from ${f.name}`);return}
   if(ext==='svg'){const ents=fromSVG(await f.text());D.ents.push(...ents);commit();zoomExt();say(`Imported ${ents.length} objects from ${f.name} (1 SVG unit = 1"). Use CALIBRATE to set the real scale.`);return}
@@ -207,7 +207,33 @@ function fromSVG(txt){const host=document.createElement('div');host.style.cssTex
     else if(t==='text'){const p=tp(el,n('x'),n('y'));out.push({t:'text',p,h:parseFloat(getComputedStyle(el).fontSize)||12,s:el.textContent.trim()})}
     else{let L=0;try{L=el.getTotalLength()}catch(e){}if(!L)return;const N=Math.min(800,Math.max(8,Math.ceil(L/2)));const st=L/N;let P=[],prev=null;for(let i=0;i<=N;i++){const q=el.getPointAtLength(i*st);if(prev&&Math.hypot(q.x-prev.x,q.y-prev.y)>st*3){if(P.length>1)out.push({t:'pline',closed:false,pts:P});P=[]}P.push(tp(el,q.x,q.y));prev=q}if(P.length>1)out.push({t:'pline',closed:/z\s*$/i.test(el.getAttribute('d')||''),pts:P})}});
   host.remove();return out.map(e=>({...e,id:uid(),layer:D.cur}))}
-reg('IMPORT','Import a drawing: DXF, PDF, SVG, image, CSV points, AME CAD file',()=>{const i=document.createElement('input');i.type='file';i.multiple=true;i.accept=ACCEPT;i.onchange=()=>importFiles([...i.files]);i.click()});
+
+/* DWG → objects, converted inside the browser (LibreDWG compiled to WebAssembly). Nothing is uploaded anywhere. */
+const DWGV='0.8.1',DWGB='https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web@'+DWGV+'/';let dwgLib=null;
+async function dwgEngine(){if(dwgLib)return dwgLib;const m=await import(DWGB+'dist/libredwg-web.js');const L=m.LibreDwg||(m.default&&m.default.LibreDwg);if(!L)throw new Error('converter did not load');let lib;try{lib=await L.create(DWGB+'wasm/')}catch(e){lib=await L.create()}dwgLib={lib,FT:m.Dwg_File_Type};return dwgLib}
+const P2=p=>p?[+(p.x??p[0])||0,+(p.y??p[1])||0]:[0,0];const rad=a=>Math.abs(a)>6.2832*1.01?a:a*180/Math.PI; /* arcs: radians (library) → degrees */
+async function dwgIn(f){say('Converting '+f.name+' (first time downloads the converter, ~10 MB)…');toast('Converting DWG…');
+  let eng;try{eng=await dwgEngine()}catch(e){say('Could not load the DWG converter: '+(e.message||e));toast('DWG converter could not load (internet/ad-blocker?). Save as DXF instead.');return}
+  let db;try{const buf=await f.arrayBuffer();const dwg=eng.lib.dwg_read_data(buf,eng.FT.DWG);if(!dwg)throw new Error('could not read this DWG (newer or damaged file)');db=eng.lib.convert(dwg);try{eng.lib.dwg_free(dwg)}catch(e){}}catch(e){say('DWG read failed: '+(e.message||e));toast('Could not read this DWG. In AutoCAD use Save As → DXF.');return}
+  const out=[],skip={};const lays=(db.tables&&db.tables.LAYER&&(db.tables.LAYER.entries||db.tables.LAYER))||[];const aci={1:'#e5484d',2:'#ffd400',3:'#3fb950',4:'#29b6f6',5:'#4f6bff',6:'#c050e0',7:'#ffffff',30:'#f47b20'};
+  (Array.isArray(lays)?lays:[]).forEach(l=>{if(l&&l.name&&!D.layers.some(x=>x.n===l.name))D.layers.push({n:l.name,c:aci[Math.abs(l.colorIndex)]||'#ffffff',on:!(l.off||l.frozen||(l.colorIndex<0)),lock:false})});
+  const blocks={};const B=db.blocks||{};Object.keys(B).forEach(k=>{blocks[k]=B[k].entities||B[k]});
+  const lay=e=>{const n=e.layer||'0';if(!D.layers.some(x=>x.n===n))D.layers.push({n,c:'#ffffff',on:true,lock:false});return n};
+  const conv=(e,tf,depth)=>{const T=tf||(p=>p);const L=lay(e);const t=String(e.type||'').toUpperCase();const push=o=>out.push({...o,id:uid(),layer:L});
+    if(t==='LINE')push({t:'line',a:T(P2(e.startPoint)),b:T(P2(e.endPoint))});
+    else if(t==='CIRCLE')push({t:'circle',c:T(P2(e.center)),r:(+e.radius||0)*(tf&&tf.k||1)});
+    else if(t==='ARC')push({t:'arc',c:T(P2(e.center)),r:(+e.radius||0)*(tf&&tf.k||1),s:rad(+e.startAngle||0)+(tf&&tf.rot||0),e:rad(+e.endAngle||0)+(tf&&tf.rot||0)});
+    else if(t==='LWPOLYLINE'||t==='POLYLINE'||t==='POLYLINE2D'){const V=(e.vertices||[]).map(v=>T(P2(v.position||v)));if(V.length>1)push({t:'pline',pts:V,closed:!!(e.shape||e.closed||((+e.flag||0)&1))})}
+    else if(t==='TEXT'||t==='MTEXT'||t==='ATTRIB'){const p=P2(e.startPoint||e.insertionPoint||e.position);const s=String(e.text||e.contents||'').replace(/\\P/g,' ').replace(/\{|\}|\\[A-Za-z][^;]*;/g,'').trim();if(s)push({t:'text',p:T(p),h:(+e.textHeight||+e.height||6)*(tf&&tf.k||1),s,rot:rad(+e.rotation||0)+(tf&&tf.rot||0)})}
+    else if(t==='SPLINE'||t==='ELLIPSE'){const V=(e.fitPoints&&e.fitPoints.length?e.fitPoints:e.controlPoints||[]).map(v=>T(P2(v)));if(V.length>1)push({t:'pline',pts:V,closed:false})}
+    else if(t==='SOLID'||t==='3DFACE'){const V=(e.points||e.corners||[]).map(v=>T(P2(v)));if(V.length>2)push({t:'pline',pts:V.length===4?[V[0],V[1],V[3],V[2]]:V,closed:true})}
+    else if(t==='INSERT'&&depth<5){const bl=blocks[e.name];if(!bl)return;const ip=P2(e.insertionPoint||e.position),sx=+e.xScale||1,ro=(+e.rotation||0),ra=Math.abs(ro)>6.2832*1.01?ro*Math.PI/180:ro;const co=Math.cos(ra),si=Math.sin(ra);
+      const nt=p=>{const x=p[0]*sx,y=p[1]*(+e.yScale||sx);return T([ip[0]+x*co-y*si,ip[1]+x*si+y*co])};nt.k=Math.abs(sx)*((tf&&tf.k)||1);nt.rot=ra*180/Math.PI+((tf&&tf.rot)||0);(Array.isArray(bl)?bl:[]).forEach(x=>conv({...x,layer:(x.layer==='0'||!x.layer)?e.layer:x.layer},nt,depth+1))}
+    else skip[t||'?']=(skip[t||'?']||0)+1};
+  (db.entities||[]).forEach(e=>{try{conv(e,null,0)}catch(x){skip.ERR=(skip.ERR||0)+1}});
+  if(!out.length){say('The DWG opened but no drawable objects were found.'+(Object.keys(skip).length?' Skipped: '+JSON.stringify(skip):''));toast('Nothing to import from this DWG');return}
+  D.ents.push(...out);commit();zoomExt();const sk=Object.entries(skip).map(([k,v])=>k+' ×'+v).join(', ');say(`Imported ${out.length} objects from ${f.name}.`+(sk?` Not converted: ${sk}.`:'')+' Units are read as inches — check with DI, use CAL if the size looks off.');if(sk)toast('Imported — some object types were skipped (see command log)')}
+reg('IMPORT','Import a drawing: DWG, DXF, PDF, SVG, image, CSV points, AME CAD file',()=>{const i=document.createElement('input');i.type='file';i.multiple=true;i.accept=ACCEPT;i.onchange=()=>importFiles([...i.files]);i.click()});
 reg('CALIBRATE','Set the real scale of an underlay/import: pick 2 points, type the real distance',()=>needSel(S=>seq([{ask:()=>'Pick first point of a known length (e.g. a dimension on the plan):',take:(p,s)=>{s.a=p}},{ask:()=>'Pick second point:',base:s=>s.a,take:(p,s)=>{s.b=p}},{ask:s=>`Measured ${fmtL(dist(s.a,s.b))}. Type the REAL length (e.g. 40' or 480):`,take:()=>false,text:(t,s)=>{const L=parseL(t);const d=dist(s.a,s.b);if(!(L>0)||!d)return 'again';const f=L/d;S.forEach(id=>{const e=byId(id);if(!e)return;xform(e,p=>[s.a[0]+(p[0]-s.a[0])*f,s.a[1]+(p[1]-s.a[1])*f]);if(e.r)e.r*=f;if(e.t==='text')e.h*=f;if(e.t==='img'){e.w*=f;e.h*=f}});commit();zoomExt();say(`Scaled ×${f.toFixed(4)} — now the picked length is ${fmtL(L)}.`);return 'done'}}],{preview:(c,s,i)=>{if(i===1)rubber(c,s.a,cursorW(s.a),'#ffd400')}})));
 reg('FADE','Underlay transparency (0–100)',()=>needSel(S=>seq([{ask:()=>'Fade % (0 = solid, 90 = very light) <25>:',take:()=>false,text:t=>{const v=Math.max(0,Math.min(95,t===''?25:+t));S.forEach(id=>{const e=byId(id);if(e&&e.t==='img')e.fade=1-v/100});commit();draw();return 'done'}}])));
 /* ---------- file ---------- */
@@ -295,7 +321,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .cdrib{display:flex;gap:4px;padding:4px 8px;background:#2b2d31;border-bottom:1px solid #3a3d42;overflow-x:auto}.cdgrp{display:flex;flex-direction:column;align-items:center;padding:0 6px;border-right:1px solid #3a3d42}.cdgrp>small{font-size:10px;color:#888;margin-top:2px}
 .cdgb{display:flex;gap:2px}.cdgb button{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:46px;padding:4px 3px;border:0;border-radius:6px;background:none;color:#ddd;cursor:pointer;font-size:10px}.cdgb button:hover{background:#3a3d42}
 .cdlay{display:flex;align-items:center;gap:6px;padding-top:6px}.cdlay select{background:#1e1f22;color:#ddd;border:1px solid #444;border-radius:6px;padding:4px}.cdsw{width:14px;height:14px;border-radius:3px;border:1px solid #666}
-.cdstage{flex:1;position:relative;min-height:0;cursor:none}.cdstage.cddrop{outline:3px dashed #f47b20;outline-offset:-6px}.cdstage.cddrop::after{content:'Drop DXF · PDF · SVG · image · CSV';position:absolute;inset:auto 0 45% 0;text-align:center;color:#f47b20;font:600 18px system-ui;pointer-events:none}.cdstage canvas{display:block}
+.cdstage{flex:1;position:relative;min-height:0;cursor:none}.cdstage.cddrop{outline:3px dashed #f47b20;outline-offset:-6px}.cdstage.cddrop::after{content:'Drop DWG · DXF · PDF · SVG · image · CSV';position:absolute;inset:auto 0 45% 0;text-align:center;color:#f47b20;font:600 18px system-ui;pointer-events:none}.cdstage canvas{display:block}
 .cdcmd{background:#25272b;border-top:1px solid #3a3d42;padding:4px 8px}.cdcmd pre{margin:0;height:58px;overflow:auto;font:12px/1.4 ui-monospace,Consolas,monospace;color:#aab;white-space:pre-wrap}
 .cdin{display:flex;align-items:center;gap:8px;position:relative}.cdin span{font:12px ui-monospace,Consolas,monospace;color:#ffd400;white-space:nowrap}.cdin input{flex:1;background:#1e1f22;color:#fff;border:1px solid #444;border-radius:6px;padding:6px 8px;font:13px ui-monospace,Consolas,monospace}
 .cdac{position:absolute;left:120px;bottom:34px;background:#2b2d31;border:1px solid #444;border-radius:8px;min-width:320px;z-index:5}.cdac div{padding:5px 10px;cursor:pointer;font-size:12.5px}.cdac div:hover{background:#3a3d42}.cdac small{color:#999}
