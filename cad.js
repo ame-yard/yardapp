@@ -26,7 +26,7 @@ function onArc(e,deg){const s=n360(e.s),en=n360(e.e),d=n360(deg);return s<=en?(d
 function hitD(e,p){if(e.t==='line')return segD(p,e.a,e.b);if(e.t==='circle')return Math.abs(dist(p,e.c)-e.r);if(e.t==='arc'){const d=Math.abs(dist(p,e.c)-e.r);return onArc(e,ang(e.c,p)*180/Math.PI)?d:1e9}
   if(e.t==='pline'){let m=1e9;const P=e.pts;for(let i=1;i<P.length;i++)m=Math.min(m,segD(p,P[i-1],P[i]));if(e.closed&&P.length>2)m=Math.min(m,segD(p,P[P.length-1],P[0]));return m}
   if(e.t==='text'){const w=e.h*0.6*String(e.s).length;return p[0]>=e.p[0]-1&&p[0]<=e.p[0]+w&&p[1]>=e.p[1]-1&&p[1]<=e.p[1]+e.h?0:1e9}
-  if(e.t==='img')return p[0]>=e.p[0]&&p[0]<=e.p[0]+e.w&&p[1]>=e.p[1]&&p[1]<=e.p[1]+e.h?0:1e9;
+  if(e.t==='img'){const q=e.p,w=e.w,h=e.h,c=[[q[0],q[1]],[q[0]+w,q[1]],[q[0]+w,q[1]+h],[q[0],q[1]+h]];return Math.min(segD(p,c[0],c[1]),segD(p,c[1],c[2]),segD(p,c[2],c[3]),segD(p,c[3],c[0]))}
   if(e.t==='dim'){const g=dimGeo(e);return Math.min(segD(p,g.d1,g.d2),segD(p,g.e1a,g.e1b),segD(p,g.e2a,g.e2b))}return 1e9}
 function bbox(e){if(e.t==='img')return [e.p[0],e.p[1],e.p[0]+e.w,e.p[1]+e.h];const P=pts(e);if(e.t==='circle'||e.t==='arc')return [e.c[0]-e.r,e.c[1]-e.r,e.c[0]+e.r,e.c[1]+e.r];if(e.t==='text')return [e.p[0],e.p[1],e.p[0]+e.h*0.6*String(e.s).length,e.p[1]+e.h];const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]}
 function pts(e){if(e.t==='line')return [e.a,e.b];if(e.t==='pline')return e.pts;if(e.t==='circle'||e.t==='arc')return [e.c];if(e.t==='text'||e.t==='img')return [e.p];if(e.t==='dim'){const g=dimGeo(e);return [e.a,e.b,g.d1,g.d2]}return []}
